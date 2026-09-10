@@ -1405,6 +1405,12 @@
     {
       "type": "public_link",
       "url": "https://www.linkedin.com/in/youssef-bouzit-74863239b/"
+    },
+    {
+      "type": "public_link",
+      "label": "Email",
+      "value": "bt.youssef.369@gmail.com",
+      "url": "mailto:bt.youssef.369@gmail.com"
     }
   ]
 }
