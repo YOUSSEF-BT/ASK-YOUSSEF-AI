@@ -8,6 +8,7 @@ on:
     branches: [main]
     paths:
       - "scripts/sync_portfolio.py"
+      - "scripts/build_structured_profile.py"
       - ".github/workflows/sync-portfolio.yml"
 
 permissions:
@@ -38,7 +39,10 @@ jobs:
       - name: Build synchronized knowledge corpus
         run: python scripts/sync_portfolio.py --source /tmp/youssef-portfolio --output backend/data/site
 
-      - name: Validate synchronized corpus
+      - name: Build structured professional profile
+        run: python scripts/build_structured_profile.py --source /tmp/youssef-portfolio --output backend/data/profile.json
+
+      - name: Validate synchronized knowledge
         run: |
           python - <<'PY'
           import json
@@ -46,6 +50,7 @@ jobs:
 
           root = Path("backend/data/site")
           manifest = json.loads((root / "manifest.json").read_text())
+          profile = json.loads(Path("backend/data/profile.json").read_text())
           required = {
               "projects": 1,
               "skill_categories": 1,
@@ -57,10 +62,27 @@ jobs:
               value = int(manifest.get(key, 0))
               if value < minimum:
                   raise SystemExit(f"Incomplete synchronized corpus: {key}={value}")
+
           markdown = list(root.glob("*.md"))
           if len(markdown) < 5:
               raise SystemExit(f"Expected at least 5 knowledge documents, found {len(markdown)}")
+
+          profile_checks = {
+              "projects": len(profile.get("projects", [])),
+              "skill_categories": len(profile.get("skill_categories", [])),
+              "certifications": len(profile.get("certifications", [])),
+              "work_experiences": len(profile.get("work_experiences", [])),
+              "education": len(profile.get("education", [])),
+          }
+          if any(value < 1 for value in profile_checks.values()):
+              raise SystemExit(f"Incomplete structured profile: {profile_checks}")
+          if profile_checks["projects"] != manifest["projects"]:
+              raise SystemExit("Structured profile project count does not match corpus manifest")
+          if profile_checks["certifications"] != manifest["certifications"]:
+              raise SystemExit("Structured profile certification count does not match corpus manifest")
+
           print("Validated manifest:", manifest)
+          print("Validated structured profile:", profile_checks)
           print("Knowledge documents:", len(markdown))
           PY
 
@@ -68,7 +90,7 @@ jobs:
         run: |
           git config user.name "YOUSSEF-BT"
           git config user.email "YOUSSEF-BT@users.noreply.github.com"
-          git add backend/data/site
+          git add backend/data/site backend/data/profile.json
           if git diff --cached --quiet; then
             echo "Portfolio knowledge is already up to date."
           else
