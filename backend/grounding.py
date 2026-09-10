@@ -3,12 +3,8 @@
 The LLM already receives strict instructions to stay within retrieved evidence.
 This module adds a second, model-independent boundary at the output layer. It
 tracks which portfolio sources were actually returned by search, validates
-source citations, and blocks unsupported high-risk literals such as invented
-metrics, dates/numbers, URLs, or email addresses.
-
-It deliberately does not pretend to prove full semantic entailment. That belongs
-in the evaluation layer (and can later use a dedicated verifier model). The goal
-here is a cheap production guard against the most damaging factual failures.
+source citations, blocks unsupported high-risk literals, and normalizes model
+formatting for the lightweight public widget.
 """
 from __future__ import annotations
 
@@ -18,6 +14,9 @@ from typing import Any, Iterable
 
 _SOURCE_WITH_SCORE = re.compile(r"\[([^\]\n]+?)\s*·\s*relevance\s+[0-9.]+\]", re.I)
 _SIMPLE_SOURCE = re.compile(r"\[([A-Za-z0-9_.:-][A-Za-z0-9_.:/-]{1,120})\]")
+_GROUPED_SOURCES = re.compile(
+    r"\[([A-Za-z0-9_.:-][A-Za-z0-9_.:/-]{1,120}(?:\s*,\s*[A-Za-z0-9_.:-][A-Za-z0-9_.:/-]{1,120})+)\]"
+)
 _URL = re.compile(r"https?://[^\s)\]>]+", re.I)
 _EMAIL = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I)
 _NUMBER = re.compile(r"(?<![\w])\d+(?:[.,]\d+)*(?:\s?%|\s?FPS)?", re.I)
@@ -25,6 +24,28 @@ _NUMBER = re.compile(r"(?<![\w])\d+(?:[.,]\d+)*(?:\s?%|\s?FPS)?", re.I)
 
 def _norm_literal(value: str) -> str:
     return re.sub(r"\s+", "", value.lower().replace(",", ""))
+
+
+def _normalize_public_format(answer: str) -> str:
+    """Normalize common model Markdown into widget-safe plain formatting.
+
+    The widget intentionally supports links/citations but is not a full Markdown
+    renderer. Removing emphasis markers and converting list markers prevents raw
+    ``**``/``-`` syntax from leaking into the UI. Grouped source citations are
+    split so each source can be validated and linked independently.
+    """
+    text = answer or ""
+
+    def _split_sources(match: re.Match[str]) -> str:
+        return " ".join(f"[{part.strip()}]" for part in match.group(1).split(","))
+
+    text = _GROUPED_SOURCES.sub(_split_sources, text)
+    # Some providers escape Markdown punctuation before returning it.
+    text = text.replace(r"\*\*", "**").replace(r"\.", ".")
+    text = re.sub(r"\*\*([^*\n]+?)\*\*", r"\1", text)
+    text = re.sub(r"(?m)^[ \t]*[-*][ \t]+", "• ", text)
+    text = re.sub(r"(?m)^([0-9]+)\\?\.[ \t]+", r"\1. ", text)
+    return text.strip()
 
 
 def _search_observations(steps: Iterable[Any]) -> list[str]:
@@ -46,7 +67,6 @@ def evidence_sources(steps: Iterable[Any]) -> list[str]:
             source = match.group(1).strip()
             if source and source not in found:
                 found.append(source)
-        # Scripted/offline fallback can expose compact [source] references.
         if not _SOURCE_WITH_SCORE.search(observation):
             for match in _SIMPLE_SOURCE.finditer(observation):
                 source = match.group(1).strip()
@@ -60,7 +80,6 @@ def _answer_citations(answer: str) -> list[str]:
 
 
 def _unsupported_literals(answer: str, evidence: str) -> tuple[list[str], list[str], list[str]]:
-    # Citations like [project-foo] and [1] are metadata, not factual numbers.
     answer_no_cites = _SIMPLE_SOURCE.sub("", answer or "")
     ev_norm = _norm_literal(evidence)
 
@@ -75,11 +94,9 @@ def _unsupported_literals(answer: str, evidence: str) -> tuple[list[str], list[s
 
 
 def _remove_unknown_citations(answer: str, unknown: Iterable[str]) -> str:
-    """Drop hallucinated citation labels while preserving answer prose."""
     cleaned = answer or ""
     for citation in unknown:
         cleaned = cleaned.replace(f"[{citation}]", "")
-    # Removing a citation can leave doubled spaces before punctuation/newlines.
     cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
     cleaned = re.sub(r"[ \t]+([.,;:!?])", r"\1", cleaned)
     return cleaned.strip()
@@ -124,17 +141,11 @@ def verify_grounding(answer: str, steps: Iterable[Any]) -> GroundingReport:
 
 
 def enforce_grounding(answer: str, steps: Iterable[Any]) -> tuple[str, GroundingReport]:
-    """Return a guarded answer plus its verification report.
-
-    No search evidence means no post-hoc claim of grounding is made; the answer is
-    left alone (useful for greetings/clarifying turns/contact confirmations). When
-    search was used, unsupported high-risk literals trigger a conservative
-    abstention. Hallucinated citation labels are removed, and at least one real
-    retrieved-source citation is guaranteed on supported factual answers.
-    """
-    report = verify_grounding(answer, steps)
+    """Return a guarded, widget-ready answer plus its verification report."""
+    formatted = _normalize_public_format(answer)
+    report = verify_grounding(formatted, steps)
     if not report.has_search_evidence:
-        return answer, report
+        return formatted, report
 
     if not report.high_risk_supported:
         sources = ", ".join(f"[{s}]" for s in report.evidence_sources[:3])
@@ -146,7 +157,7 @@ def enforce_grounding(answer: str, steps: Iterable[Any]) -> tuple[str, Grounding
             safe += f" Retrieved sources: {sources}."
         return safe, report
 
-    guarded = _remove_unknown_citations(answer, report.unknown_citations)
+    guarded = _remove_unknown_citations(formatted, report.unknown_citations)
     remaining_citations = set(_answer_citations(guarded))
     valid_remaining = remaining_citations & set(report.evidence_sources)
     if valid_remaining or not report.evidence_sources:
