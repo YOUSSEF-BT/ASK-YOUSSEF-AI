@@ -73,12 +73,14 @@ class BM25IndexTests(unittest.TestCase):
 
 
 class HybridRetrieverTests(unittest.TestCase):
+    def _retriever(self, semantic):
+        # These tests validate the semantic+BM25 baseline in isolation. Structured
+        # profile fusion has its own deterministic tests in test_structured_retrieval.py.
+        return HybridRetriever(semantic, structured_retriever=False)
+
     def test_rrf_combines_semantic_and_lexical_evidence(self):
-        # Semantic retrieval intentionally puts the generic page first. Lexical
-        # evidence for the exact model name should pull the accident page up.
         semantic = FakeSemanticRAG(METAS, [2, 0, 1])
-        retriever = HybridRetriever(semantic)
-        hits = retriever.query("Which project uses YOLOv11s?", k=2)
+        hits = self._retriever(semantic).query("Which project uses YOLOv11s?", k=2)
 
         self.assertEqual(hits[0].meta["source"], "accident-detection")
         self.assertEqual(hits[0].meta["retrieval"]["strategy"], "hybrid_rrf")
@@ -87,12 +89,12 @@ class HybridRetrieverTests(unittest.TestCase):
 
     def test_output_respects_k(self):
         semantic = FakeSemanticRAG(METAS, [0, 1, 2])
-        hits = HybridRetriever(semantic).query("AI projects", k=1)
+        hits = self._retriever(semantic).query("AI projects", k=1)
         self.assertEqual(len(hits), 1)
 
     def test_zero_k_returns_empty(self):
         semantic = FakeSemanticRAG(METAS, [0, 1, 2])
-        self.assertEqual(HybridRetriever(semantic).query("AI", k=0), [])
+        self.assertEqual(self._retriever(semantic).query("AI", k=0), [])
 
 
 if __name__ == "__main__":
