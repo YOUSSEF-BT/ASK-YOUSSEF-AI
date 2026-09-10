@@ -37,6 +37,7 @@ from pydantic import BaseModel  # noqa: E402
 
 import crawl  # noqa: E402
 from rag import RAG, chunk_markdown, parse_frontmatter  # noqa: E402
+from observability import TELEMETRY  # noqa: E402
 from retrieval.hybrid import HybridRetriever  # noqa: E402
 from retrieval.structured import StructuredProfileRetriever  # noqa: E402
 from router import route_question  # noqa: E402
@@ -300,14 +301,18 @@ def _stream(question: str, history: list[Turn] | None = None):
     """Drive the agent and translate each Event into an SSE line. Runs under a
     lock because the agent's MCP tools talk to a single shared stdio child —
     concurrent turns would interleave on that pipe."""
+    started = time.monotonic()
+    route = route_question(question)
+    TELEMETRY.record_request(route)
     if STATE.agent is None:
+        TELEMETRY.record_error(latency_ms=(time.monotonic() - started) * 1000.0)
         yield _sse("error", message="agent not ready")
         return
-    route = route_question(question)
     contextual = _with_history(question, history or [])
     # bounded wait: if another turn is mid-flight (the agent shares one stdio
     # child), fail fast with a clear message rather than hanging the browser.
     if not STATE.lock.acquire(timeout=45):
+        TELEMETRY.record_error(latency_ms=(time.monotonic() - started) * 1000.0)
         yield _sse("error", message="The assistant is busy with another question — "
                    "give it a moment and try again.")
         return
@@ -337,8 +342,14 @@ def _stream(question: str, history: list[Turn] | None = None):
                     # unsupported metrics/URLs/emails are blocked before SSE.
                     from grounding import enforce_grounding
                     guarded_answer, _report = enforce_grounding(ev.data["answer"], steps)
+                    TELEMETRY.record_completed(
+                        latency_ms=(time.monotonic() - started) * 1000.0,
+                        retrieval_used="search_site" in used,
+                        grounding_intervened=guarded_answer != ev.data["answer"],
+                    )
                     yield _sse("final", answer=guarded_answer, tools_used=used)
         except Exception as exc:  # never leave the stream hanging on a failure
+            TELEMETRY.record_error(latency_ms=(time.monotonic() - started) * 1000.0)
             low = str(exc).lower()
             if any(s in low for s in ("timed out", "timeout", "deadline")):
                 message = ("That took longer than I expected — the model was slow "
@@ -380,6 +391,12 @@ def health():
             "chunks": STATE.chunks, "structured_docs": STATE.structured_docs,
             "retrieval": "semantic+bm25+structured-rrf",
             "transport": MCP_TRANSPORT, "brain": STATE.brain}
+
+
+@app.get("/metrics")
+def metrics():
+    """Privacy-safe process-lifetime operational metrics; no visitor content."""
+    return TELEMETRY.snapshot()
 
 
 @app.get("/pages")
