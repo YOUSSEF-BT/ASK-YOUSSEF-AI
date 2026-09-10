@@ -1,0 +1,14 @@
+# Runtime only needs the FastAPI backend and committed data snapshot/cache.
+.github/
+docs/
+evaluation/
+tests/
+scripts/
+web/
+Dockerfile
+docker-compose.yml
+render.yaml
+.env.example
+NOTICE.md
+LICENSE
+README.md
