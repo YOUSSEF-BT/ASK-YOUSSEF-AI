@@ -69,6 +69,17 @@ _BROAD_LIST_PATTERNS = (
     r"ما هي.*شهاد", r"ماهي.*شهاد",
 )
 
+# Only issuer-only turns with this short follow-up shape may inherit the
+# certification topic from history. This prevents e.g. "Did he work at IBM?"
+# from being hijacked merely because IBM also appears as a certificate issuer.
+_ISSUER_FOLLOWUP_PATTERNS = (
+    r"^\s*(?:what|how) about\b",
+    r"^\s*(?:and|also)\b",
+    r"^\s*(?:et|sinon|aussi)\b",
+    r"^\s*(?:qu'en est-il de|et pour)\b",
+    r"^\s*(?:وماذا عن|ماذا عن|و)\b",
+)
+
 # Tokens that identify sentence structure rather than a particular certification.
 _SPECIFIC_STOP = {
     *{_normalize(x) for x in _CERT_TERMS},
@@ -149,17 +160,28 @@ class StructuredFactResolver:
                 matches.append(issuer)
         return matches
 
+    @staticmethod
+    def _history_has_certification_context(history: list[Any]) -> bool:
+        recent = " ".join(_turn_content(turn) for turn in history[-4:])
+        return bool(_tokens(recent) & {_normalize(x) for x in _CERT_TERMS})
+
     def _has_certification_context(self, question: str, history: list[Any]) -> bool:
         q_tokens = _tokens(question)
         if q_tokens & {_normalize(x) for x in _CERT_TERMS}:
             return True
-        if self._issuer_matches(question):
-            return True
+
         # A short aggregate follow-up such as "how many?" inherits the topic from
         # the recent transcript. Do not use history to reinterpret arbitrary turns.
         if len(q_tokens) <= 6 and self._matches(_COUNT_PATTERNS, question):
-            recent = " ".join(_turn_content(turn) for turn in history[-4:])
-            return bool(_tokens(recent) & {_normalize(x) for x in _CERT_TERMS})
+            return self._history_has_certification_context(history)
+
+        # Issuer names alone are ambiguous: IBM/Oracle/LinkedIn could be an
+        # employer, technology, company, etc. Treat them as certification filters
+        # only for a concise follow-up after a certification discussion.
+        if self._issuer_matches(question):
+            is_short = len(q_tokens) <= 7
+            looks_like_followup = self._matches(_ISSUER_FOLLOWUP_PATTERNS, question)
+            return bool(is_short and looks_like_followup and self._history_has_certification_context(history))
         return False
 
     @staticmethod
@@ -188,8 +210,6 @@ class StructuredFactResolver:
         if not scored:
             return []
         best = max(score for score, _ in scored)
-        # One distinctive word (Agentic, Database, Architect, etc.) is enough;
-        # generic AI/certification vocabulary was removed above.
         return [row for score, row in scored if score == best]
 
     @staticmethod
@@ -316,12 +336,7 @@ class StructuredFactResolver:
         return self._citation(answer)
 
     def resolve(self, question: str, history: list[Any] | None = None) -> StructuredFactAnswer | None:
-        """Return a deterministic answer when the question requires whole-set facts.
-
-        Specific certification titles are also handled when an issuer is present,
-        which makes questions such as "Which Oracle Agentic AI certification?"
-        exact while keeping broad issuer follow-ups complete.
-        """
+        """Return a deterministic answer when the question requires whole-set facts."""
         history = history or []
         if not self.certifications or not self._has_certification_context(question, history):
             return None
@@ -344,7 +359,4 @@ class StructuredFactResolver:
             return self._format_total(language)
         if self._matches(_LIST_ALL_PATTERNS, question):
             return self._format_all(language)
-        # Broad certification questions must at minimum expose the exact total and
-        # issuer distribution. This prevents a top-k slice from being mistaken for
-        # the complete inventory.
         return self._format_overview(language)
