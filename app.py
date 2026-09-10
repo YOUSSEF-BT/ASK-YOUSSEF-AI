@@ -1,9 +1,9 @@
 """Vercel entrypoint for Ask Youssef AI.
 
 This wrapper keeps the core backend host-agnostic while selecting settings that
-fit Vercel Hobby: bundled portfolio snapshot, in-process retrieval, Gemini API
-embeddings, and the public GitHub Pages origin. GEMINI_API_KEY remains a secret
-and must be configured in Vercel; it is never committed here.
+fit Vercel Hobby: bundled portfolio snapshot, in-process retrieval, local
+FastEmbed vectors, and the public GitHub Pages origin. GEMINI_API_KEY remains a
+secret and is used for answer generation only; it is never committed here.
 """
 from __future__ import annotations
 
@@ -16,16 +16,13 @@ _DEFAULTS = {
     "CORPUS_DIR": "/tmp/site",
     "MCP_TRANSPORT": "inprocess",
     "ALLOWED_ORIGINS": "https://youssef-bt.github.io",
-    "EMBEDDER": "gemini",
+    "EMBEDDER": "fastembed",
+    "FASTEMBED_MODEL": "BAAI/bge-small-en-v1.5",
+    "FASTEMBED_CACHE_PATH": "backend/data/fastembed_cache",
     "GEMINI_MODEL": "gemini-3.7-flash",
     "GEMINI_FALLBACK_MODEL": "gemini-3.5-flash-lite",
-    "GEMINI_EMBED_MODEL": "gemini-embedding-2",
-    "GEMINI_EMBED_DIM": "768",
     "GEMINI_TIMEOUT": "45",
     "GEMINI_RETRIES": "4",
-    "GEMINI_EMBED_PER_MIN": "50",
-    "GEMINI_EMBED_COOLDOWN": "60",
-    "GEMINI_EMBED_RETRIES": "5",
     "MAX_QUESTION_CHARS": "600",
     "MAX_TURN_CHARS": "600",
     "RATE_PER_MIN": "6",
