@@ -88,8 +88,6 @@ _ISSUER_GENERIC_TOKENS = {
     "learning", "community", "university", "cognitive", "class", "academy", "institute",
 }
 
-# These collections are only intercepted for exact-count or explicit complete-list
-# semantics. Ordinary questions continue through semantic/lexical RAG.
 _COLLECTIONS: dict[str, dict[str, Any]] = {
     "projects": {
         "profile_key": "projects",
@@ -366,11 +364,11 @@ class StructuredFactResolver:
             period = str(row.get("period") or "").strip()
             return f"**{title}**" + (f" — {period}" if period else "")
         if name == "experience":
-            title = str(row.get("title") or "Role")
+            role = str(row.get("role") or row.get("title") or "Role")
             company = str(row.get("company") or "").strip()
             period = str(row.get("period") or "").strip()
             suffix = " — ".join(part for part in (company, period) if part)
-            return f"**{title}**" + (f" — {suffix}" if suffix else "")
+            return f"**{role}**" + (f" — {suffix}" if suffix else "")
         if name == "education":
             degree = str(row.get("degree") or "Education")
             school = str(row.get("school") or "").strip()
