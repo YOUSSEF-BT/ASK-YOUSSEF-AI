@@ -33,6 +33,7 @@ jobs:
       - name: Validate knowledge and evaluation JSON
         run: |
           python -m json.tool evaluation/dataset.json >/dev/null
+          python -m json.tool evaluation/online_cases.json >/dev/null
           python -m json.tool backend/data/profile.json >/dev/null
           python -m json.tool backend/data/site/manifest.json >/dev/null
 
@@ -49,12 +50,19 @@ jobs:
           test -f backend/rag.py
           test -f backend/grounding.py
           test -f backend/router.py
+          test -f backend/observability.py
           test -f backend/retrieval/hybrid.py
           test -f backend/retrieval/structured.py
           test -f backend/data/profile.json
           test -f scripts/sync_portfolio.py
           test -f scripts/build_structured_profile.py
           test -f evaluation/run_benchmark.py
+          test -f evaluation/run_online_eval.py
+          test -f evaluation/online_cases.json
+          test -f .github/workflows/online-eval.yml
+          test -f tests/test_runtime_wiring.py
+          test -f tests/test_observability.py
+          test -f tests/test_online_eval.py
           test -f web/widget.js
           test -f docs/architecture.md
 
