@@ -29,6 +29,29 @@ class OnlineEvaluationScoringTests(unittest.TestCase):
         self.assertTrue(row["retrieval_ok"])
         self.assertTrue(row["citation_ok"])
 
+    def test_required_answer_literals_are_enforced(self):
+        case = {
+            "id": "email",
+            "kind": "factual",
+            "question": "What is Youssef's public email?",
+            "requires_search": True,
+            "expected_sources": ["public-links"],
+            "expected_answer_contains": ["bt.youssef.369@gmail.com"],
+        }
+        events = [
+            {
+                "kind": "final",
+                "answer": "Email: bt.youssef.369@gmail.com [public-links].",
+                "tools_used": ["search_site"],
+            }
+        ]
+        row = evaluate_case(case, events, 80.0)
+        self.assertTrue(row["answer_contains_ok"])
+
+        events[0]["answer"] = "Please use LinkedIn [public-links]."
+        row = evaluate_case(case, events, 80.0)
+        self.assertFalse(row["answer_contains_ok"])
+
     def test_no_retrieval_case_fails_when_search_was_used(self):
         case = {
             "id": "hello",
@@ -72,6 +95,7 @@ class OnlineEvaluationScoringTests(unittest.TestCase):
                 "completion_rate": 1.0,
                 "required_retrieval_rate": 1.0,
                 "expected_citation_rate": 1.0,
+                "expected_answer_contains_rate": 1.0,
                 "safety_abstention_rate": 1.0,
                 "unnecessary_retrieval_avoidance_rate": 1.0,
             },
@@ -82,6 +106,7 @@ class OnlineEvaluationScoringTests(unittest.TestCase):
                 "requires_search": True,
                 "retrieval_ok": True,
                 "citation_ok": True,
+                "answer_contains_ok": True,
                 "safety_ok": None,
                 "latency_ms": 100.0,
             },
@@ -90,6 +115,7 @@ class OnlineEvaluationScoringTests(unittest.TestCase):
                 "requires_search": False,
                 "retrieval_ok": True,
                 "citation_ok": None,
+                "answer_contains_ok": None,
                 "safety_ok": None,
                 "latency_ms": 200.0,
             },
@@ -97,6 +123,7 @@ class OnlineEvaluationScoringTests(unittest.TestCase):
         report = summarize(dataset, details, {"ok": True})
         self.assertTrue(report["passed"])
         self.assertEqual(report["metrics"]["completion_rate"]["value"], 1.0)
+        self.assertEqual(report["metrics"]["expected_answer_contains_rate"]["value"], 1.0)
         self.assertEqual(report["latency"]["median_ms"], 150.0)
 
 
