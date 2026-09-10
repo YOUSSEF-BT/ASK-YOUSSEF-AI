@@ -264,7 +264,10 @@ class StructuredProfileRetriever:
             value = str(row.get("value") or "")
             visible_value = value or url
             primary = " ".join(part for part in (label, visible_value) if part)
-            secondary = " ".join(part for part in ("professional contact", label, value) if part)
+            contact_terms = "email mail adresse contact contacter joindre بريد ايميل تواصل اتصال"
+            secondary = " ".join(
+                part for part in ("professional contact", contact_terms, label, value) if part
+            )
             text = f"Public professional contact. {label}: {visible_value}. Link: {url}."
             docs.append(self._doc(
                 "public_link", primary, secondary, text,
