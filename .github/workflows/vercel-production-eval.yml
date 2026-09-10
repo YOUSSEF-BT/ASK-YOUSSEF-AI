@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
     paths:
+      - "app.py"
+      - "backend/vercel_agent_patch.py"
+      - "vercel.json"
+      - "requirements.txt"
+      - "evaluation/**"
       - ".github/workflows/vercel-production-eval.yml"
   workflow_dispatch:
 
