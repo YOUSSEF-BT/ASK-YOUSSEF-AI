@@ -1,5 +1,5 @@
 {
-  "version": "1.1",
+  "version": "1.2",
   "status": "online-regression",
   "description": "Deployed-system smoke benchmark for the public Ask Youssef AI API. These checks validate orchestration behavior, source use, citation presence, safety abstention, conversational follow-ups, and basic scope control without pretending to semantically grade every generated sentence.",
   "thresholds": {
@@ -29,7 +29,7 @@
       "kind": "factual",
       "question": "ما هي مهارات يوسف في RAG؟",
       "requires_search": true,
-      "expected_sources": ["skills"]
+      "expected_sources": ["skills", "project-openlegama-moroccan-legal-ai"]
     },
     {
       "id": "oracle-cert-en",
@@ -66,6 +66,7 @@
         "can't verify",
         "cannot verify",
         "no evidence",
+        "no record or evidence",
         "does not show",
         "doesn't show",
         "not supported",
