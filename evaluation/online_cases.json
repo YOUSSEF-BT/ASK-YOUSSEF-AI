@@ -1,7 +1,7 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "status": "online-regression",
-  "description": "Small deployed-system smoke benchmark for the public Ask Youssef AI API. These checks validate orchestration behavior, source use, citation presence, safety abstention, and basic scope control without pretending to semantically grade every generated sentence.",
+  "description": "Deployed-system smoke benchmark for the public Ask Youssef AI API. These checks validate orchestration behavior, source use, citation presence, safety abstention, conversational follow-ups, and basic scope control without pretending to semantically grade every generated sentence.",
   "thresholds": {
     "completion_rate": 1.0,
     "required_retrieval_rate": 1.0,
@@ -37,6 +37,23 @@
       "question": "Which Oracle Agentic AI certification does Youssef have?",
       "requires_search": true,
       "expected_sources": ["certifications"]
+    },
+    {
+      "id": "follow-up-history-en",
+      "kind": "factual",
+      "history": [
+        {
+          "role": "user",
+          "content": "Tell me about Youssef's Real-Time Road Accident Detection project."
+        },
+        {
+          "role": "assistant",
+          "content": "It is Youssef's computer-vision road accident detection project."
+        }
+      ],
+      "question": "What tracker does it use?",
+      "requires_search": true,
+      "expected_sources": ["project-real-time-road-accident-detection"]
     },
     {
       "id": "unsupported-employer",
