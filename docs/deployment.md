@@ -1,146 +1,158 @@
 # Production Deployment
 
-This document defines the intended production path for Ask Youssef AI. It is a runbook, not a claim that the service is already deployed.
+Ask Youssef AI is live on Vercel and embedded in the GitHub Pages portfolio.
 
-## Target topology
+## Current production topology
 
 ```text
-Portfolio (GitHub Pages)
+Portfolio — https://youssef-bt.github.io
         |
         | HTTPS / SSE
         v
-FastAPI service (Render)
+Vercel FastAPI — https://ask-youssef-ai.vercel.app
         |
-        +--> LLM / embedding provider
-        |
+        +--> deterministic EN / FR / AR router
         +--> bundled synchronized portfolio snapshot
-        |
-        +--> optional contact provider
+        +--> Structured + BM25 + FastEmbed semantic retrieval
+        +--> Gemini 3.7 Flash
+                |
+                +--> Gemini 3.5 Flash-Lite failover
+        +--> deterministic grounding / citation boundary
 ```
 
-The portfolio remains static on GitHub Pages. The AI backend runs separately so API credentials never reach the browser.
+The frontend and AI backend are deliberately separated so provider credentials never reach the browser.
 
-## 1. Pre-deployment quality gate
+## Vercel configuration
 
-A production candidate must pass the normal GitHub Actions CI workflow. Required gates include:
+The root `app.py` is the Vercel production entrypoint. `vercel.json` configures the Python function and prepares the local FastEmbed model during the build.
 
-- Python compilation;
-- unit tests;
-- deterministic portfolio benchmark;
-- structured profile/manifest integrity;
-- JSON validation;
-- JavaScript syntax validation for the embeddable widget;
-- stale-upstream-identity guard.
+Production defaults include:
 
-Online LLM evaluation is a separate provider-backed workflow and should not be confused with the deterministic regression benchmark.
+```text
+CRAWL_SITES=
+MCP_TRANSPORT=inprocess
+ALLOWED_ORIGINS=https://youssef-bt.github.io
+EMBEDDER=fastembed
+FASTEMBED_MODEL=BAAI/bge-small-en-v1.5
+GEMINI_MODEL=gemini-3.7-flash
+GEMINI_FALLBACK_MODEL=gemini-3.5-flash-lite
+GEMINI_TIMEOUT=24
+GEMINI_RETRIES=2
+```
 
-## 2. Render service
+The Vercel-specific orchestration also pre-runs retrieval for factual portfolio questions, performs fast provider failover and returns a truthful source-cited service fallback if generation fails after retrieval has already succeeded.
 
-The repository includes `render.yaml` with the intended service configuration:
+## Required secret
 
-- service name: `ask-youssef-ai`;
-- root directory: `backend`;
-- build: `pip install -r requirements.txt`;
-- start: `uvicorn app:app --host 0.0.0.0 --port $PORT`;
-- health check: `/health`.
-
-Connect the GitHub repository to Render and create the service from the Blueprint or equivalent Web Service flow.
-
-## 3. Required secrets
-
-Set secrets only in Render's environment settings. Never paste real values into the public repository.
-
-Required for the current provider path:
+The current production provider path requires:
 
 ```text
 GEMINI_API_KEY=<server-side secret>
 ```
 
-Optional contact capability:
+The secret belongs only in Vercel project environment variables. Never commit it, expose it through a `VITE_*` variable, or place it in the widget.
+
+## Knowledge source
+
+Production normally uses the synchronized snapshot committed under:
 
 ```text
-FORMSPREE_ENDPOINT=<server-side endpoint>
+backend/data/site/
+backend/data/profile.json
 ```
 
-The remaining non-secret configuration is declared in `render.yaml` and/or `.env.example`.
+That makes cold starts deterministic and avoids making the live portfolio a hard runtime dependency. The synchronization workflow refreshes the generated knowledge artifacts from the portfolio source repository.
 
-## 4. Production origin
-
-Keep:
+## Production endpoints
 
 ```text
-ALLOWED_ORIGINS=https://youssef-bt.github.io
+GET  /                 service descriptor
+GET  /health           health + indexed corpus summary
+GET  /capabilities     public assistant metadata
+GET  /pages            synchronized evidence pages
+GET  /metrics          aggregate privacy-safe metrics
+POST /chat             SSE assistant response
+POST /feedback         fixed-category feedback
 ```
 
-Do not set `*` in production unless intentionally testing outside the portfolio. When testing a local development origin, use a separate environment rather than weakening the production service.
-
-## 5. Knowledge source
-
-The production service normally uses the synchronized snapshot committed under `backend/data/site` plus `backend/data/profile.json`. This keeps startup deterministic and avoids making the live portfolio a hard runtime dependency.
-
-The scheduled synchronization workflow refreshes those generated artifacts from the portfolio repository. A future project added to the source portfolio can therefore enter the assistant's knowledge base through the sync pipeline rather than a hand-written chatbot response.
-
-## 6. Smoke tests after deploy
-
-Do not integrate the production URL into the public portfolio until all of these pass:
+Production health URL:
 
 ```text
-GET /health          -> ok: true
-GET /capabilities    -> Ask Youssef AI metadata and suggestions
-GET /pages           -> synchronized source pages
-GET /metrics         -> aggregate metrics only
-POST /chat           -> valid SSE response
-POST /feedback       -> {"ok": true} for an allowed fixed category
+https://ask-youssef-ai.vercel.app/health
 ```
 
-Also test:
+## Release quality gate
 
-- English portfolio question;
-- French portfolio question;
-- Arabic portfolio question;
-- exact technical identifier question (for example YOLOv11s);
-- unsupported employer/metric question -> cautious abstention;
-- follow-up question using conversation history;
-- prompt-injection-style profile claim;
-- rate-limit behavior;
-- request from a non-allowed browser origin.
+Application changes should satisfy both layers before being treated as a known-good release:
 
-## 7. Portfolio integration
+1. normal deterministic CI;
+2. deployed Vercel online regression.
 
-After the backend URL is verified, embed the production widget into `YOUSSEF-BT/YOUSSEF-BT.github.io` with the backend URL supplied as `data-api`.
+The production workflow `.github/workflows/vercel-production-eval.yml` waits for the Vercel promotion, checks `/health`, then executes the 9-case deployed regression suite against the canonical production URL.
 
-The visual integration must use the portfolio's existing design tokens, particularly:
+The current verified production run passes all configured gates for completion, mandatory retrieval, expected citations, safety abstention and avoidance of unnecessary retrieval.
+
+## Portfolio integration
+
+The portfolio repository contains `src/components/AskYoussefAI.jsx`. Its default production API is:
 
 ```text
-background: #0f1418
-card:       #141a1f
-primary:    #20b2a6
-foreground: #f0f2f5
-border:     #242b32
+https://ask-youssef-ai.vercel.app
 ```
 
-The browser must never contain the LLM API key.
+A build-time `VITE_ASK_YOUSSEF_API_URL` value may override that URL for staging/preview purposes, but no API secret belongs in the frontend.
 
-## 8. Final public verification
+The browser loads the Shadow DOM widget from:
 
-Before announcing the project on CV, LinkedIn, Fiverr, or Upwork:
+```text
+https://cdn.jsdelivr.net/gh/YOUSSEF-BT/ASK-YOUSSEF-AI@main/web/widget.js
+```
 
-- verify the production backend URL from an external browser;
-- verify the widget on desktop and mobile;
-- verify source links from answers;
-- run the deterministic benchmark against the exact release commit;
-- run the provider-backed online evaluation and publish only real measured results;
-- confirm that no private credentials appear in repository history or frontend code;
-- create a short demo capture/GIF;
-- finalize README, architecture diagram, and portfolio project page.
+The widget is mounted globally by the portfolio application and therefore remains available while visitors navigate between portfolio routes.
+
+## Production checks
+
+For a release affecting runtime behavior, verify:
+
+- `/health` returns `ok: true`;
+- an English factual question retrieves and cites evidence;
+- French and Arabic factual questions retrieve and cite evidence;
+- a conversation-history follow-up remains grounded;
+- unsupported employer/experience assertions abstain safely;
+- prompt-injection-style factual claims do not bypass retrieval;
+- a greeting performs no retrieval/model generation;
+- an out-of-scope request performs no portfolio retrieval;
+- the public portfolio origin is allowed by CORS;
+- no secret appears in frontend code or SSE output.
+
+## Automatic deployment flow
+
+```text
+ASK-YOUSSEF-AI main push
+        |
+        +--> GitHub Actions CI
+        +--> Vercel production deployment
+        +--> Vercel production evaluation (runtime/evaluation paths)
+
+YOUSSEF-BT.github.io main push
+        |
+        +--> React/Vite build
+        +--> gh-pages publication
+        +--> live widget using Vercel API
+```
+
+## Render and Docker
+
+`render.yaml`, `Dockerfile` and `docker-compose.yml` remain in the repository as alternative deployment/local-production configurations. They are not the active public hosting path; **Vercel is the current production backend**.
 
 ## Rollback
 
-If a production change degrades responses or breaks the widget:
+If a runtime release regresses:
 
-1. remove/disable the widget from the public portfolio if necessary;
-2. redeploy the previous known-good backend commit;
-3. inspect CI and online-evaluation reports;
-4. fix on `main` only after deterministic gates pass again.
+1. use Vercel rollback to restore the previous known-good deployment, or revert the faulty commit on `main`;
+2. if necessary, temporarily disable the widget from the portfolio;
+3. inspect CI, production-evaluation artifacts and Vercel runtime logs;
+4. fix the issue without weakening grounding/security behavior merely to satisfy a test;
+5. require the release gates to pass again before considering the new version known-good.
 
-Never hide a failed benchmark by lowering thresholds merely to make CI green. Change thresholds only when the evaluation contract itself is intentionally revised and documented.
+Evaluation thresholds should only change when the evaluation contract itself is intentionally revised and documented.
