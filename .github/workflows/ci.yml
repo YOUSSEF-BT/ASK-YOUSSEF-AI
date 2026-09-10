@@ -38,7 +38,16 @@ jobs:
           python -m json.tool backend/data/site/manifest.json >/dev/null
 
       - name: Run portfolio quality benchmark
-        run: python evaluation/run_benchmark.py --strict --output /tmp/portfolio-benchmark.json
+        run: python evaluation/run_benchmark.py --strict --output portfolio-benchmark.json
+
+      - name: Publish deterministic benchmark report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deterministic-portfolio-benchmark
+          path: portfolio-benchmark.json
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Verify required project files
         run: |
@@ -65,6 +74,7 @@ jobs:
           test -f tests/test_online_eval.py
           test -f web/widget.js
           test -f docs/architecture.md
+          test -f docs/evaluation.md
 
       - name: Validate synchronized profile counts
         run: |
