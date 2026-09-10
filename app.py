@@ -22,9 +22,9 @@ _DEFAULTS = {
     "FASTEMBED_CACHE_PATH": "backend/data/fastembed_cache",
     "GEMINI_MODEL": "gemini-3.7-flash",
     "GEMINI_FALLBACK_MODEL": "gemini-3.5-flash-lite",
-    # Keep the whole retry budget inside Vercel Hobby's function window.
-    # Factual portfolio turns use one model round-trip after deterministic search.
-    "GEMINI_TIMEOUT": "28",
+    # Two attempts can now be primary -> fallback. 24s keeps the worst-case
+    # provider budget comfortably inside Vercel Hobby's request window.
+    "GEMINI_TIMEOUT": "24",
     "GEMINI_RETRIES": "2",
     "MAX_QUESTION_CHARS": "600",
     "MAX_TURN_CHARS": "600",
@@ -36,12 +36,13 @@ _DEFAULTS = {
 for _key, _value in _DEFAULTS.items():
     os.environ.setdefault(_key, _value)
 
-# Apply the serverless latency optimization before backend.app imports/builds
-# the shared agent. The core agent module remains unchanged for local/Docker use.
+# Apply Vercel-only reliability/latency optimizations before backend.app
+# imports and builds the shared agent. Core local/Docker behavior is unchanged.
 _BACKEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend")
 if _BACKEND_DIR not in sys.path:
     sys.path.insert(0, _BACKEND_DIR)
 import vercel_agent_patch  # noqa: E402,F401
+import vercel_gemini_failover  # noqa: E402,F401
 
 # Vercel's FastAPI runtime discovers the exported variable named `app`.
 from backend.app import app  # noqa: E402,F401
