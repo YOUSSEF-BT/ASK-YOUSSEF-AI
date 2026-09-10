@@ -12,11 +12,27 @@ class LanguageRouterTests(unittest.TestCase):
     def test_french(self):
         self.assertEqual(detect_language("Quels sont ses meilleurs projets ?"), "fr")
 
+    def test_conversational_french_without_accents(self):
+        samples = [
+            "je pense il a 4 certifications de oracle",
+            "youssef il fait quoi maintenant",
+            "donne moi les objectif et les butes de youssef",
+            "est ce que il peuve m'aide sur un projet agentic ai ?",
+            "combien de rag a construis",
+            "est ce que il a deja fait un assistant ai copilot",
+        ]
+        for sample in samples:
+            with self.subTest(sample=sample):
+                self.assertEqual(detect_language(sample), "fr")
+
     def test_arabic(self):
         self.assertEqual(detect_language("ما هي أبرز مشاريع يوسف؟"), "ar")
 
     def test_english_default(self):
         self.assertEqual(detect_language("What are his strongest projects?"), "en")
+
+    def test_english_ordinal_followup_stays_english(self):
+        self.assertEqual(detect_language("talk about the first one."), "en")
 
     def test_english_certification_is_not_misclassified_as_french(self):
         self.assertEqual(
