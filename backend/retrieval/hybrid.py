@@ -1,10 +1,11 @@
 """Hybrid retrieval for Ask Youssef AI.
 
-Combines semantic retrieval, an independent BM25-style lexical retriever, and an
-optional field-aware structured professional-profile retriever. Ranked lists are
-fused with Reciprocal Rank Fusion (RRF), followed by small deterministic evidence
-quality boosts. The public `.query()` interface matches the existing RAG retriever,
-so the agent/MCP layers do not need to know which retrieval strategy is underneath.
+Combines semantic retrieval, an independent BM25-style lexical retriever, and a
+field-aware structured professional-profile retriever. Ranked lists are fused
+with Reciprocal Rank Fusion (RRF), followed by small deterministic evidence
+quality boosts. The public `.query()` interface matches the existing RAG
+retriever, so the agent/MCP layers do not need to know which retrieval strategy
+is underneath.
 
 This module intentionally avoids a heavy cross-encoder dependency. A learned
 reranker can be plugged in later behind the same interface once it is benchmarked.
@@ -12,10 +13,14 @@ reranker can be plugged in later behind the same interface once it is benchmarke
 from __future__ import annotations
 
 import math
+import os
 import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
+
+from retrieval.structured import StructuredProfileRetriever
 
 _TOKEN = re.compile(r"[\w+#.-]+", re.UNICODE)
 
@@ -96,13 +101,13 @@ class BM25Index:
 
 
 class HybridRetriever:
-    """Semantic + lexical + optional structured retrieval with RRF fusion."""
+    """Semantic + lexical + synchronized structured retrieval with RRF fusion."""
 
     def __init__(
         self,
         semantic_rag: Any,
         *,
-        structured_retriever: Any | None = None,
+        structured_retriever: Any | bool | None = None,
         rrf_k: int = 60,
         semantic_weight: float = 1.0,
         lexical_weight: float = 1.0,
@@ -110,7 +115,15 @@ class HybridRetriever:
         candidate_multiplier: int = 4,
     ) -> None:
         self.semantic_rag = semantic_rag
-        self.structured = structured_retriever
+        if structured_retriever is False:
+            self.structured = None
+        elif structured_retriever is None:
+            default_profile = Path(__file__).resolve().parents[1] / "data" / "profile.json"
+            profile_path = Path(os.environ.get("STRUCTURED_PROFILE_PATH", str(default_profile)))
+            loaded = StructuredProfileRetriever.from_path(profile_path)
+            self.structured = loaded if loaded.count else None
+        else:
+            self.structured = structured_retriever
         self.rrf_k = rrf_k
         self.semantic_weight = semantic_weight
         self.lexical_weight = lexical_weight
