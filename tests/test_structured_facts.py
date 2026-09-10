@@ -103,7 +103,7 @@ class StructuredPortfolioFactsTests(unittest.TestCase):
         result = self.resolver.resolve("List all professional experiences")
         self.assertIsNotNone(result)
         for row in self.profile["work_experiences"]:
-            self.assertIn(row["title"], result.answer)
+            self.assertIn(row["role"], result.answer)
             self.assertIn(row["company"], result.answer)
 
     def test_specific_project_question_is_not_intercepted(self):
