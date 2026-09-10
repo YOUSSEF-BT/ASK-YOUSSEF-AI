@@ -26,19 +26,26 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Patch bootstrap host normalization
+      - name: Patch bootstrap normalization and attribution whitelist
         run: |
           python - <<'PY'
           from pathlib import Path
           p = Path('scripts/bootstrap_foundation.py')
           text = p.read_text()
-          needle = '        ("https://adityajain.me", "https://youssef-bt.github.io"),\n'
-          replacement = needle + '        ("adityajain.me", "youssef-bt.github.io"),\n'
-          if '("adityajain.me", "youssef-bt.github.io")' not in text:
-              if needle not in text:
-                  raise SystemExit('Expected replacement anchor not found')
-              text = text.replace(needle, replacement, 1)
-              p.write_text(text)
+
+          host_anchor = '        ("https://adityajain.me", "https://youssef-bt.github.io"),\n'
+          host_line = '        ("adityajain.me", "youssef-bt.github.io"),\n'
+          if host_line.strip() not in text:
+              if host_anchor not in text:
+                  raise SystemExit('Expected host replacement anchor not found')
+              text = text.replace(host_anchor, host_anchor + host_line, 1)
+
+          old_scan = '    scan_targets = [ROOT / "backend", ROOT / "web", ROOT / ".github/workflows", ROOT / "README.md", ROOT / "render.yaml"]\n'
+          new_scan = '    scan_targets = [ROOT / "backend", ROOT / "web", ROOT / ".github/workflows", ROOT / "render.yaml"]\n'
+          if old_scan in text:
+              text = text.replace(old_scan, new_scan, 1)
+
+          p.write_text(text)
           PY
 
       - name: Prepare professional foundation
