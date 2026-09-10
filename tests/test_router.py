@@ -70,6 +70,23 @@ class IntentRouterTests(unittest.TestCase):
         self.assertEqual(route.intent, "experience")
         self.assertTrue(route.requires_retrieval)
 
+    def test_short_english_follow_up_requires_retrieval(self):
+        route = route_question("What about the second one?")
+        self.assertEqual(route.intent, "profile")
+        self.assertTrue(route.requires_retrieval)
+
+    def test_short_french_follow_up_requires_retrieval(self):
+        route = route_question("Et le deuxième ?")
+        self.assertEqual(route.intent, "profile")
+        self.assertTrue(route.requires_retrieval)
+        self.assertEqual(route.language, "fr")
+
+    def test_short_arabic_follow_up_requires_retrieval(self):
+        route = route_question("والثاني؟")
+        self.assertEqual(route.intent, "profile")
+        self.assertTrue(route.requires_retrieval)
+        self.assertEqual(route.language, "ar")
+
     def test_unrelated_general_question_outside_scope(self):
         route = route_question("What is the capital of Japan?")
         self.assertEqual(route.intent, "general")
