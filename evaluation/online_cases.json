@@ -1,7 +1,7 @@
 {
-  "version": "1.5",
+  "version": "1.6",
   "status": "online-regression",
-  "description": "Deployed-system smoke benchmark for the public Ask Youssef AI API. These checks validate orchestration behavior, source use, citation presence, required factual literals, safety abstention, conversational follow-ups, public-contact behavior, and basic scope control without pretending to semantically grade every generated sentence.",
+  "description": "Deployed-system smoke benchmark for the public Ask Youssef AI API. These checks validate orchestration behavior, source use, citation presence, required factual literals, exact structured aggregation, safety abstention, conversational follow-ups, public-contact behavior, and basic scope control without pretending to semantically grade every generated sentence.",
   "thresholds": {
     "completion_rate": 1.0,
     "required_retrieval_rate": 1.0,
@@ -34,11 +34,64 @@
       "expected_sources": ["skills", "project-openlegama-moroccan-legal-ai"]
     },
     {
+      "id": "certifications-overview-en",
+      "kind": "factual",
+      "question": "Which certifications does he have?",
+      "requires_search": true,
+      "expected_sources": ["certifications"],
+      "expected_answer_contains": ["56", "Oracle", "Anthropic", "LinkedIn"]
+    },
+    {
+      "id": "certifications-count-en",
+      "kind": "factual",
+      "question": "How many certifications does he have?",
+      "requires_search": true,
+      "expected_sources": ["certifications"],
+      "expected_answer_contains": ["56"]
+    },
+    {
+      "id": "oracle-followup-en",
+      "kind": "factual",
+      "history": [
+        {
+          "role": "user",
+          "content": "Which certifications does he have?"
+        },
+        {
+          "role": "assistant",
+          "content": "Youssef has certifications from several issuers including Oracle, Anthropic, LinkedIn, IBM, OpenCV University, Anaconda and KNIME."
+        }
+      ],
+      "question": "What about Oracle?",
+      "requires_search": true,
+      "expected_sources": ["certifications"],
+      "expected_answer_contains": [
+        "3",
+        "Oracle Agentic AI Certified Foundations Associate",
+        "Oracle AI Database Certified Foundations Associate",
+        "Oracle Cloud Infrastructure 2026 Certified Architect Associate"
+      ]
+    },
+    {
+      "id": "oracle-challenge-fr",
+      "kind": "factual",
+      "question": "je pense il a 3 certifications de oracle",
+      "requires_search": true,
+      "expected_sources": ["certifications"],
+      "expected_answer_contains": [
+        "3",
+        "Oracle Agentic AI Certified Foundations Associate",
+        "Oracle AI Database Certified Foundations Associate",
+        "Oracle Cloud Infrastructure 2026 Certified Architect Associate"
+      ]
+    },
+    {
       "id": "oracle-cert-en",
       "kind": "factual",
       "question": "Which Oracle Agentic AI certification does Youssef have?",
       "requires_search": true,
-      "expected_sources": ["certifications"]
+      "expected_sources": ["certifications"],
+      "expected_answer_contains": ["Oracle Agentic AI Certified Foundations Associate"]
     },
     {
       "id": "contact-email-fr",
