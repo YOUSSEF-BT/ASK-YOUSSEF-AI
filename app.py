@@ -8,6 +8,7 @@ secret and is used for answer generation only; it is never committed here.
 from __future__ import annotations
 
 import os
+import sys
 
 # Zero-cost / serverless-safe production defaults. Explicit environment
 # variables in Vercel can still override any of these values.
@@ -21,8 +22,10 @@ _DEFAULTS = {
     "FASTEMBED_CACHE_PATH": "backend/data/fastembed_cache",
     "GEMINI_MODEL": "gemini-3.7-flash",
     "GEMINI_FALLBACK_MODEL": "gemini-3.5-flash-lite",
-    "GEMINI_TIMEOUT": "45",
-    "GEMINI_RETRIES": "4",
+    # Keep the whole retry budget inside Vercel Hobby's function window.
+    # Factual portfolio turns use one model round-trip after deterministic search.
+    "GEMINI_TIMEOUT": "28",
+    "GEMINI_RETRIES": "2",
     "MAX_QUESTION_CHARS": "600",
     "MAX_TURN_CHARS": "600",
     "RATE_PER_MIN": "6",
@@ -32,6 +35,13 @@ _DEFAULTS = {
 
 for _key, _value in _DEFAULTS.items():
     os.environ.setdefault(_key, _value)
+
+# Apply the serverless latency optimization before backend.app imports/builds
+# the shared agent. The core agent module remains unchanged for local/Docker use.
+_BACKEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend")
+if _BACKEND_DIR not in sys.path:
+    sys.path.insert(0, _BACKEND_DIR)
+import vercel_agent_patch  # noqa: E402,F401
 
 # Vercel's FastAPI runtime discovers the exported variable named `app`.
 from backend.app import app  # noqa: E402,F401
