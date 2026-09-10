@@ -1,28 +1,46 @@
 # Ask Youssef AI
 
-**Professional Portfolio Copilot — multilingual, source-grounded and production-oriented.**
+**Live multilingual, retrieval-grounded professional portfolio copilot for Youssef Bouzit.**
 
-Ask Youssef AI is an intelligent assistant for Youssef Bouzit's public professional portfolio. It helps visitors, recruiters, clients, developers and collaborators explore projects, skills, certifications, professional experience, education and public contact links through answers grounded in synchronized portfolio evidence.
+[![Portfolio](https://img.shields.io/badge/Portfolio-Live-20b2a6)](https://youssef-bt.github.io/)
+[![API](https://img.shields.io/badge/API-Vercel-black)](https://ask-youssef-ai.vercel.app/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-The project is intentionally built as more than a generic portfolio chatbot: factual profile questions are routed through retrieval, evidence comes from the real portfolio source of truth, citations are verified, unsupported high-risk claims are blocked, and quality gates are measured in CI.
+Ask Youssef AI is an AI Engineering project that turns Youssef Bouzit's public portfolio into a conversational, evidence-grounded assistant for recruiters, clients, developers and collaborators. It answers questions about projects, skills, certifications, professional experience, education and public contact information in **English, French and Arabic**.
 
-> **Release status:** code-complete production candidate. Deterministic CI evaluation, synchronization, security boundaries, observability, feedback, Docker/Render configuration and the embeddable widget are implemented. The remaining external release step is to provision the Render service with the server-side API secret, run the deployed online evaluation, and then point the public portfolio widget to that verified backend URL.
+This is not a generic chatbot placed on top of a static prompt. Factual profile questions are deterministically routed through retrieval, evidence is synchronized from the real portfolio, multiple retrieval strategies are fused, citations are verified, unsupported high-risk claims are blocked, and the deployed system is continuously evaluated.
 
-## What it does
+> **Release status: LIVE.** The FastAPI backend is deployed on Vercel at `https://ask-youssef-ai.vercel.app`, the production widget is integrated into `https://youssef-bt.github.io`, CI is passing, and the deployed online regression suite passes all configured gates.
 
-- Answers questions about Youssef's public professional profile in **English, French and Arabic**.
-- Automatically detects intents such as projects, skills, certifications, experience, education and contact.
-- Forces retrieval for factual portfolio questions instead of relying on model memory.
-- Synchronizes knowledge from the real `YOUSSEF-BT/YOUSSEF-BT.github.io` portfolio repository.
-- Combines **structured profile retrieval + BM25 + semantic search**.
-- Fuses independent rankings with **Reciprocal Rank Fusion (RRF)** and deterministic evidence boosts.
-- Returns source-backed answers with citations linked to portfolio pages.
-- Applies a deterministic grounding boundary that rejects invented metrics, URLs, emails and unknown citations.
-- Handles unsupported claims and prompt-injection-style profile assertions conservatively.
-- Streams responses over **Server-Sent Events (SSE)**.
-- Includes privacy-safe aggregate observability and fixed-category visitor feedback.
-- Includes public abuse controls: origin restriction, request-size limits and per-IP/global rate limits.
-- Ships as a zero-dependency **Shadow DOM** widget that can be embedded into the portfolio.
+## Live system
+
+- **Portfolio + widget:** https://youssef-bt.github.io/
+- **Production API:** https://ask-youssef-ai.vercel.app/
+- **Health:** https://ask-youssef-ai.vercel.app/health
+- **Capabilities:** https://ask-youssef-ai.vercel.app/capabilities
+- **API docs:** https://ask-youssef-ai.vercel.app/docs
+
+Opening the API root intentionally returns a small service descriptor. The visitor-facing experience is the **Ask Youssef AI widget embedded in the portfolio**.
+
+## Core capabilities
+
+- Multilingual responses in **English, French and Arabic**.
+- Deterministic intent/language routing before the LLM.
+- Mandatory retrieval for factual claims about Youssef.
+- Portfolio synchronization from `YOUSSEF-BT/YOUSSEF-BT.github.io`.
+- **Structured Profile + BM25 + Semantic Search** retrieval.
+- **Reciprocal Rank Fusion (RRF)** with deterministic evidence boosts.
+- Citation-backed answers linked to real portfolio evidence.
+- Deterministic grounding checks for unsupported metrics, URLs, emails and citations.
+- Conservative handling of unsupported employer/experience claims and prompt injection.
+- Conversation-history support for grounded follow-up questions.
+- Server-Sent Events (**SSE**) streaming.
+- Privacy-safe aggregate telemetry and fixed-category feedback.
+- Public origin, request-size, per-IP and global rate limits.
+- Instant deterministic greeting path that consumes neither retrieval nor Gemini generation.
+- Production provider failover from Gemini 3.7 Flash to Gemini 3.5 Flash-Lite.
+- Graceful evidence-cited fallback if generation fails after retrieval already succeeded.
+- Zero-dependency **Shadow DOM** widget embedded in the live portfolio.
 
 ## Architecture
 
@@ -31,35 +49,37 @@ YOUSSEF-BT.github.io — source of truth
         |
         | automatic synchronization
         v
-Markdown evidence corpus + structured profile.json
+Markdown evidence + structured profile.json
         |
-        +--------------------------+
-        |                          |
-        v                          v
-Portfolio visitor             CI / evaluation
-        |                          |
-        v                          +--> deterministic benchmark
-Ask Youssef AI widget              +--> deployed online evaluation
+        +-----------------------------+
+        |                             |
+        v                             v
+ Portfolio visitor                CI / Evaluation
+        |                             |
+        v                             +--> deterministic benchmark
+Ask Youssef AI widget                  +--> deployed online regression
         |
         v
-FastAPI /chat (SSE)
+Vercel FastAPI /chat (SSE)
         |
         v
 Deterministic EN / FR / AR router
         |
-        +--> greeting / action / out-of-scope
+        +--> greeting --------------------> deterministic response
+        |
+        +--> out-of-scope ----------------> scoped assistant response
         |
         +--> factual portfolio request
                     |
-          retrieval is mandatory
+             retrieval required
                     |
-       +------------+------------+
-       |            |            |
-       v            v            v
-   Structured      BM25       Semantic
-    profile                     search
-       |            |            |
-       +------------+------------+
+       +------------+-------------+
+       |            |             |
+       v            v             v
+   Structured      BM25       Semantic Search
+    Profile                  FastEmbed / ONNX
+       |            |             |
+       +------------+-------------+
                     |
                     v
              RRF fusion + rerank
@@ -68,72 +88,75 @@ Deterministic EN / FR / AR router
              retrieved evidence
                     |
                     v
-              ReAct-style LLM
-                    |
-                    v
-        deterministic grounding gate
-              /             \
-             v               v
-   grounded answer      safe abstention
-   + real citations
-                    |
-                    v
-               SSE widget
+     Gemini 3.7 Flash generation
+          |             |
+          | failure     | success
+          v             v
+ Gemini 3.5 Flash-Lite  answer
+          |             |
+          +------+------+ 
+                 |
+                 v
+       deterministic grounding gate
+            /               \
+           v                 v
+ grounded answer        safe abstention
+ + verified citations   / service fallback
+                 |
+                 v
+              SSE widget
 ```
 
-See [`docs/architecture.md`](docs/architecture.md) for the full design.
+See [`docs/architecture.md`](docs/architecture.md) for deeper implementation details.
 
 ## Source-of-truth synchronization
 
-The assistant does not require duplicated hand-written portfolio facts. `scripts/sync_portfolio.py` extracts public professional information from the portfolio repository and writes:
+`scripts/sync_portfolio.py` extracts public professional information from the portfolio and produces:
 
-- `backend/data/site/` — concise Markdown evidence used by semantic and lexical retrieval;
+- `backend/data/site/` — Markdown evidence used by lexical and semantic retrieval;
 - `backend/data/profile.json` — structured entities used for field-aware matching;
-- `backend/data/site/manifest.json` — generated counts used by integrity checks.
+- `backend/data/site/manifest.json` — integrity/count metadata.
 
-The current synchronized snapshot contains:
+Current synchronized snapshot:
 
-- **10 projects**
-- **6 skill categories**
-- **56 certifications**
-- **2 professional experiences**
-- **2 education entries**
-- **3 public professional links**
+| Entity | Count |
+|---|---:|
+| Projects | 10 |
+| Skill categories | 6 |
+| Certifications | 56 |
+| Professional experiences | 2 |
+| Education entries | 2 |
+| Public professional links | 3 |
 
-The synchronization workflow can refresh these artifacts automatically as the portfolio changes.
+These counts describe the synchronized snapshot used by the current regression suite; the sync workflow can update them as the portfolio evolves.
 
 ## Retrieval and grounding
 
 The production retrieval path is:
 
 ```text
-Structured Profile + BM25 + Semantic Search
-                    ↓
-          Reciprocal Rank Fusion
-                    ↓
-       deterministic evidence boosts
-                    ↓
-              search_site
+Structured Profile + BM25 + FastEmbed Semantic Search
+                         ↓
+               Reciprocal Rank Fusion
+                         ↓
+            deterministic evidence boosts
+                         ↓
+                    search_site
 ```
 
-For factual profile intents, the router marks retrieval as required. The final model output is then checked by `backend/grounding.py` against evidence returned during that turn.
+For factual portfolio questions, Vercel pre-runs retrieval before generation. That design has three benefits: grounding no longer depends on the model deciding whether to search, the common factual path requires fewer remote model round trips, and retrieved evidence remains available for a truthful fallback if the model provider is temporarily unavailable.
 
-The grounding verifier currently protects high-impact literals and citation integrity. It can:
+`backend/grounding.py` then checks the generated answer against evidence returned during that turn. It can remove unknown citations, attach retrieved citations when appropriate, detect unsupported numeric metrics, URLs and email addresses, and replace unsafe high-impact claims with evidence-based abstention.
 
-- remove citations to sources that were not retrieved;
-- attach a real retrieved citation when evidence exists but the answer omitted one;
-- detect unsupported numeric metrics;
-- detect unsupported URLs;
-- detect unsupported email addresses;
-- replace unsafe high-risk claims with an explicit evidence-based abstention.
+This is intentionally described as a **deterministic safety boundary**, not universal semantic entailment.
 
-This is deliberately described as a deterministic safety boundary, not as universal semantic entailment.
+## Evaluation
 
-## Measured quality gates
+### Deterministic CI benchmark
 
-The deterministic regression benchmark runs in GitHub Actions without an LLM judge or network dependency. The latest verified benchmark artifact on **2026-09-10** produced:
+The fixed offline regression suite currently passes the configured thresholds:
 
-| Metric | Measured result | CI threshold |
+| Metric | Result | Threshold |
 |---|---:|---:|
 | Routing accuracy | 1.000 | 0.950 |
 | Retrieval Hit@1 | 1.000 | 0.750 |
@@ -142,23 +165,57 @@ The deterministic regression benchmark runs in GitHub Actions without an LLM jud
 | Grounding safety rate | 1.000 | 1.000 |
 | Profile integrity rate | 1.000 | 1.000 |
 
-These are **fixed regression-suite results**, not a claim that the generative assistant has 100% end-to-end accuracy. The deployed model is evaluated separately with `evaluation/run_online_eval.py`.
+### Deployed production regression
 
-The benchmark covers multilingual routing, exact identifiers such as `YOLOv11s` / `BoT-SORT`, structured retrieval, unsupported metrics/links/emails, citation integrity, unsupported employer claims and prompt-injection-style profile claims.
+The production evaluation executed against the live Vercel API on **2026-09-10** passed all configured deterministic smoke gates:
+
+| Metric | Result | Threshold |
+|---|---:|---:|
+| Completion rate | 1.000 | 1.000 |
+| Required retrieval rate | 1.000 | 1.000 |
+| Expected citation rate | 1.000 | 1.000 |
+| Safety abstention rate | 1.000 | 1.000 |
+| Unnecessary retrieval avoidance | 1.000 | 1.000 |
+
+Measured latency across the 9-case deployed regression run:
+
+- **Median:** 1.138 s
+- **P95:** 1.550 s
+- **Max:** 1.576 s
+- **Deterministic greeting:** 0.142 s
+
+The deployed suite includes English/French/Arabic factual questions, exact technical identifiers (`YOLOv11s`, `BoT-SORT`), conversational follow-ups, unsupported employer claims, prompt injection, greeting behavior and an out-of-scope request.
+
+These numbers are **regression-suite measurements**, not a claim of 100% semantic accuracy for arbitrary questions. `evaluation/run_online_eval.py` uses deterministic observable checks rather than an LLM judge.
 
 See [`docs/evaluation.md`](docs/evaluation.md).
 
-## Security and privacy boundaries
+## Reliability on Vercel
 
-- The browser never receives the LLM API key.
-- Internal prompts and raw model reasoning are not exposed through the public SSE API.
-- Portfolio evidence is treated as untrusted data rather than executable instructions.
-- Browser origin checks reduce unauthorized third-party embedding.
-- Per-IP and global rate limits bound abuse and provider spend.
-- Request and history lengths are bounded.
-- Aggregate telemetry does **not** retain prompts, answers, IP addresses, emails or conversation history.
-- Feedback uses fixed categories only; no free-text visitor content is stored by the feedback module.
-- Secrets are configured only through deployment environment variables.
+The live serverless path is optimized for predictable portfolio-scale operation:
+
+- bundled synchronized corpus; no live crawl required at cold start;
+- FastEmbed/ONNX semantic retrieval in-process;
+- deterministic pre-retrieval for factual portfolio turns;
+- low-latency Gemini generation configuration;
+- immediate model failover on quota, overload or timeout signals;
+- bounded generation timeout/retry budget below the Vercel Hobby request window;
+- graceful source-cited response if generation fails after evidence retrieval;
+- deterministic greetings without a model call.
+
+The current deployment is a portfolio/demo production deployment on **Vercel Hobby**. The project does not claim enterprise-scale availability or load guarantees.
+
+## Security and privacy
+
+- `GEMINI_API_KEY` remains server-side and is never sent to the browser.
+- The public widget receives only the public API base URL.
+- Internal prompts and raw chain-of-thought/model reasoning are not exposed through SSE.
+- Retrieved portfolio text is treated as untrusted data, not executable instructions.
+- CORS/origin controls limit browser embedding to the portfolio origin.
+- Request and history sizes are bounded.
+- Per-IP and global rate limits bound public abuse/provider spend.
+- Aggregate telemetry does not retain prompts, answers, IPs, emails or conversation history.
+- Feedback uses fixed categories rather than storing arbitrary visitor text.
 
 See [`docs/security.md`](docs/security.md).
 
@@ -166,52 +223,53 @@ See [`docs/security.md`](docs/security.md).
 
 ```text
 ASK-YOUSSEF-AI/
+├── app.py                         # Vercel production entrypoint
 ├── backend/
-│   ├── app.py                 # FastAPI + SSE API
-│   ├── agent.py               # agent orchestration
-│   ├── rag.py                 # semantic retrieval primitives
-│   ├── router.py              # deterministic language / intent router
-│   ├── grounding.py           # citation + high-risk claim verifier
-│   ├── observability.py       # aggregate privacy-safe telemetry
-│   ├── feedback.py            # fixed-category feedback
+│   ├── app.py                     # FastAPI + SSE API
+│   ├── agent.py                   # core ReAct-style orchestration
+│   ├── vercel_agent_patch.py      # serverless retrieval/reliability path
+│   ├── vercel_gemini_failover.py  # fast provider failover
+│   ├── rag.py                     # retrieval primitives / embedders
+│   ├── router.py                  # deterministic language + intent routing
+│   ├── grounding.py               # citation/high-risk-claim verifier
+│   ├── observability.py           # aggregate privacy-safe telemetry
+│   ├── feedback.py                # fixed-category feedback
 │   ├── retrieval/
-│   │   ├── hybrid.py          # BM25 + semantic + structured RRF
-│   │   └── structured.py      # field-aware professional profile retrieval
+│   │   ├── hybrid.py              # semantic + BM25 + structured RRF
+│   │   └── structured.py          # field-aware profile retrieval
 │   └── data/
-│       ├── profile.json       # synchronized structured profile
-│       └── site/              # synchronized evidence snapshot
+│       ├── profile.json
+│       ├── fastembed_cache/
+│       └── site/
 ├── evaluation/
 │   ├── dataset.json
-│   ├── run_benchmark.py       # deterministic CI regression benchmark
+│   ├── run_benchmark.py
 │   ├── online_cases.json
-│   └── run_online_eval.py     # deployed assistant smoke evaluation
+│   └── run_online_eval.py
 ├── scripts/
 │   ├── sync_portfolio.py
 │   └── build_structured_profile.py
 ├── tests/
 ├── web/
-│   └── widget.js              # embeddable Shadow DOM UI
+│   └── widget.js                  # Shadow DOM portfolio widget
 ├── docs/
-│   ├── architecture.md
-│   ├── deployment.md
-│   ├── evaluation.md
-│   └── security.md
+├── vercel.json
+├── render.yaml                    # optional alternative deployment blueprint
 ├── Dockerfile
 ├── docker-compose.yml
-└── render.yaml
+├── LICENSE
+└── NOTICE.md
 ```
 
 ## Local development
 
-Create a local environment file from the example and provide your own server-side provider key:
+Copy the safe environment template and add your own provider key locally:
 
 ```bash
 cp .env.example .env
 ```
 
-Then run either the Python backend directly or the production-like container configuration.
-
-### Python
+Run the backend:
 
 ```bash
 cd backend
@@ -219,15 +277,16 @@ pip install -r requirements.txt
 uvicorn app:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Docker Compose
+Or use Docker Compose:
 
 ```bash
 docker compose up --build
 ```
 
-Useful checks:
+Useful endpoints:
 
 ```text
+GET  /
 GET  /health
 GET  /capabilities
 GET  /pages
@@ -236,55 +295,40 @@ POST /chat
 POST /feedback
 ```
 
-## Run the deterministic benchmark
+## Quality checks
+
+Run the deterministic benchmark:
 
 ```bash
 python evaluation/run_benchmark.py --strict --output portfolio-benchmark.json
 ```
 
-Run the unit/regression tests:
+Run unit/regression tests:
 
 ```bash
 python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-## Production deployment
+Run the deployed-system evaluator against a compatible deployment:
 
-The repository includes a Render Blueprint in `render.yaml` and a complete deployment runbook in [`docs/deployment.md`](docs/deployment.md).
-
-Production topology:
-
-```text
-GitHub Pages portfolio
-        |
-        | HTTPS / SSE
-        v
-Render FastAPI service
-        |
-        +--> Gemini model / embeddings
-        +--> synchronized bundled portfolio corpus
+```bash
+python evaluation/run_online_eval.py \
+  --api-url "https://ask-youssef-ai.vercel.app" \
+  --origin "https://youssef-bt.github.io" \
+  --output online-eval-report.json \
+  --strict
 ```
 
-The required deployment secret for the current provider path is:
+## Production widget
 
-```text
-GEMINI_API_KEY=<server-side secret>
-```
+The live portfolio loads `web/widget.js` from jsDelivr and points it to the verified Vercel API. The API key is never embedded in the frontend.
 
-Do not commit real API credentials.
-
-After deployment, validate `/health`, run the manual **Online assistant evaluation** workflow against the deployed URL, and only then integrate the widget publicly.
-
-## Portfolio widget
-
-`web/widget.js` is a zero-dependency embeddable client isolated with Shadow DOM.
-
-Example:
+Standalone integration example:
 
 ```html
 <script
   src="https://cdn.jsdelivr.net/gh/YOUSSEF-BT/ASK-YOUSSEF-AI@main/web/widget.js"
-  data-api="https://YOUR-VERIFIED-BACKEND.example"
+  data-api="https://ask-youssef-ai.vercel.app"
   data-title="Ask Youssef AI"
   data-subtitle="Professional Portfolio Copilot"
   data-accent="#20b2a6"
@@ -292,36 +336,32 @@ Example:
 </script>
 ```
 
-The final production backend URL should only be added after the deployed online quality gate passes.
+## CI/CD
 
-## CI
-
-`.github/workflows/ci.yml` validates:
+GitHub Actions currently covers:
 
 - Python compilation;
-- JavaScript syntax;
-- Docker Compose configuration;
-- deterministic retrieval/grounding/runtime tests;
-- JSON data integrity;
-- deterministic benchmark thresholds;
-- required project files;
-- synchronized profile counts;
-- stale upstream identity references;
-- required MIT attribution.
+- widget JavaScript validation;
+- container configuration validation;
+- unit/regression tests;
+- synchronized JSON/profile integrity;
+- deterministic retrieval/grounding benchmark;
+- required license/attribution files;
+- production online regression against Vercel;
+- automated GitHub Pages portfolio deployment.
 
-The deterministic benchmark report is uploaded as a GitHub Actions artifact on every CI run.
+Vercel is connected to `main`, so production backend changes deploy automatically. The portfolio repository independently publishes its built `dist/` output to `gh-pages`.
 
 ## Deliberate non-claims
 
-This repository does **not** currently claim:
+This repository does **not** claim:
 
-- a learned cross-encoder reranker;
-- universal semantic entailment checking;
-- production-scale load guarantees;
+- universal semantic entailment verification;
+- 100% accuracy for arbitrary generated answers;
+- enterprise-scale load/availability guarantees;
 - persistent distributed telemetry;
-- subjective LLM-judge accuracy scores.
-
-Those should only be advertised after they are actually implemented and measured.
+- subjective LLM-judge scores;
+- capabilities that are not represented by committed code and measured tests.
 
 ## Attribution and license
 
@@ -329,7 +369,7 @@ Ask Youssef AI substantially adapts components from [`adityajn105/portfolio-chat
 
 The original copyright and MIT terms are preserved in [`LICENSE`](LICENSE), with additional attribution details in [`NOTICE.md`](NOTICE.md).
 
-Additional synchronization, structured retrieval, multilingual routing, grounding, evaluation, observability, production hardening and portfolio-specific work are part of the Ask Youssef AI implementation.
+Synchronization, structured/hybrid retrieval, multilingual routing, grounding, evaluation, observability, production hardening, Vercel serverless reliability and portfolio-specific integration are part of the Ask Youssef AI implementation.
 
 ---
 
