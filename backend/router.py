@@ -21,15 +21,27 @@ def _norm(text: str) -> str:
 
 
 def _tokens(text: str) -> set[str]:
-    return {t for t in _WORD.findall(_norm(text)) if t}
+    # Keep internal dots/hyphens for technical identifiers but remove punctuation
+    # that commonly sticks to the end of a sentence (for example "experience.").
+    tokens: set[str] = set()
+    for raw in _WORD.findall(_norm(text)):
+        token = raw.strip(".-")
+        if token:
+            tokens.add(token)
+    return tokens
 
 
+# Language detection must use words that are actually discriminative. Domain
+# terms such as "certification", "experience", "contact" and "stage" are valid
+# English too and previously caused English recruiter questions to be labelled
+# French. Intent classification below still contains those shared domain terms.
 FRENCH_HINTS = {
-    "quel", "quelle", "quels", "quelles", "comment", "pourquoi", "projet",
-    "projets", "competence", "competences", "certificat", "certificats",
-    "certification", "experience", "formation", "etudes", "travail", "stage",
-    "contact", "contacter", "bonjour", "salut", "merci", "avec", "dans",
-    "est", "sont", "ses", "son", "meilleur", "meilleurs", "montre", "parle",
+    "quel", "quelle", "quels", "quelles", "pourquoi", "projet", "projets",
+    "competence", "competences", "technologie", "technologies", "certificat",
+    "certificats", "formation", "etudes", "travail", "emploi", "contacter",
+    "bonjour", "salut", "bonsoir", "merci", "avec", "dans", "sont", "ses",
+    "meilleur", "meilleurs", "montre", "parle", "soutiennent", "profil",
+    "etudie", "diplome", "joindre", "ecris", "ecrire", "envoie", "envoyer",
 }
 
 INTENT_TERMS = {
