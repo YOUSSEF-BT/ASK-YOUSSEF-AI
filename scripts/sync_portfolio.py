@@ -71,7 +71,7 @@ def _balanced(text: str, start: int, opening: str, closing: str) -> tuple[str, i
 
 
 def _field_block(text: str, key: str, opening: str, closing: str) -> str | None:
-    match = re.search(rf"\b{re.escape(key)}\s*:\s*\{re.escape(opening)}", text)
+    match = re.search(rf"\b{re.escape(key)}\s*:\s*{re.escape(opening)}", text)
     if not match:
         return None
     start = text.find(opening, match.start())
