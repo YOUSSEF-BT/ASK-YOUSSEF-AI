@@ -1,65 +1,46 @@
 /*
- * Ask Youssef AI — embeddable chat bubble (the product).
+ * Ask Youssef AI — Professional Portfolio Copilot
+ * Zero-dependency embeddable widget, isolated with Shadow DOM.
  *
- * Zero dependencies, self-contained, style-isolated via Shadow DOM so the host
- * page's CSS can neither leak in nor out. Drop it on any site:
- *
- *   <script src=".../widget.js"
- *           data-api="https://<service>.onrender.com"
- *           data-title="Ask Youssef AI"
- *           data-accent="#f0b429" defer></script>
- *
- * It injects a floating launcher bottom-right; clicking it opens a chat panel
- * that streams the backend's /chat SSE and shows ONLY the final answer (plus a
- * subtle status while the agent works). All the reasoning/tool internals stay
- * hidden here — that's what the demo page is for.
+ * Usage:
+ * <script src=".../widget.js"
+ *   data-api="https://<service>.onrender.com"
+ *   data-title="Ask Youssef AI"
+ *   data-subtitle="Professional Portfolio Copilot"
+ *   data-accent="#20b2a6" defer></script>
  */
-// Defined as a named function and CALLED at the very bottom of this file — not
-// an IIFE — because the mount code below reads CSS/TEMPLATE, which are declared
-// with `var` further down. Running immediately here would see them as
-// `undefined` (var hoisting), so we invoke after they're assigned.
-function pcbWidget() {
+(function () {
   "use strict";
 
-  // Find our own <script> tag to read config from. document.currentScript is
-  // set for parser-inserted classic scripts, but is null for `defer`/`async`
-  // tags and for scripts injected dynamically (the demo page does this) — so
-  // fall back to locating the widget.js tag by its data-api attribute.
-  var SELF = document.currentScript;
-  if (!SELF || !SELF.getAttribute("data-api")) {
-    var cands = document.querySelectorAll("script[data-api]");
-    for (var i = cands.length - 1; i >= 0; i--) {
-      if (/widget\.js(\?|#|$)/.test(cands[i].src)) { SELF = cands[i]; break; }
-    }
-    if ((!SELF || !SELF.getAttribute("data-api")) && cands.length) {
-      SELF = cands[cands.length - 1];   // last resort: the last data-api script
+  var scripts = document.querySelectorAll("script[data-api]");
+  var self = document.currentScript;
+  if (!self || !self.getAttribute("data-api")) {
+    for (var i = scripts.length - 1; i >= 0; i--) {
+      if (/widget\.js(?:\?|#|$)/.test(scripts[i].src || "")) {
+        self = scripts[i];
+        break;
+      }
     }
   }
-  var API = (SELF && SELF.getAttribute("data-api") || "").replace(/\/$/, "");
-  var TITLE = (SELF && SELF.getAttribute("data-title")) || "Ask Youssef AI";
-  var ACCENT = (SELF && SELF.getAttribute("data-accent")) || "#f0b429";
-  var SUBTITLE = (SELF && SELF.getAttribute("data-subtitle")) ||
-    "Explore Youssef's projects, skills, certifications and professional work.";
+
+  var API = ((self && self.getAttribute("data-api")) || "").replace(/\/$/, "");
+  var TITLE = (self && self.getAttribute("data-title")) || "Ask Youssef AI";
+  var SUBTITLE = (self && self.getAttribute("data-subtitle")) || "Professional Portfolio Copilot";
+  var ACCENT = (self && self.getAttribute("data-accent")) || "#20b2a6";
 
   if (!API) {
-    console.error("[ask-youssef-ai] missing data-api on the <script> tag");
+    console.error("[ask-youssef-ai] Missing data-api on widget script.");
     return;
   }
+  if (document.getElementById("ask-youssef-ai-root")) return;
 
-  // Fetch the indexed pages once so we can hyperlink the [source] citations the
-  // bot writes (e.g. [home], [blogs-attention-model]) to their real page URLs.
-  // Best-effort: if it fails, citations simply stay as plain text.
-  var SOURCES = {};   // { slug: url }
-  fetch(API + "/pages")
-    .then(function (r) { return r.json(); })
-    .then(function (d) {
-      (d && d.pages || []).forEach(function (p) {
-        if (p.source && p.url) SOURCES[p.source] = p.url;
-      });
-    })
-    .catch(function () {});
+  var copy = getCopy();
+  var sources = {};
+  var capabilities = null;
+  var history = [];
+  var busy = false;
+  var isOpen = false;
 
-  // ---- host + shadow root -------------------------------------------------
   var host = document.createElement("div");
   host.id = "ask-youssef-ai-root";
   host.style.cssText = "all:initial";
@@ -70,359 +51,681 @@ function pcbWidget() {
   style.textContent = CSS.replace(/__ACCENT__/g, ACCENT);
   root.appendChild(style);
 
-  var wrap = document.createElement("div");
-  wrap.className = "pcb";
-  wrap.innerHTML = TEMPLATE
+  var shell = document.createElement("div");
+  shell.className = "aya";
+  shell.innerHTML = TEMPLATE
     .replace(/__TITLE__/g, esc(TITLE))
-    .replace(/__SUBTITLE__/g, esc(SUBTITLE));
-  root.appendChild(wrap);
+    .replace(/__SUBTITLE__/g, esc(SUBTITLE))
+    .replace(/__PLACEHOLDER__/g, esc(copy.placeholder))
+    .replace(/__NEW_CHAT__/g, esc(copy.newChat))
+    .replace(/__CLOSE__/g, esc(copy.close));
+  root.appendChild(shell);
 
-  var launcher = root.querySelector(".pcb-launcher");
-  var panel = root.querySelector(".pcb-panel");
-  var closeBtn = root.querySelector(".pcb-close");
-  var log = root.querySelector(".pcb-log");
-  var form = root.querySelector(".pcb-form");
-  var input = root.querySelector(".pcb-input");
-  var status = root.querySelector(".pcb-status");
+  var launcher = root.querySelector(".aya-launcher");
+  var panel = root.querySelector(".aya-panel");
+  var log = root.querySelector(".aya-log");
+  var form = root.querySelector(".aya-form");
+  var input = root.querySelector(".aya-input");
+  var send = root.querySelector(".aya-send");
+  var close = root.querySelector(".aya-close");
+  var reset = root.querySelector(".aya-reset");
+  var status = root.querySelector(".aya-status");
+  var connection = root.querySelector(".aya-connection");
 
-  var open = false;
-  var busy = false;
-  var history = [];   // [{role,content}] prior turns, sent so follow-ups work
+  launcher.addEventListener("click", function () { toggle(true); });
+  close.addEventListener("click", function () { toggle(false); });
+  reset.addEventListener("click", resetChat);
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && isOpen) toggle(false);
+  });
 
-  // --- mobile: keep the panel inside the *visual* viewport ------------------
-  // On phones the on-screen keyboard shrinks the visible area but NOT 100vh, so
-  // a bottom-anchored near-full-height panel spills off-screen and its header
-  // ends up above the top edge. window.visualViewport DOES track the keyboard,
-  // so when the panel is open on a small screen we pin it to that box; on
-  // desktop / when closed we clear the overrides and let the stylesheet rule.
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
+    var question = input.value.trim();
+    if (!question || busy) return;
+    input.value = "";
+    ask(question);
+  });
+
+  // Public metadata only. Failure never prevents chat from rendering.
+  Promise.all([
+    fetch(API + "/pages").then(jsonOrThrow),
+    fetch(API + "/capabilities").then(jsonOrThrow)
+  ]).then(function (values) {
+    var pages = values[0];
+    capabilities = values[1];
+    (pages.pages || []).forEach(function (page) {
+      if (page.source && page.url) sources[page.source] = page.url;
+    });
+    setConnection(true);
+    if (!log.dataset.initialized) renderWelcome();
+  }).catch(function () {
+    // The backend may still accept chat even when metadata fetch failed.
+    setConnection(false);
+    if (!log.dataset.initialized) renderWelcome();
+  });
+
   var vv = window.visualViewport;
-  function fitPanel() {
-    var s = panel.style;
-    if (open && vv && window.matchMedia("(max-width: 480px)").matches) {
-      s.position = "fixed";
-      s.top = (vv.offsetTop + 8) + "px";
-      s.left = (vv.offsetLeft + 8) + "px";
-      s.right = "auto"; s.bottom = "auto";
-      s.width = (vv.width - 16) + "px";
-      s.height = (vv.height - 16) + "px";
-    } else {
-      s.position = s.top = s.left = s.right = s.bottom = s.width = s.height = "";
-    }
-  }
   if (vv) {
-    vv.addEventListener("resize", fitPanel);
-    vv.addEventListener("scroll", fitPanel);
+    vv.addEventListener("resize", fitMobileViewport);
+    vv.addEventListener("scroll", fitMobileViewport);
   }
   window.addEventListener("orientationchange", function () {
-    setTimeout(fitPanel, 250);
+    setTimeout(fitMobileViewport, 200);
   });
+
+  function getCopy() {
+    var lang = ((document.documentElement.lang || navigator.language || "en") + "").toLowerCase();
+    if (lang.indexOf("ar") === 0) {
+      return {
+        greeting: "مرحباً، أنا Ask Youssef AI.",
+        intro: "يمكنني مساعدتك في استكشاف مشاريع يوسف ومهاراته وشهاداته وخبرته المهنية، مع إجابات مبنية على مصادر محفظته.",
+        suggestions: [
+          "ما هي أقوى مشاريع يوسف في الذكاء الاصطناعي؟",
+          "ما خبرته في الرؤية الحاسوبية؟",
+          "اعرض أدلة على مهاراته في RAG و LLM",
+          "ما هي شهاداته المهنية؟",
+          "كيف يمكنني التواصل مع يوسف؟"
+        ],
+        placeholder: "اسأل عن يوسف...",
+        newChat: "محادثة جديدة",
+        close: "إغلاق",
+        thinking: "جارٍ التحليل...",
+        searching: "جارٍ البحث في المصادر...",
+        sending: "جارٍ إرسال الرسالة...",
+        feedback: "هل كانت الإجابة مفيدة؟",
+        thanks: "شكراً لملاحظتك",
+        sourceLabel: "المصادر",
+        error: "تعذر الوصول إلى المساعد. حاول مرة أخرى.",
+        reasons: { incorrect: "غير صحيحة", not_relevant: "غير ذات صلة", missing_source: "المصدر ناقص", too_long: "طويلة جداً" }
+      };
+    }
+    if (lang.indexOf("fr") === 0) {
+      return {
+        greeting: "Bonjour, je suis Ask Youssef AI.",
+        intro: "Je peux vous aider à explorer les projets, compétences, certifications et l'expérience professionnelle de Youssef avec des réponses fondées sur les sources de son portfolio.",
+        suggestions: [
+          "Montre-moi ses projets IA les plus solides",
+          "Quelle est son expérience en Computer Vision ?",
+          "Montre les preuves de ses compétences RAG et LLM",
+          "Quelles certifications possède-t-il ?",
+          "Comment puis-je contacter Youssef ?"
+        ],
+        placeholder: "Posez une question sur Youssef...",
+        newChat: "Nouvelle conversation",
+        close: "Fermer",
+        thinking: "Analyse en cours...",
+        searching: "Recherche dans les sources...",
+        sending: "Envoi du message...",
+        feedback: "Cette réponse était-elle utile ?",
+        thanks: "Merci pour votre retour",
+        sourceLabel: "Sources",
+        error: "Impossible de joindre l'assistant. Réessayez dans un instant.",
+        reasons: { incorrect: "Incorrecte", not_relevant: "Pas pertinente", missing_source: "Source manquante", too_long: "Trop longue" }
+      };
+    }
+    return {
+      greeting: "Hi, I'm Ask Youssef AI.",
+      intro: "I can help you explore Youssef's projects, skills, certifications and professional experience with answers grounded in his portfolio sources.",
+      suggestions: [
+        "Show me Youssef's strongest AI projects",
+        "What is his Computer Vision experience?",
+        "Show evidence of his RAG and LLM skills",
+        "Which certifications does he have?",
+        "How can I contact Youssef?"
+      ],
+      placeholder: "Ask about Youssef...",
+      newChat: "New chat",
+      close: "Close",
+      thinking: "Thinking...",
+      searching: "Searching portfolio sources...",
+      sending: "Sending your message...",
+      feedback: "Was this answer useful?",
+      thanks: "Thanks for your feedback",
+      sourceLabel: "Sources",
+      error: "Couldn't reach the assistant. Please try again in a moment.",
+      reasons: { incorrect: "Incorrect", not_relevant: "Not relevant", missing_source: "Missing source", too_long: "Too long" }
+    };
+  }
 
   function toggle(show) {
-    open = show == null ? !open : show;
-    wrap.classList.toggle("pcb-open", open);
-    launcher.setAttribute("aria-expanded", String(open));
-    fitPanel();   // size to the viewport on open; clear overrides on close
-    if (open) {
-      setTimeout(function () { input.focus(); }, 60);
-      if (!log.dataset.greeted) {
-        addMsg("bot", "Hi! Ask me anything about Youssef — his work, projects, "
-          + "or how to get in touch.");
-        log.dataset.greeted = "1";
-      }
+    isOpen = show == null ? !isOpen : !!show;
+    shell.classList.toggle("aya-open", isOpen);
+    launcher.setAttribute("aria-expanded", String(isOpen));
+    fitMobileViewport();
+    if (isOpen) {
+      if (!log.dataset.initialized) renderWelcome();
+      setTimeout(function () { input.focus(); }, 80);
     }
   }
-  launcher.addEventListener("click", function () { toggle(); });
-  closeBtn.addEventListener("click", function () { toggle(false); });
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && open) toggle(false);
-  });
 
-  form.addEventListener("submit", function (e) {
-    e.preventDefault();
-    var q = input.value.trim();
-    if (!q || busy) return;
-    input.value = "";
-    ask(q);
-  });
+  function resetChat() {
+    if (busy) return;
+    history = [];
+    log.innerHTML = "";
+    delete log.dataset.initialized;
+    renderWelcome();
+    input.focus();
+  }
+
+  function renderWelcome() {
+    if (log.dataset.initialized) return;
+    log.dataset.initialized = "1";
+
+    var card = document.createElement("section");
+    card.className = "aya-welcome";
+    card.innerHTML =
+      '<div class="aya-orb" aria-hidden="true">' + SPARK_ICON + '</div>' +
+      '<div class="aya-welcome-title">' + esc(copy.greeting) + '</div>' +
+      '<p>' + esc(copy.intro) + '</p>' +
+      '<div class="aya-trust"><span></span> Hybrid retrieval · grounded answers · citations</div>';
+    log.appendChild(card);
+
+    var suggestions = (capabilities && capabilities.suggestions && capabilities.suggestions.length)
+      ? capabilities.suggestions.slice(0, 5)
+      : copy.suggestions;
+    // Prefer localized suggestions when the UI itself is localized.
+    if ((document.documentElement.lang || "").toLowerCase().indexOf("en") !== 0 && copy.suggestions) {
+      suggestions = copy.suggestions;
+    }
+
+    var group = document.createElement("div");
+    group.className = "aya-suggestions";
+    suggestions.forEach(function (label) {
+      var button = document.createElement("button");
+      button.type = "button";
+      button.className = "aya-suggestion";
+      button.innerHTML = '<span aria-hidden="true">' + ARROW_ICON + '</span><span>' + esc(label) + '</span>';
+      button.addEventListener("click", function () { if (!busy) ask(label); });
+      group.appendChild(button);
+    });
+    log.appendChild(group);
+    scrollLog();
+  }
 
   function ask(question) {
     busy = true;
-    addMsg("user", question);
-    setStatus("Thinking…");
-    var bubble = addMsg("bot", "");   // the answer streams/lands here
-    bubble.classList.add("pcb-pending");
-    var answer = "";
+    setBusy(true);
+    removeSuggestions();
+    addMessage("user", question);
+    setStatus(copy.thinking);
+
+    var pending = addMessage("bot", "", true);
+    var finalAnswer = "";
 
     streamChat(question, history.slice(), {
-      onEvent: function (ev) {
-        if (ev.kind === "thinking") setStatus("Thinking…");
-        else if (ev.kind === "tool_call") {
-          setStatus(ev.tool === "send_message"
-            ? "Sending your message…" : "Searching the site…");
-        } else if (ev.kind === "final") {
-          answer = ev.answer || "(no answer)";
-          bubble.classList.remove("pcb-pending");
-          bubble.innerHTML = render(answer);
-          scroll();
-        } else if (ev.kind === "error") {
-          bubble.classList.remove("pcb-pending");
-          bubble.classList.add("pcb-err");
-          bubble.textContent = "Something went wrong: " + (ev.message || "unknown error");
+      onEvent: function (event) {
+        if (event.kind === "thinking" || event.kind === "model") {
+          setStatus(copy.thinking);
+        } else if (event.kind === "tool_call") {
+          setStatus(event.tool === "send_message" ? copy.sending : copy.searching);
+        } else if (event.kind === "final") {
+          finalAnswer = event.answer || "";
+          completeAnswer(pending, finalAnswer);
+        } else if (event.kind === "error") {
+          markError(pending, event.message || copy.error);
         }
       },
       onDone: function () {
-        busy = false; setStatus("");
-        if (answer) {                 // remember this turn for follow-ups
-          history.push({ role: "user", content: question },
-            { role: "assistant", content: answer });
+        busy = false;
+        setBusy(false);
+        setStatus("");
+        if (finalAnswer) {
+          history.push({ role: "user", content: question });
+          history.push({ role: "assistant", content: finalAnswer });
           if (history.length > 16) history = history.slice(-16);
         }
       },
-      onError: function (msg) {
-        busy = false; setStatus("");
-        bubble.classList.remove("pcb-pending");
-        bubble.classList.add("pcb-err");
-        bubble.textContent = "Couldn't reach the assistant. " + (msg || "");
-      },
+      onError: function () {
+        busy = false;
+        setBusy(false);
+        setStatus("");
+        markError(pending, copy.error);
+      }
     });
   }
 
-  // ---- UI helpers ---------------------------------------------------------
-  function addMsg(who, text) {
+  function addMessage(who, text, pending) {
     var row = document.createElement("div");
-    row.className = "pcb-msg pcb-" + who;
-    var b = document.createElement("div");
-    b.className = "pcb-bubble";
-    if (text) b.innerHTML = render(text); else b.appendChild(dots());
-    row.appendChild(b);
+    row.className = "aya-msg aya-" + who;
+
+    var bubble = document.createElement("div");
+    bubble.className = "aya-bubble" + (pending ? " aya-pending" : "");
+    if (pending) bubble.appendChild(typingDots());
+    else if (who === "bot") bubble.innerHTML = renderAnswer(text);
+    else bubble.textContent = text;
+
+    row.appendChild(bubble);
     log.appendChild(row);
-    scroll();
-    return b;
+    scrollLog();
+    return { row: row, bubble: bubble };
   }
-  function dots() {
-    var d = document.createElement("span");
-    d.className = "pcb-dots";
-    d.innerHTML = "<i></i><i></i><i></i>";
-    return d;
-  }
-  function setStatus(t) {
-    status.textContent = t || "";
-    status.classList.toggle("pcb-on", !!t);
-  }
-  function scroll() { log.scrollTop = log.scrollHeight; }
 
-  // ---- rendering: linkify markdown links + bare URLs, escape the rest -----
-  function render(text) {
-    var out = esc(text);
-    // [label](url)
-    out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
-      '<a href="$2" target="_blank" rel="noopener">$1</a>');
-    // [source] citations → link to the cited page. The bot cites the page slug
-    // (e.g. [home]); map it to a URL via SOURCES (from /pages). Unknown slugs are
-    // left untouched. Runs after the markdown-link pass so it only sees bare tags.
-    out = out.replace(/\[([a-z0-9][a-z0-9-]*)\]/g, function (m, slug) {
-      var url = SOURCES[slug];
-      return url
-        ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">[' + slug + ']</a>'
-        : m;
+  function completeAnswer(message, answer) {
+    message.bubble.classList.remove("aya-pending", "aya-error");
+    message.bubble.innerHTML = renderAnswer(answer);
+    appendFeedback(message.row);
+    scrollLog();
+  }
+
+  function markError(message, text) {
+    message.bubble.classList.remove("aya-pending");
+    message.bubble.classList.add("aya-error");
+    message.bubble.textContent = text;
+    scrollLog();
+  }
+
+  function appendFeedback(row) {
+    var area = document.createElement("div");
+    area.className = "aya-feedback";
+    area.innerHTML = '<span class="aya-feedback-label">' + esc(copy.feedback) + '</span>';
+
+    var up = feedbackButton("up", THUMB_UP_ICON, "Helpful");
+    var down = feedbackButton("down", THUMB_DOWN_ICON, "Not helpful");
+    area.appendChild(up);
+    area.appendChild(down);
+
+    up.addEventListener("click", function () {
+      if (area.dataset.sent) return;
+      sendFeedback("up", "helpful");
+      thankFeedback(area);
     });
-    // bare urls not already inside an anchor
-    out = out.replace(/(^|[^"'>])(https?:\/\/[^\s<)]+)/g,
-      '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
-    out = out.replace(/\n/g, "<br>");
-    return out;
-  }
-  function esc(s) {
-    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    down.addEventListener("click", function () {
+      if (area.dataset.sent || area.querySelector(".aya-reasons")) return;
+      var reasons = document.createElement("div");
+      reasons.className = "aya-reasons";
+      Object.keys(copy.reasons).forEach(function (key) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = copy.reasons[key];
+        btn.addEventListener("click", function () {
+          if (area.dataset.sent) return;
+          sendFeedback("down", key);
+          thankFeedback(area);
+        });
+        reasons.appendChild(btn);
+      });
+      area.appendChild(reasons);
+      scrollLog();
+    });
+
+    row.appendChild(area);
   }
 
-  // ---- SSE over fetch (POST) ----------------------------------------------
-  function streamChat(question, history, cb) {
+  function feedbackButton(kind, icon, label) {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "aya-feedback-btn";
+    button.setAttribute("aria-label", label);
+    button.innerHTML = icon;
+    button.dataset.kind = kind;
+    return button;
+  }
+
+  function sendFeedback(rating, reason) {
+    fetch(API + "/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rating: rating, reason: reason })
+    }).catch(function () {});
+  }
+
+  function thankFeedback(area) {
+    area.dataset.sent = "1";
+    area.innerHTML = '<span class="aya-thanks">' + CHECK_ICON + esc(copy.thanks) + '</span>';
+  }
+
+  function renderAnswer(text) {
+    var safe = esc(text || "");
+    safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    safe = safe.replace(/\[([a-z0-9][a-z0-9_.:-]{1,120})\]/gi, function (match, slug) {
+      var url = sources[slug];
+      if (!url) return '<span class="aya-citation">[' + esc(slug) + ']</span>';
+      return '<a class="aya-citation" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">[' + esc(slug) + ']</a>';
+    });
+    safe = safe.replace(/(^|[^"'=])(https?:\/\/[^\s<)]+)/g,
+      '$1<a href="$2" target="_blank" rel="noopener noreferrer">$2</a>');
+    safe = safe.replace(/\n/g, "<br>");
+    return safe;
+  }
+
+  function setConnection(ok) {
+    connection.classList.toggle("aya-offline", !ok);
+    connection.querySelector("span:last-child").textContent = ok ? "Grounded portfolio copilot" : "Portfolio copilot";
+  }
+
+  function setStatus(text) {
+    status.textContent = text || "";
+    status.classList.toggle("aya-visible", !!text);
+  }
+
+  function setBusy(value) {
+    input.disabled = value;
+    send.disabled = value;
+    shell.classList.toggle("aya-busy", value);
+  }
+
+  function removeSuggestions() {
+    var suggestions = log.querySelector(".aya-suggestions");
+    if (suggestions) suggestions.remove();
+  }
+
+  function typingDots() {
+    var dots = document.createElement("span");
+    dots.className = "aya-dots";
+    dots.innerHTML = "<i></i><i></i><i></i>";
+    return dots;
+  }
+
+  function scrollLog() {
+    requestAnimationFrame(function () { log.scrollTop = log.scrollHeight; });
+  }
+
+  function fitMobileViewport() {
+    if (!vv || !isOpen || !window.matchMedia("(max-width: 520px)").matches) {
+      panel.style.removeProperty("top");
+      panel.style.removeProperty("left");
+      panel.style.removeProperty("right");
+      panel.style.removeProperty("bottom");
+      panel.style.removeProperty("width");
+      panel.style.removeProperty("height");
+      return;
+    }
+    panel.style.position = "fixed";
+    panel.style.top = (vv.offsetTop + 8) + "px";
+    panel.style.left = (vv.offsetLeft + 8) + "px";
+    panel.style.right = "auto";
+    panel.style.bottom = "auto";
+    panel.style.width = Math.max(280, vv.width - 16) + "px";
+    panel.style.height = Math.max(360, vv.height - 16) + "px";
+  }
+
+  function streamChat(question, priorHistory, callbacks) {
     fetch(API + "/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question: question, history: history }),
-    }).then(function (res) {
-      if (!res.ok || !res.body) throw new Error("HTTP " + res.status);
-      var reader = res.body.getReader();
-      var dec = new TextDecoder();
-      var buf = "";
-      (function pump() {
-        reader.read().then(function (r) {
-          if (r.done) { cb.onDone(); return; }
-          buf += dec.decode(r.value, { stream: true });
-          var chunks = buf.split("\n\n");
-          buf = chunks.pop();               // keep the incomplete tail
-          chunks.forEach(function (chunk) {
-            var line = chunk.split("\n").find(function (l) {
-              return l.indexOf("data:") === 0;
-            });
-            if (!line) return;
-            try { cb.onEvent(JSON.parse(line.slice(5).trim())); } catch (e) {}
-          });
-          pump();
-        }).catch(function (e) { cb.onError(e.message); });
-      })();
-    }).catch(function (e) { cb.onError(e.message); });
-  }
-}
+      body: JSON.stringify({ question: question, history: priorHistory })
+    }).then(function (response) {
+      if (!response.ok || !response.body) throw new Error("HTTP " + response.status);
+      var reader = response.body.getReader();
+      var decoder = new TextDecoder();
+      var buffer = "";
 
-// ===========================================================================
-// markup + styles (kept as strings so the whole widget is one file)
-// ===========================================================================
+      function pump() {
+        reader.read().then(function (result) {
+          if (result.done) {
+            if (buffer.trim()) parseSseChunk(buffer, callbacks.onEvent);
+            callbacks.onDone();
+            return;
+          }
+          buffer += decoder.decode(result.value, { stream: true });
+          var blocks = buffer.split("\n\n");
+          buffer = blocks.pop() || "";
+          blocks.forEach(function (block) { parseSseChunk(block, callbacks.onEvent); });
+          pump();
+        }).catch(function () { callbacks.onError(); });
+      }
+      pump();
+    }).catch(function () { callbacks.onError(); });
+  }
+
+  function parseSseChunk(block, onEvent) {
+    var lines = block.split("\n");
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].indexOf("data:") !== 0) continue;
+      try { onEvent(JSON.parse(lines[i].slice(5).trim())); } catch (error) {}
+    }
+  }
+
+  function jsonOrThrow(response) {
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    return response.json();
+  }
+
+  function esc(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  var SPARK_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1.5 5.2L19 9l-5.5 1.8L12 16l-1.5-5.2L5 9l5.5-1.8L12 2Zm7 12 .8 2.7L22.5 18l-2.7.8L19 21.5l-.8-2.7-2.7-.8 2.7-.8L19 14ZM5 14l.9 3.1L9 18l-3.1.9L5 22l-.9-3.1L1 18l3.1-.9L5 14Z" fill="currentColor"/></svg>';
+  var ARROW_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-4 4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var RESET_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h8.2A3.8 3.8 0 0 1 16 9.8v.4a3.8 3.8 0 0 1-3.8 3.8H7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="m7 3-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var CLOSE_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+  var SEND_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m3.5 10 12.8-5.5-3.1 11-3.1-4.1L3.5 10Zm6.6 1.4 6.2-6.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var THUMB_UP_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 17H4.6A1.6 1.6 0 0 1 3 15.4V10a1.6 1.6 0 0 1 1.6-1.6H7m0 8.6V8.4l2.6-5.1c.3-.6 1-.8 1.6-.5.8.4 1.2 1.3.9 2.2l-.8 2.5h3.3a2.2 2.2 0 0 1 2.1 2.8l-1.4 5.1A2.2 2.2 0 0 1 13.2 17H7Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var THUMB_DOWN_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3H4.6A1.6 1.6 0 0 0 3 4.6V10a1.6 1.6 0 0 0 1.6 1.6H7M7 3v8.6l2.6 5.1c.3.6 1 .8 1.6.5.8-.4 1.2-1.3.9-2.2l-.8-2.5h3.3a2.2 2.2 0 0 0 2.1-2.8l-1.4-5.1A2.2 2.2 0 0 0 13.2 3H7Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var CHECK_ICON = '<svg viewBox="0 0 18 18" aria-hidden="true"><path d="m4 9 3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  // Icons are defined after function declarations but before first user interaction.
+  root.querySelector(".aya-brand-icon").innerHTML = SPARK_ICON;
+  root.querySelector(".aya-launcher-icon").innerHTML = SPARK_ICON;
+  reset.innerHTML = RESET_ICON;
+  close.innerHTML = CLOSE_ICON;
+  send.innerHTML = SEND_ICON;
+})();
+
 var TEMPLATE = [
-  '<button class="pcb-launcher" aria-label="Open chat" aria-expanded="false">',
-  '  <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">',
-  '    <path fill="currentColor" d="M12 3C6.5 3 2 6.86 2 11.5c0 2.2 1.02 4.2 2.7 5.7L4 21l4.2-1.4c1.16.36 2.44.56 3.8.56 5.5 0 10-3.86 10-8.66S17.5 3 12 3z"/>',
-  '  </svg>',
+  '<button class="aya-launcher" type="button" aria-label="Open Ask Youssef AI" aria-expanded="false">',
+  '  <span class="aya-launcher-icon"></span>',
+  '  <span class="aya-launcher-copy"><strong>Ask Youssef AI</strong><small>Portfolio Copilot</small></span>',
   '</button>',
-  '<section class="pcb-panel" role="dialog" aria-label="Chat">',
-  '  <header class="pcb-head">',
-  '    <div class="pcb-head-txt">',
-  '      <div class="pcb-title">__TITLE__</div>',
-  '      <div class="pcb-sub">__SUBTITLE__</div>',
+  '<section class="aya-panel" role="dialog" aria-modal="false" aria-label="Ask Youssef AI">',
+  '  <header class="aya-head">',
+  '    <div class="aya-brand-icon"></div>',
+  '    <div class="aya-head-copy">',
+  '      <strong>__TITLE__</strong>',
+  '      <span>__SUBTITLE__</span>',
+  '      <div class="aya-connection"><span class="aya-dot"></span><span>Portfolio copilot</span></div>',
   '    </div>',
-  '    <button class="pcb-close" aria-label="Close chat">&times;</button>',
+  '    <button class="aya-icon-btn aya-reset" type="button" aria-label="__NEW_CHAT__" title="__NEW_CHAT__"></button>',
+  '    <button class="aya-icon-btn aya-close" type="button" aria-label="__CLOSE__" title="__CLOSE__"></button>',
   '  </header>',
-  '  <div class="pcb-log" role="log" aria-live="polite"></div>',
-  '  <div class="pcb-status" aria-live="polite"></div>',
-  '  <form class="pcb-form">',
-  '    <input class="pcb-input" type="text" autocomplete="off"',
-  '           placeholder="Ask a question…" aria-label="Your question">',
-  '    <button class="pcb-send" type="submit" aria-label="Send">',
-  '      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">',
-  '        <path fill="currentColor" d="M3 20.5l19-8.5L3 3.5 3 10l13 2-13 2z"/>',
-  '      </svg>',
-  '    </button>',
+  '  <div class="aya-log" role="log" aria-live="polite" aria-relevant="additions"></div>',
+  '  <div class="aya-status" aria-live="polite"></div>',
+  '  <form class="aya-form">',
+  '    <input class="aya-input" type="text" autocomplete="off" maxlength="600" placeholder="__PLACEHOLDER__" aria-label="__PLACEHOLDER__">',
+  '    <button class="aya-send" type="submit" aria-label="Send"></button>',
   '  </form>',
-  '</section>',
+  '  <div class="aya-foot"><span>Grounded in Youssef\'s public portfolio</span><span>EN · FR · AR</span></div>',
+  '</section>'
 ].join("\n");
 
 var CSS = `
-:host, .pcb { all: initial; }
-.pcb *, .pcb *::before, .pcb *::after { box-sizing: border-box; }
-.pcb {
+:host { all: initial; }
+.aya, .aya *, .aya *::before, .aya *::after { box-sizing: border-box; }
+.aya {
   --accent: __ACCENT__;
-  --ink: #0e1016;
-  --ink-2: #161a24;
-  --line: rgba(255,255,255,.09);
-  --text: #eef1f7;
-  --muted: #9aa3b2;
-  --radius: 18px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  position: fixed; right: 22px; bottom: 22px; z-index: 2147483000;
+  --bg: #0f1418;
+  --card: #141a1f;
+  --surface: #1a2329;
+  --muted-bg: #252e37;
+  --text: #f0f2f5;
+  --muted: #8c98a5;
+  --border: #242b32;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 2147483000;
   color: var(--text);
+  direction: ltr;
 }
-/* launcher */
-.pcb-launcher {
-  all: unset; cursor: pointer; position: absolute; right: 0; bottom: 0;
-  width: 60px; height: 60px; border-radius: 50%;
-  display: grid; place-items: center; color: #1a1205;
-  background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--accent) 92%, #fff) 0%, var(--accent) 55%, color-mix(in srgb, var(--accent) 70%, #000) 100%);
-  box-shadow: 0 10px 30px -6px color-mix(in srgb, var(--accent) 55%, transparent), 0 2px 8px rgba(0,0,0,.4);
-  transition: transform .22s cubic-bezier(.2,.9,.3,1.3), box-shadow .22s;
+.aya button, .aya input { font: inherit; }
+.aya button:focus-visible, .aya input:focus-visible, .aya a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
-.pcb-launcher:hover { transform: translateY(-2px) scale(1.05); }
-.pcb-launcher:active { transform: scale(.96); }
-.pcb-open .pcb-launcher { transform: scale(0); opacity: 0; pointer-events: none; }
-@media (prefers-reduced-motion: no-preference) {
-  .pcb-launcher::after {
-    content: ""; position: absolute; inset: -6px; border-radius: 50%;
-    border: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
-    animation: pcb-pulse 2.6s ease-out infinite; pointer-events: none;
-  }
+.aya-launcher {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(20px) saturate(1.2);
+  color: var(--text);
+  min-height: 58px;
+  padding: 8px 14px 8px 9px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  box-shadow: 0 16px 45px rgba(0,0,0,.42), 0 0 30px color-mix(in srgb, var(--accent) 12%, transparent), inset 0 1px rgba(255,255,255,.04);
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
 }
-@keyframes pcb-pulse { 0% { transform: scale(.85); opacity: .7; } 100% { transform: scale(1.5); opacity: 0; } }
+.aya-launcher:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 70%, var(--border)); box-shadow: 0 20px 55px rgba(0,0,0,.48), 0 0 35px color-mix(in srgb, var(--accent) 18%, transparent); }
+.aya-launcher-icon, .aya-brand-icon {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 95%, #fff 5%), color-mix(in srgb, var(--accent) 78%, #062723));
+  color: #fff;
+  box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+.aya-launcher-icon { width: 40px; height: 40px; border-radius: 13px; flex: 0 0 40px; }
+.aya-launcher-icon svg { width: 21px; height: 21px; }
+.aya-launcher-copy { display: flex; flex-direction: column; text-align: left; line-height: 1.15; }
+.aya-launcher-copy strong { font-size: 13px; font-weight: 700; letter-spacing: -.01em; }
+.aya-launcher-copy small { font-size: 10.5px; color: var(--muted); margin-top: 4px; }
+.aya-open .aya-launcher { opacity: 0; transform: translateY(8px) scale(.96); pointer-events: none; }
 
-/* panel */
-.pcb-panel {
-  position: absolute; right: 0; bottom: 0;
-  width: min(384px, calc(100vw - 44px));
-  height: min(600px, calc(100vh - 44px));
-  display: flex; flex-direction: column; overflow: hidden;
-  border-radius: var(--radius); border: 1px solid var(--line);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--ink-2) 92%, transparent), color-mix(in srgb, var(--ink) 96%, transparent));
-  backdrop-filter: blur(18px) saturate(1.2);
-  box-shadow: 0 24px 70px -18px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.02) inset;
-  transform: translateY(16px) scale(.96); opacity: 0; pointer-events: none;
+.aya-panel {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: min(410px, calc(100vw - 44px));
+  height: min(650px, calc(100vh - 44px));
+  min-height: 500px;
+  border-radius: 22px;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  background: linear-gradient(180deg, rgba(20,26,31,.98), rgba(15,20,24,.985));
+  backdrop-filter: blur(26px) saturate(1.15);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 32px 90px rgba(0,0,0,.58), 0 0 50px color-mix(in srgb, var(--accent) 8%, transparent), inset 0 1px rgba(255,255,255,.035);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(14px) scale(.97);
   transform-origin: bottom right;
-  transition: transform .26s cubic-bezier(.2,.9,.3,1.15), opacity .2s;
+  transition: opacity .18s ease, transform .24s cubic-bezier(.2,.85,.25,1.05);
 }
-.pcb-open .pcb-panel { transform: none; opacity: 1; pointer-events: auto; }
-@media (prefers-reduced-motion: reduce) { .pcb-panel, .pcb-launcher { transition: none; } }
+.aya-open .aya-panel { opacity: 1; pointer-events: auto; transform: none; }
 
-.pcb-head {
-  display: flex; align-items: center; gap: 12px; padding: 15px 16px;
-  border-bottom: 1px solid var(--line);
-  background: radial-gradient(140% 100% at 0% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 60%);
+.aya-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 14px 14px;
+  border-bottom: 1px solid var(--border);
+  background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--accent) 11%, transparent), transparent 58%);
 }
-.pcb-title { font-family: "Fraunces", Georgia, "Times New Roman", serif; font-weight: 600; font-size: 18px; letter-spacing: .1px; }
-.pcb-sub { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
-.pcb-head-txt { flex: 1; min-width: 0; }
-.pcb-close { all: unset; cursor: pointer; color: var(--muted); font-size: 26px; line-height: 1; padding: 0 4px; border-radius: 8px; }
-.pcb-close:hover { color: var(--text); }
+.aya-brand-icon { width: 42px; height: 42px; flex: 0 0 42px; border-radius: 13px; }
+.aya-brand-icon svg { width: 22px; height: 22px; }
+.aya-head-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+.aya-head-copy strong { font-family: "Playfair Display", Georgia, serif; font-size: 17px; line-height: 1.15; font-weight: 650; }
+.aya-head-copy > span { margin-top: 2px; color: var(--muted); font-size: 10.5px; }
+.aya-connection { display: flex; align-items: center; gap: 5px; margin-top: 5px; color: #9fb1b0; font-size: 9.5px; }
+.aya-dot { width: 6px; height: 6px; border-radius: 50%; background: #3ddc97; box-shadow: 0 0 8px rgba(61,220,151,.6); }
+.aya-offline .aya-dot { background: #83909b; box-shadow: none; }
+.aya-icon-btn {
+  appearance: none; border: 0; background: transparent; color: var(--muted); width: 34px; height: 34px; border-radius: 10px;
+  display: grid; place-items: center; cursor: pointer; transition: background .15s ease, color .15s ease;
+}
+.aya-icon-btn:hover { background: var(--muted-bg); color: var(--text); }
+.aya-icon-btn svg { width: 18px; height: 18px; }
 
-.pcb-log { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; scrollbar-width: thin; }
-.pcb-log::-webkit-scrollbar { width: 7px; }
-.pcb-log::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+.aya-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 15px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #34404a transparent;
+}
+.aya-welcome {
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 6%, var(--card)), var(--card));
+  border-radius: 17px;
+  padding: 15px;
+}
+.aya-orb { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent); margin-bottom: 10px; }
+.aya-orb svg { width: 18px; height: 18px; }
+.aya-welcome-title { font-family: "Playfair Display", Georgia, serif; font-size: 17px; font-weight: 650; }
+.aya-welcome p { color: #aab3bd; font-size: 12.5px; line-height: 1.55; margin: 7px 0 11px; }
+.aya-trust { font-size: 9.5px; color: #83909b; display: flex; align-items: center; gap: 6px; }
+.aya-trust span { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.aya-suggestions { display: grid; gap: 7px; }
+.aya-suggestion {
+  appearance: none;
+  width: 100%;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 68%, transparent);
+  color: #dce2e8;
+  border-radius: 12px;
+  padding: 9px 11px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-align: left;
+  font-size: 11.5px;
+  line-height: 1.35;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+.aya-suggestion:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); background: color-mix(in srgb, var(--accent) 7%, var(--surface)); transform: translateX(2px); }
+.aya-suggestion svg { width: 16px; height: 16px; color: var(--accent); flex: 0 0 16px; }
 
-.pcb-msg { display: flex; }
-.pcb-user { justify-content: flex-end; }
-.pcb-bubble {
-  max-width: 84%; padding: 10px 13px; border-radius: 14px; font-size: 14px;
-  line-height: 1.5; word-wrap: break-word; animation: pcb-in .28s ease both;
-}
-@keyframes pcb-in { from { opacity: 0; transform: translateY(6px); } }
-.pcb-bot .pcb-bubble {
-  background: color-mix(in srgb, var(--ink) 60%, #fff 4%);
-  border: 1px solid var(--line); border-bottom-left-radius: 5px;
-}
-.pcb-user .pcb-bubble {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 22%, var(--ink-2)), color-mix(in srgb, var(--accent) 12%, var(--ink-2)));
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  border-bottom-right-radius: 5px;
-}
-.pcb-bubble a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
-.pcb-err { color: #ff9b9b; }
+.aya-msg { display: flex; flex-direction: column; animation: aya-in .22s ease both; }
+.aya-user { align-items: flex-end; }
+.aya-bot { align-items: flex-start; }
+.aya-bubble { max-width: 88%; border-radius: 15px; padding: 10px 12px; font-size: 12.5px; line-height: 1.55; overflow-wrap: anywhere; }
+.aya-user .aya-bubble { color: #f4fffd; background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 28%, var(--surface)), color-mix(in srgb, var(--accent) 17%, var(--surface))); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border)); border-bottom-right-radius: 5px; }
+.aya-bot .aya-bubble { color: #e3e8ed; background: #161d22; border: 1px solid var(--border); border-bottom-left-radius: 5px; }
+.aya-bubble a { color: #55cfc5; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent); text-underline-offset: 3px; }
+.aya-citation { display: inline; font-size: .92em; }
+.aya-error { color: #ffb1b1 !important; border-color: rgba(255,120,120,.2) !important; }
+.aya-feedback { max-width: 88%; margin-top: 5px; min-height: 25px; display: flex; flex-wrap: wrap; align-items: center; gap: 5px; color: #73808c; font-size: 9.5px; }
+.aya-feedback-label { margin-right: 2px; }
+.aya-feedback-btn { appearance: none; border: 0; background: transparent; color: #73808c; width: 28px; height: 25px; border-radius: 8px; display: grid; place-items: center; cursor: pointer; }
+.aya-feedback-btn:hover { color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.aya-feedback-btn svg { width: 15px; height: 15px; }
+.aya-reasons { flex-basis: 100%; display: flex; gap: 5px; flex-wrap: wrap; margin-top: 2px; }
+.aya-reasons button { appearance: none; border: 1px solid var(--border); background: transparent; color: #95a0aa; border-radius: 999px; padding: 4px 7px; font-size: 9px; cursor: pointer; }
+.aya-reasons button:hover { color: var(--text); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
+.aya-thanks { display: inline-flex; align-items: center; gap: 4px; color: #82918f; }
+.aya-thanks svg { width: 13px; height: 13px; color: var(--accent); }
 
-.pcb-dots { display: inline-flex; gap: 4px; padding: 2px 0; }
-.pcb-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); display: inline-block; animation: pcb-bounce 1.2s infinite ease-in-out; }
-.pcb-dots i:nth-child(2) { animation-delay: .15s; } .pcb-dots i:nth-child(3) { animation-delay: .3s; }
-@keyframes pcb-bounce { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-5px); opacity: 1; } }
+.aya-dots { display: inline-flex; align-items: center; gap: 4px; height: 16px; }
+.aya-dots i { display: block; width: 5px; height: 5px; border-radius: 50%; background: #7f8a95; animation: aya-bounce 1s ease-in-out infinite; }
+.aya-dots i:nth-child(2) { animation-delay: .12s; }
+.aya-dots i:nth-child(3) { animation-delay: .24s; }
+.aya-status { min-height: 0; max-height: 0; opacity: 0; padding: 0 16px; overflow: hidden; color: #77838e; font-size: 9.5px; transition: all .15s ease; }
+.aya-status.aya-visible { min-height: 23px; max-height: 23px; opacity: 1; padding-top: 5px; }
 
-.pcb-status {
-  height: 0; overflow: hidden; padding: 0 16px; color: var(--muted);
-  font-size: 11.5px; font-style: italic; transition: height .2s, padding .2s;
-}
-.pcb-status.pcb-on { height: 22px; padding-bottom: 4px; }
+.aya-form { border-top: 1px solid var(--border); padding: 10px 11px; display: flex; gap: 8px; background: rgba(15,20,24,.72); }
+.aya-input { appearance: none; border: 1px solid var(--border); outline: none; min-width: 0; flex: 1; color: var(--text); background: #11171b; border-radius: 13px; padding: 10px 12px; font-size: 12px; transition: border-color .15s ease, box-shadow .15s ease; }
+.aya-input::placeholder { color: #68747f; }
+.aya-input:focus { border-color: color-mix(in srgb, var(--accent) 58%, var(--border)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent); }
+.aya-send { appearance: none; border: 0; width: 39px; height: 39px; flex: 0 0 39px; border-radius: 12px; display: grid; place-items: center; cursor: pointer; color: #fff; background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 94%, #fff 6%), color-mix(in srgb, var(--accent) 82%, #082b28)); box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 18%, transparent); }
+.aya-send svg { width: 18px; height: 18px; }
+.aya-send:disabled, .aya-input:disabled { opacity: .62; cursor: wait; }
+.aya-foot { padding: 0 12px 8px; display: flex; justify-content: space-between; gap: 8px; color: #56616b; font-size: 8.5px; background: rgba(15,20,24,.72); }
 
-.pcb-form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
-.pcb-input {
-  all: unset; flex: 1; padding: 11px 14px; border-radius: 12px; font-size: 14px; color: var(--text);
-  background: color-mix(in srgb, var(--ink) 70%, #000); border: 1px solid var(--line);
-}
-.pcb-input:focus { border-color: color-mix(in srgb, var(--accent) 55%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
-.pcb-input::placeholder { color: var(--muted); }
-.pcb-send {
-  all: unset; cursor: pointer; width: 44px; display: grid; place-items: center; border-radius: 12px; color: #1a1205;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 95%, #fff), var(--accent));
-  transition: transform .15s, filter .15s;
-}
-.pcb-send:hover { filter: brightness(1.06); } .pcb-send:active { transform: scale(.94); }
-
-@media (max-width: 480px) {
-  .pcb { right: 12px; bottom: 12px; }
-  /* JS pins the panel to visualViewport when open (keyboard-safe); these are the
-     pre-open / no-visualViewport fallbacks. dvh tracks browser chrome; the vh
-     line stays first so browsers without dvh support still get a height. */
-  .pcb-panel {
-    width: calc(100vw - 24px);
-    height: calc(100vh - 24px);
-    height: calc(100dvh - 24px);
-  }
+@keyframes aya-in { from { opacity: 0; transform: translateY(4px); } }
+@keyframes aya-bounce { 0%, 60%, 100% { opacity: .45; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .aya *, .aya *::before, .aya *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
+@media (max-width: 520px) {
+  .aya { right: 12px; bottom: 12px; }
+  .aya-launcher { min-height: 54px; border-radius: 17px; }
+  .aya-launcher-copy small { display: none; }
+  .aya-panel { width: calc(100vw - 16px); height: calc(100dvh - 16px); min-height: 0; border-radius: 18px; }
+  .aya-log { padding: 14px 12px 8px; }
+  .aya-bubble, .aya-feedback { max-width: 92%; }
 }
 `;
-
-// CSS + TEMPLATE are now assigned, so it's safe to mount.
-pcbWidget();
