@@ -19,6 +19,10 @@ class StructuredCertificationFactsTests(unittest.TestCase):
             row for row in cls.profile.get("certifications", [])
             if row.get("issuer") == "Oracle"
         ]
+        cls.cert_history = [
+            {"role": "user", "content": "Which certifications does he have?"},
+            {"role": "assistant", "content": "His certifications include credentials from Oracle and other issuers."},
+        ]
 
     def test_total_count_comes_from_complete_profile(self):
         expected = len(self.profile["certifications"])
@@ -38,9 +42,9 @@ class StructuredCertificationFactsTests(unittest.TestCase):
         self.assertIn("LinkedIn", result.answer)
         self.assertNotIn("currently lists three certifications issued by LinkedIn", result.answer.lower())
 
-    def test_oracle_inventory_is_complete(self):
+    def test_oracle_inventory_is_complete_as_followup(self):
         self.assertEqual(len(self.oracle), 3, "Current public portfolio should contain three Oracle certifications")
-        result = self.resolver.resolve("What about Oracle?")
+        result = self.resolver.resolve("What about Oracle?", self.cert_history)
         self.assertIsNotNone(result)
         self.assertIn("3", result.answer)
         for row in self.oracle:
@@ -61,13 +65,16 @@ class StructuredCertificationFactsTests(unittest.TestCase):
         self.assertNotIn("Oracle Cloud Infrastructure 2026 Certified Architect Associate", result.answer)
 
     def test_short_count_followup_inherits_certification_context(self):
-        history = [
-            {"role": "user", "content": "Which certifications does he have?"},
-            {"role": "assistant", "content": "His certifications are listed on the portfolio certifications page."},
-        ]
-        result = self.resolver.resolve("how many?", history)
+        result = self.resolver.resolve("how many?", self.cert_history)
         self.assertIsNotNone(result)
         self.assertIn(str(len(self.profile["certifications"])), result.answer)
+
+    def test_issuer_name_does_not_hijack_employer_question(self):
+        self.assertIsNone(self.resolver.resolve("Did Youssef work at IBM?"))
+        self.assertIsNone(self.resolver.resolve("Did Youssef work at Oracle?"))
+
+    def test_issuer_only_without_certification_history_is_not_intercepted(self):
+        self.assertIsNone(self.resolver.resolve("What about Oracle?"))
 
     def test_unrelated_question_is_not_intercepted(self):
         self.assertIsNone(self.resolver.resolve("Which project uses BoT-SORT?"))
