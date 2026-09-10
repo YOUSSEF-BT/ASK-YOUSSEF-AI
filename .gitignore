@@ -8,6 +8,7 @@ __pycache__/
 # local env / secrets
 .env
 .env.*
+!.env.example
 
 # fastembed downloads its ONNX models into a cache; don't commit them
 .fastembed_cache/
