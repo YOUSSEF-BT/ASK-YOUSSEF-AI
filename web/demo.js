@@ -125,10 +125,10 @@
       stepNo++;
       addStep("🧠", "think", "<b>Step " + stepNo + "</b> — reasoning, calling <code>"
         + esc(ev.brain) + "</code>…");
-      addTBlock("① Prompt sent to " + esc(ev.brain), ev.prompt);
+      addTBlock("① Orchestration", "Internal prompt and hidden reasoning are intentionally not exposed.");
     } else if (ev.kind === "model") {
-      addStep("💬", "model", "Model replied — parsing its decision.");
-      addTBlock("② Raw model output", ev.text);
+      addStep("💬", "model", "Model decision ready — internal reasoning remains private.");
+      addTBlock("② Model boundary", "Raw model reasoning is intentionally not exposed by the public API.");
     } else if (ev.kind === "tool_call") {
       var verb = ev.tool === "send_message" ? "Emailing Youssef via" : "Searching via";
       addStep("🔧", "tool", verb + " MCP tool <code>" + esc(ev.tool) + "</code>",

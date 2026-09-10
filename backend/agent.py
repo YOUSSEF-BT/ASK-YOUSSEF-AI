@@ -252,10 +252,14 @@ class ReActAgent:
         # a human-readable label for the "brain", set by the caller (build_agent)
         self.brain_name = type(policy).__name__
 
-    def run_iter(self, question: str):
-        """Drive the loop, yielding an Event at each stage so a UI can show the
-        agent's reasoning in real time. The final Event carries the Result.
-        `run()` is just this generator with the events thrown away."""
+    def run_iter(self, question: str, require_retrieval: bool = False):
+        """Drive the loop and emit high-level events.
+
+        `require_retrieval=True` is a deterministic orchestration guard used for
+        factual portfolio questions. The first valid action is forced to
+        `search_site` before any final answer can be accepted, so grounding does
+        not depend only on the model following prompt instructions.
+        """
         steps: list[Step] = []
         scratchpad = ""
         for _ in range(self.max_steps):
@@ -272,11 +276,19 @@ class ReActAgent:
             yield Event("model", {"text": raw})
 
             step = _parse(raw)
+            searched = any(s.action == "search_site" for s in steps)
             if step.action == "__final__":
-                steps.append(Step(thought=step.thought))
-                result = Result(answer=step.action_input or "", steps=steps)
-                yield Event("final", {"answer": result.answer, "result": result})
-                return
+                if require_retrieval and not searched and "search_site" in self.tools:
+                    step = Step(
+                        thought=step.thought or "Portfolio facts require retrieved evidence.",
+                        action="search_site",
+                        action_input=question,
+                    )
+                else:
+                    steps.append(Step(thought=step.thought))
+                    result = Result(answer=step.action_input or "", steps=steps)
+                    yield Event("final", {"answer": result.answer, "result": result})
+                    return
 
             # No valid Action line was parsed. Two very different cases:
             #   (a) the model just TALKED — a clarifying question ("what's your
@@ -290,7 +302,7 @@ class ReActAgent:
             if step.action not in self.tools:
                 prose = re.sub(r"^\s*Thought:\s*", "", raw.strip(), flags=re.I).strip()
                 tried_to_act = re.search(r"\bAction\s*:", raw, re.IGNORECASE) is not None
-                if prose and not tried_to_act:
+                if prose and not tried_to_act and not (require_retrieval and not searched):
                     steps.append(Step(thought=step.thought, observation=prose))
                     result = Result(answer=prose, steps=steps)
                     yield Event("final", {"answer": prose, "result": result})
@@ -298,6 +310,15 @@ class ReActAgent:
                 if self.fallback_tool in self.tools:
                     step.action = self.fallback_tool
                     step.action_input = step.action_input or question
+
+            # A factual portfolio route must gather evidence before doing anything
+            # else. This also prevents a malformed model turn from skipping search.
+            if require_retrieval and not searched and "search_site" in self.tools                     and step.action != "search_site":
+                step = Step(
+                    thought=step.thought or "Retrieve portfolio evidence first.",
+                    action="search_site",
+                    action_input=question,
+                )
 
             # dispatch the tool
             tool = self.tools.get(step.action or "")
@@ -344,9 +365,9 @@ class ReActAgent:
         result = Result(answer=answer, steps=steps, stopped="max_steps")
         yield Event("final", {"answer": answer, "result": result})
 
-    def run(self, question: str) -> Result:
+    def run(self, question: str, require_retrieval: bool = False) -> Result:
         result = Result(answer="")
-        for ev in self.run_iter(question):
+        for ev in self.run_iter(question, require_retrieval=require_retrieval):
             if ev.kind == "final":
                 result = ev.data["result"]
         return result
@@ -671,7 +692,7 @@ class _ScriptedAgent(ReActAgent):
                          fallback_tool="search_site")
         self.brain_name = "scripted fallback"
 
-    def run_iter(self, question: str):
+    def run_iter(self, question: str, require_retrieval: bool = False):
         # set up the canned turns for THIS question, then drive the normal loop
         # (so streaming events work identically to a real brain).
         hits = self._rag.query(question, k=3)
@@ -679,4 +700,4 @@ class _ScriptedAgent(ReActAgent):
             or "nothing relevant"
         turns = [t.format(q=question, obs=obs) for t in _FALLBACK_TURNS]
         self.policy = ScriptedPolicy(turns)
-        yield from super().run_iter(question)
+        yield from super().run_iter(question, require_retrieval=require_retrieval)

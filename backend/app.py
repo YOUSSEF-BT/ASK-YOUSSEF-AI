@@ -38,6 +38,7 @@ from pydantic import BaseModel  # noqa: E402
 import crawl  # noqa: E402
 from rag import RAG, chunk_markdown, parse_frontmatter  # noqa: E402
 from retrieval.hybrid import HybridRetriever  # noqa: E402
+from router import route_question  # noqa: E402
 
 
 # --- config (all env-overridable; defaults suit the Render deploy) ----------
@@ -291,6 +292,7 @@ def _stream(question: str, history: list[Turn] | None = None):
     if STATE.agent is None:
         yield _sse("error", message="agent not ready")
         return
+    route = route_question(question)
     contextual = _with_history(question, history or [])
     # bounded wait: if another turn is mid-flight (the agent shares one stdio
     # child), fail fast with a clear message rather than hanging the browser.
@@ -300,13 +302,19 @@ def _stream(question: str, history: list[Turn] | None = None):
         return
     try:
         try:
-            for ev in STATE.agent.run_iter(contextual):
+            for ev in STATE.agent.run_iter(
+                    contextual, require_retrieval=route.requires_retrieval):
                 if ev.kind == "thinking":
-                    yield _sse("thinking", brain=ev.data["brain"], prompt=ev.data["prompt"])
+                    # Do not expose internal prompts or hidden reasoning on a
+                    # public API. The client only gets a high-level progress event.
+                    yield _sse("thinking", brain=ev.data["brain"])
                 elif ev.kind == "model":
-                    yield _sse("model", text=ev.data["text"])
+                    # Preserve the event boundary for the technical demo without
+                    # leaking raw model reasoning/decision text.
+                    yield _sse("model")
                 elif ev.kind == "tool_call":
-                    yield _sse("tool_call", tool=ev.data["tool"], input=ev.data["input"])
+                    tool_input = ev.data["input"] if ev.data["tool"] == "search_site" else None
+                    yield _sse("tool_call", tool=ev.data["tool"], input=tool_input)
                 elif ev.kind == "observation":
                     yield _sse("observation", tool=ev.data["tool"], output=ev.data["output"])
                 elif ev.kind == "final":
