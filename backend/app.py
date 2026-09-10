@@ -38,6 +38,7 @@ from pydantic import BaseModel  # noqa: E402
 import crawl  # noqa: E402
 from rag import RAG, chunk_markdown, parse_frontmatter  # noqa: E402
 from retrieval.hybrid import HybridRetriever  # noqa: E402
+from retrieval.structured import StructuredProfileRetriever  # noqa: E402
 from router import route_question  # noqa: E402
 
 
@@ -52,6 +53,9 @@ ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
 MCP_TRANSPORT = os.environ.get("MCP_TRANSPORT", "process").lower()
 # where to fall back if a live crawl yields nothing (network down, sitemap gone)
 BUNDLED_SNAPSHOT = os.path.join(os.path.dirname(__file__), "data", "site")
+PROFILE_PATH = os.environ.get(
+    "PROFILE_PATH", os.path.join(os.path.dirname(__file__), "data", "profile.json")
+)
 
 # --- abuse guards (all env-overridable) -------------------------------------
 # The endpoint is public and now backed by a *billed* Gemini key, so bound how
@@ -138,6 +142,7 @@ class _State:
     agent = None
     pages: list[dict] = []          # [{title, url, source, chunks}]
     chunks = 0
+    structured_docs = 0
     brain = "?"
     lock = threading.Lock()         # serialize agent turns (shared stdio child)
 
@@ -217,6 +222,8 @@ def _startup() -> None:
     corpus = _refresh_corpus()
     # the page list/health come from the snapshot on disk (no embedding here)
     STATE.pages, STATE.chunks = _page_index(corpus)
+    structured_retriever = StructuredProfileRetriever.from_path(PROFILE_PATH)
+    STATE.structured_docs = structured_retriever.count
 
     if MCP_TRANSPORT == "process":
         # retrieval + contact each run as their own FastMCP child; the blog child
@@ -225,6 +232,7 @@ def _startup() -> None:
         # — otherwise a crawl-failed → bundled-snapshot fallback would leave the
         # child pointed at an empty /tmp/site and crash on boot.
         os.environ["CORPUS_DIR"] = corpus
+        os.environ["PROFILE_PATH"] = PROFILE_PATH
         STATE.agent = build_agent(rag=None, use_mcp=True, mcp_transport="process")
     else:
         # single interpreter (fits 512 MB): build the index in-process and use the
@@ -232,11 +240,14 @@ def _startup() -> None:
         # API embeddings, no local model, so no OOM). See rag.make_embedder.
         from rag import make_embedder
         semantic_rag = RAG(embedder=make_embedder()).build(corpus)
-        rag = HybridRetriever(semantic_rag)
+        rag = HybridRetriever(
+            semantic_rag, structured_retriever=structured_retriever
+        )
         STATE.agent = build_agent(rag=rag, use_mcp=True, mcp_transport="inprocess")
     STATE.brain = getattr(STATE.agent, "brain_name", "?")
     print(f"[boot] ready — {len(STATE.pages)} pages, {STATE.chunks} chunks, "
-          f"transport={MCP_TRANSPORT}, brain={STATE.brain}", flush=True)
+          f"{STATE.structured_docs} structured docs, transport={MCP_TRANSPORT}, "
+          f"brain={STATE.brain}", flush=True)
 
 
 class Turn(BaseModel):
@@ -366,7 +377,9 @@ def chat(req: ChatRequest, request: Request):
 @app.get("/health")
 def health():
     return {"ok": STATE.agent is not None, "pages": len(STATE.pages),
-            "chunks": STATE.chunks, "transport": MCP_TRANSPORT, "brain": STATE.brain}
+            "chunks": STATE.chunks, "structured_docs": STATE.structured_docs,
+            "retrieval": "semantic+bm25+structured-rrf",
+            "transport": MCP_TRANSPORT, "brain": STATE.brain}
 
 
 @app.get("/pages")
