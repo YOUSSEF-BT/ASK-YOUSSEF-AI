@@ -30,12 +30,14 @@ jobs:
       - name: Run deterministic retrieval tests
         run: python -m unittest discover -s tests -p "test_*.py" -v
 
-      - name: Validate evaluation dataset
-        run: python -m json.tool evaluation/dataset.json >/dev/null
+      - name: Validate knowledge and evaluation JSON
+        run: |
+          python -m json.tool evaluation/dataset.json >/dev/null
+          python -m json.tool backend/data/profile.json >/dev/null
+          python -m json.tool backend/data/site/manifest.json >/dev/null
 
       - name: Verify required project files
         run: |
-          test -f README.md
           test -f LICENSE
           test -f NOTICE.md
           test -f .env.example
@@ -43,12 +45,39 @@ jobs:
           test -f backend/agent.py
           test -f backend/rag.py
           test -f backend/retrieval/hybrid.py
+          test -f backend/retrieval/structured.py
+          test -f backend/data/profile.json
+          test -f scripts/sync_portfolio.py
+          test -f scripts/build_structured_profile.py
           test -f web/widget.js
           test -f docs/architecture.md
 
+      - name: Validate synchronized profile counts
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          profile = json.loads(Path("backend/data/profile.json").read_text())
+          manifest = json.loads(Path("backend/data/site/manifest.json").read_text())
+          checks = {
+              "projects": len(profile.get("projects", [])),
+              "skill_categories": len(profile.get("skill_categories", [])),
+              "certifications": len(profile.get("certifications", [])),
+              "work_experiences": len(profile.get("work_experiences", [])),
+              "education_entries": len(profile.get("education", [])),
+          }
+          for key, value in checks.items():
+              if value < 1:
+                  raise SystemExit(f"Structured profile missing {key}")
+              if value != int(manifest.get(key, -1)):
+                  raise SystemExit(f"Profile/manifest mismatch for {key}: {value} != {manifest.get(key)}")
+          print("Synchronized profile counts validated:", checks)
+          PY
+
       - name: Guard against stale upstream identity data
         run: |
-          if grep -R -n --exclude='LICENSE' --exclude='NOTICE.md' --exclude='README.md' --exclude='bootstrap_foundation.py' --exclude='bootstrap-foundation.yml' -E 'adityajain\.me|Aditya Jain|Ask about Aditya|Chat with Aditya' backend web render.yaml .env.example; then
+          if grep -R -n --exclude='LICENSE' --exclude='NOTICE.md' --exclude='README.md' -E 'adityajain\.me|Aditya Jain|Ask about Aditya|Chat with Aditya' backend web render.yaml .env.example; then
             echo "Stale upstream identity reference found."
             exit 1
           fi
