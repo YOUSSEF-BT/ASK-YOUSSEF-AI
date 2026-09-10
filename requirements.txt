@@ -1,8 +1,8 @@
 # Vercel production runtime for Ask Youssef AI.
-# The Vercel entrypoint forces EMBEDDER=gemini and MCP_TRANSPORT=inprocess, so
-# optional local ONNX/FastMCP packages are intentionally excluded to reduce
-# cold-start time and function size.
+# FastEmbed provides local dense vector retrieval, while Gemini is reserved for
+# answer generation. This avoids consuming Gemini embedding quota on cold starts.
 fastapi>=0.110
 pydantic>=2.0
 numpy>=1.24
 google-genai>=2.0
+fastembed>=0.6.1
