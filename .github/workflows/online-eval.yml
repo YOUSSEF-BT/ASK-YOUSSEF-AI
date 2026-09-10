@@ -1,0 +1,86 @@
+name: Online assistant evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "Deployed FastAPI base URL, for example https://service.onrender.com"
+        required: true
+        type: string
+      origin:
+        description: "Allowed Origin header"
+        required: true
+        default: "https://youssef-bt.github.io"
+        type: string
+      strict:
+        description: "Fail the workflow when an online quality threshold is missed"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: online-assistant-evaluation
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate deployed health endpoint
+        env:
+          API_URL: ${{ inputs.api_url }}
+          ORIGIN: ${{ inputs.origin }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          url = os.environ["API_URL"].rstrip("/") + "/health"
+          req = urllib.request.Request(
+              url,
+              headers={"Accept": "application/json", "Origin": os.environ["ORIGIN"]},
+          )
+          with urllib.request.urlopen(req, timeout=180) as response:
+              health = json.loads(response.read().decode("utf-8"))
+          print(json.dumps(health, indent=2))
+          if not health.get("ok"):
+              raise SystemExit("Deployment health check is not ready")
+          PY
+
+      - name: Run deployed smoke benchmark
+        env:
+          API_URL: ${{ inputs.api_url }}
+          ORIGIN: ${{ inputs.origin }}
+          STRICT: ${{ inputs.strict }}
+        run: |
+          args=(
+            --api-url "$API_URL"
+            --origin "$ORIGIN"
+            --output online-eval-report.json
+          )
+          if [ "$STRICT" = "true" ]; then
+            args+=(--strict)
+          fi
+          python evaluation/run_online_eval.py "${args[@]}"
+
+      - name: Publish evaluation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: online-eval-report
+          path: online-eval-report.json
+          if-no-files-found: warn
+          retention-days: 14
