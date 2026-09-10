@@ -1,0 +1,62 @@
+name: Vercel production evaluation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/vercel-production-eval.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vercel-production-evaluation
+  cancel-in-progress: true
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate production health
+        run: |
+          python - <<'PY'
+          import json
+          import urllib.request
+          url = "https://ask-youssef-ai.vercel.app/health"
+          req = urllib.request.Request(url, headers={
+              "Accept": "application/json",
+              "Origin": "https://youssef-bt.github.io",
+          })
+          with urllib.request.urlopen(req, timeout=180) as response:
+              health = json.loads(response.read().decode("utf-8"))
+          print(json.dumps(health, indent=2))
+          if not health.get("ok"):
+              raise SystemExit("Production health check failed")
+          PY
+
+      - name: Run deployed online regression
+        run: |
+          python evaluation/run_online_eval.py \
+            --api-url "https://ask-youssef-ai.vercel.app" \
+            --origin "https://youssef-bt.github.io" \
+            --output online-eval-report.json \
+            --strict
+
+      - name: Publish production evaluation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vercel-production-eval-report
+          path: online-eval-report.json
+          if-no-files-found: warn
+          retention-days: 14
