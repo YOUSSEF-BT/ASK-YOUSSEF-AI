@@ -439,8 +439,8 @@ def _is_quota(exc: Exception) -> bool:
 class GeminiPolicy:
     """The deploy brain: a Gemini model driving the ReAct loop. Same contract as
     OpenAIPolicy — it stops before writing its own Observation (via a
-    stop_sequence) so *we* supply the tool result. Generation only; embeddings
-    are local, so the free tier is spent on reasoning, not on indexing."""
+    stop_sequence) so *we* supply the tool result. Generation is provider-backed; the embedding backend is configured separately
+    so generation and retrieval remain independently swappable."""
 
     def __init__(self, model: str | None = None) -> None:
         from google import genai

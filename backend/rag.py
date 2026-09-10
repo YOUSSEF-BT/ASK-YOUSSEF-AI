@@ -271,7 +271,7 @@ class GeminiEmbedder:
         self.cooldown = float(os.environ.get("GEMINI_EMBED_COOLDOWN", "60"))
         self.retries = int(os.environ.get("GEMINI_EMBED_RETRIES", "5"))
         # Default to a committed cache next to this file (backend/data/embcache):
-        # CI (crawl.yml) precomputes + commits it, so Render finds a cache hit on
+        # CI (sync-portfolio.yml) precomputes + commits it, so Render finds a cache hit on
         # boot and never embeds the whole corpus on a cold start. Override with
         # EMBED_CACHE_DIR. Resolved from __file__ so cwd doesn't matter.
         self.cache_dir = os.environ.get("EMBED_CACHE_DIR") or os.path.join(

@@ -5,7 +5,7 @@ pipeline; almost all of the work lives in the modules it reuses (crawl, rag,
 agent, mcp_client) — this file only wires them to the web and to the browser.
 
 On boot it loads the committed crawl snapshot in backend/data/site (refreshed in
-CI, not at boot — see .github/workflows/crawl.yml) and spins up the agent; set
+CI, not at boot — see .github/workflows/sync-portfolio.yml) and spins up the agent; set
 CRAWL_SITES to re-enable a live boot crawl. Retrieval is owned by a FastMCP child
 process that loads that snapshot and embeds it (fastembed/ONNX) — so this parent
 stays light (it only parses page metadata for /pages and /health, never embeds).
@@ -116,6 +116,9 @@ class _RateLimiter:
 
 
 _limiter = _RateLimiter(RATE_PER_MIN, RATE_PER_DAY, GLOBAL_PER_DAY)
+# Feedback has no model cost, but a separate limiter prevents public metric
+# poisoning without consuming the visitor's chat allowance.
+_feedback_limiter = _RateLimiter(20, 100, 5000)
 
 
 def _client_ip(request: Request) -> str:
@@ -157,7 +160,7 @@ STATE = _State()
 
 def _refresh_corpus() -> str:
     """Resolve the corpus to index. By default (CRAWL_SITES empty) we DON'T crawl
-    at boot — the CI job (.github/workflows/crawl.yml) crawls on push + weekly and
+    at boot — the CI job (.github/workflows/sync-portfolio.yml) crawls on push + weekly and
     commits the snapshot to backend/data/site instead, so startup is fast and
     doesn't depend on the live site.
 
@@ -215,9 +218,10 @@ def _page_index(corpus_dir: str) -> tuple[list[dict], int]:
 app = FastAPI(title="Ask Youssef AI API")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,   # public, read-only, no cookies
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Accept", "Content-Type"],
 )
 
 
@@ -442,6 +446,9 @@ def feedback(req: FeedbackRequest, request: Request):
     """Collect fixed-category aggregate feedback without retaining visitor text."""
     if not _origin_allowed(request):
         raise HTTPException(status_code=403, detail="origin not allowed")
+    limit_reason = _feedback_limiter.check(_client_ip(request))
+    if limit_reason:
+        raise HTTPException(status_code=429, detail="feedback rate limit reached")
     try:
         FEEDBACK.record(req.rating, req.reason)
     except ValueError as exc:
