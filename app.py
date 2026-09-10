@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 
 # Zero-cost / serverless-safe production defaults. Explicit environment
 # variables in Vercel can still override any of these values.
@@ -44,5 +45,64 @@ if _BACKEND_DIR not in sys.path:
 import vercel_agent_patch  # noqa: E402,F401
 import vercel_gemini_failover  # noqa: E402,F401
 
+import backend.app as _backend  # noqa: E402
+
 # Vercel's FastAPI runtime discovers the exported variable named `app`.
-from backend.app import app  # noqa: E402,F401
+app = _backend.app
+
+# Greetings are deterministic product UX, not a knowledge-retrieval task. Keep
+# them instant and free: no Gemini call, no search tool, no accidental citation.
+_original_stream = _backend._stream
+
+
+def _greeting_answer(language: str) -> str:
+    if language == "fr":
+        return (
+            "Bonjour ! Je suis Ask Youssef AI, le copilote du portfolio professionnel "
+            "de Youssef Bouzit. Je peux vous aider à explorer ses projets, compétences, "
+            "certifications, expériences et moyens de contact. Que souhaitez-vous savoir ?"
+        )
+    if language == "ar":
+        return (
+            "مرحباً! أنا Ask Youssef AI، المساعد الخاص بالملف المهني ليوسف بوزيت. "
+            "يمكنني مساعدتك في استكشاف مشاريعه ومهاراته وشهاداته وخبراته وطرق التواصل معه. "
+            "ماذا تريد أن تعرف؟"
+        )
+    return (
+        "Hello! I'm Ask Youssef AI, Youssef Bouzit's professional portfolio copilot. "
+        "I can help you explore his projects, skills, certifications, experience, and "
+        "contact options. What would you like to know?"
+    )
+
+
+def _production_stream(question: str, history=None):
+    route = _backend.route_question(question)
+    if route.intent == "greeting":
+        started = time.monotonic()
+        _backend.TELEMETRY.record_request(route)
+        answer = _greeting_answer(route.language)
+        _backend.TELEMETRY.record_completed(
+            latency_ms=(time.monotonic() - started) * 1000.0,
+            retrieval_used=False,
+            grounding_intervened=False,
+        )
+        yield _backend._sse("final", answer=answer, tools_used=[])
+        return
+    yield from _original_stream(question, history)
+
+
+_backend._stream = _production_stream
+
+
+@app.get("/")
+def service_root():
+    """Human-friendly root for visitors who open the backend URL directly."""
+    return {
+        "name": "Ask Youssef AI",
+        "status": "live",
+        "description": "Multilingual, retrieval-grounded professional portfolio copilot for Youssef Bouzit.",
+        "portfolio": "https://youssef-bt.github.io/",
+        "health": "/health",
+        "capabilities": "/capabilities",
+        "api_docs": "/docs",
+    }
