@@ -1,0 +1,47 @@
+name: One-time enable portfolio routing
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/enable_router_orchestration.py"
+      - ".github/workflows/one-time-router-orchestration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Patch routing orchestration
+        run: python scripts/enable_router_orchestration.py
+
+      - name: Compile and test patched code
+        run: |
+          python -m compileall -q backend scripts tests
+          python -m unittest discover -s tests -p "test_*.py" -v
+
+      - name: Commit integration
+        run: |
+          git config user.name "YOUSSEF-BT"
+          git config user.email "YOUSSEF-BT@users.noreply.github.com"
+          git add backend/agent.py backend/app.py web/demo.js
+          if git diff --cached --quiet; then
+            echo "No routing integration changes to commit."
+          else
+            git commit -m "Enforce routed retrieval for portfolio facts"
+            git push origin main
+          fi
