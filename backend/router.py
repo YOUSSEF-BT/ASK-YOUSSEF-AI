@@ -87,6 +87,26 @@ PROFILE_REFERENTS = {
     "يوسف", "له", "عنده", "لديه",
 }
 
+# Short conversational follow-ups often omit both Youssef's name and the original
+# intent keyword: "what about the second one?", "et le deuxième ?", "والثاني؟".
+# Treat those as profile turns so the agent is forced to retrieve again from the
+# history-aware contextual question instead of being allowed to answer from model
+# memory. A false positive here only causes a cheap extra retrieval, which is safer
+# than silently dropping the grounding requirement for a factual follow-up.
+FOLLOW_UP_REFERENTS = {
+    "it", "that", "this", "one", "ones", "first", "second", "third", "former",
+    "latter", "celui", "celle", "ceux", "celles", "ca", "cela", "premier",
+    "premiere", "deuxieme", "troisieme", "هذا", "هذه", "ذلك", "تلك", "الاول",
+    "الأول", "الثاني", "الثالث",
+}
+
+FOLLOW_UP_PATTERNS = (
+    r"\bwhat about\b",
+    r"\band (?:the )?(?:first|second|third|other|one)\b",
+    r"\bet (?:le|la|les|celui|celle|ceux|celles|l['’]autre)\b",
+    r"(?:ماذا عن|والأول|والاول|والثاني|والثالث)",
+)
+
 
 @dataclass(frozen=True)
 class Route:
@@ -117,6 +137,13 @@ def detect_language(text: str) -> str:
 def _contact_action(text: str) -> bool:
     normalized = _norm(text)
     return any(re.search(pattern, normalized, re.I) for pattern in CONTACT_ACTION_PATTERNS)
+
+
+def _looks_like_follow_up(text: str, toks: set[str]) -> bool:
+    if toks & FOLLOW_UP_REFERENTS:
+        return True
+    normalized = _norm(text)
+    return any(re.search(pattern, normalized, re.I) for pattern in FOLLOW_UP_PATTERNS)
 
 
 def route_question(text: str) -> Route:
@@ -153,6 +180,13 @@ def route_question(text: str) -> Route:
     if toks & PROFILE_REFERENTS:
         return Route(language=language, intent="profile", requires_retrieval=True,
                      portfolio_scope=True, confidence=0.75)
+
+    # Short pronoun/ordinal follow-ups are history-dependent portfolio turns. The
+    # app already folds prior turns into the agent question, so forcing retrieval
+    # here makes follow-ups grounded as well as understandable.
+    if _looks_like_follow_up(text, toks):
+        return Route(language=language, intent="profile", requires_retrieval=True,
+                     portfolio_scope=True, confidence=0.70)
 
     return Route(language=language, intent="general", requires_retrieval=False,
                  portfolio_scope=False, confidence=0.65)
