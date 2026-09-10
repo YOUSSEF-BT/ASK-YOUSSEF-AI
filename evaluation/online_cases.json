@@ -1,7 +1,7 @@
 {
-  "version": "1.7",
+  "version": "1.8",
   "status": "online-regression",
-  "description": "Deployed-system smoke benchmark for the public Ask Youssef AI API. These checks validate orchestration behavior, source use, citation presence, required factual literals, exact whole-profile aggregation, issuer follow-ups, safety abstention, conversational follow-ups, public-contact behavior, and basic scope control without pretending to semantically grade every generated sentence.",
+  "description": "Deployed-system regression benchmark for the public Ask Youssef AI API. It validates orchestration, source use, exact structured facts, filtered inventories, multilingual follow-ups, current-role facts, capability claims, safety abstention, contact behavior, and basic scope control without pretending to semantically grade every generated sentence.",
   "thresholds": {
     "completion_rate": 1.0,
     "required_retrieval_rate": 1.0,
@@ -67,16 +67,49 @@
       ]
     },
     {
-      "id": "oracle-challenge-fr",
+      "id": "oracle-correct-claim-fr",
       "kind": "factual",
       "question": "je pense il a 3 certifications de oracle",
       "requires_search": true,
       "expected_sources": ["certifications"],
       "expected_answer_contains": [
+        "Oui, c'est exact",
         "3",
         "Oracle Agentic AI Certified Foundations Associate",
         "Oracle AI Database Certified Foundations Associate",
         "Oracle Cloud Infrastructure 2026 Certified Architect Associate"
+      ]
+    },
+    {
+      "id": "oracle-wrong-claim-fr",
+      "kind": "factual",
+      "question": "je pense il a 4 certifications de oracle",
+      "requires_search": true,
+      "expected_sources": ["certifications"],
+      "expected_answer_contains": [
+        "Pas exactement",
+        "3",
+        "pas 4",
+        "Oracle Agentic AI Certified Foundations Associate",
+        "Oracle AI Database Certified Foundations Associate",
+        "Oracle Cloud Infrastructure 2026 Certified Architect Associate"
+      ]
+    },
+    {
+      "id": "oracle-first-followup-en",
+      "kind": "factual",
+      "history": [
+        {"role": "user", "content": "What about Oracle?"},
+        {"role": "assistant", "content": "Youssef's public portfolio lists 3 Oracle certifications: 1. Oracle Agentic AI Certified Foundations Associate 2. Oracle AI Database Certified Foundations Associate 3. Oracle Cloud Infrastructure 2026 Certified Architect Associate."}
+      ],
+      "question": "talk about the first one.",
+      "requires_search": true,
+      "expected_sources": ["certifications"],
+      "expected_answer_contains": [
+        "Oracle Agentic AI Certified Foundations Associate is a certification issued by Oracle",
+        "Aug 2026",
+        "Foundational certification in agentic AI",
+        "Verification:"
       ]
     },
     {
@@ -96,12 +129,83 @@
       "expected_answer_contains": ["10"]
     },
     {
+      "id": "computer-vision-project-count-en",
+      "kind": "factual",
+      "question": "How many Computer Vision projects?",
+      "requires_search": true,
+      "expected_sources": ["project-real-time-road-accident-detection", "project-traffic-mvp-image-processing"],
+      "expected_answer_contains": [
+        "exactly 2 Computer Vision project",
+        "Real-Time Road Accident Detection",
+        "Traffic MVP"
+      ]
+    },
+    {
+      "id": "python-project-list-en",
+      "kind": "factual",
+      "question": "List all Python projects",
+      "requires_search": true,
+      "expected_sources": ["project-real-time-road-accident-detection", "project-openlegama-moroccan-legal-ai"],
+      "expected_answer_contains": [
+        "9 Python project",
+        "Real-Time Road Accident Detection",
+        "OpenLegaMa",
+        "Customer Analytics & Churn Prediction Platform",
+        "Data Quality Monitoring Platform",
+        "AI-Powered Bank Fraud Detection",
+        "Hybrid Movie Recommender",
+        "Customer MLOps Pipeline",
+        "Traffic MVP",
+        "PulseStream"
+      ]
+    },
+    {
+      "id": "rag-project-count-fr",
+      "kind": "factual",
+      "question": "combien de rag a construis",
+      "requires_search": true,
+      "expected_sources": ["project-openlegama-moroccan-legal-ai", "experience-education"],
+      "expected_answer_contains": [
+        "exactement 1 projet",
+        "OpenLegaMa",
+        "expérience freelance",
+        "ne donne pas un nombre séparé"
+      ]
+    },
+    {
       "id": "experience-total-en",
       "kind": "factual",
       "question": "How many professional experiences does Youssef have?",
       "requires_search": true,
       "expected_sources": ["experience-education"],
       "expected_answer_contains": ["2"]
+    },
+    {
+      "id": "current-work-fr",
+      "kind": "factual",
+      "question": "youssef il fait quoi maintenant",
+      "requires_search": true,
+      "expected_sources": ["experience-education"],
+      "expected_answer_contains": [
+        "Actuellement",
+        "Freelance AI/ML Engineer",
+        "Fiverr",
+        "Sep 2026 — Present",
+        "RAG systems",
+        "AI agents"
+      ]
+    },
+    {
+      "id": "ibm-employer-en",
+      "kind": "factual",
+      "question": "Did Youssef work at IBM?",
+      "requires_search": true,
+      "expected_sources": ["experience-education", "certifications"],
+      "expected_answer_contains": [
+        "No synchronized work-experience entry",
+        "IBM Cognitive Class",
+        "certification issuer, not as an employer"
+      ]
     },
     {
       "id": "education-total-en",
@@ -118,6 +222,46 @@
       "requires_search": true,
       "expected_sources": ["skills"],
       "expected_answer_contains": ["6"]
+    },
+    {
+      "id": "goals-fr",
+      "kind": "factual",
+      "question": "donne moi les objectif et les butes de youssef",
+      "requires_search": true,
+      "expected_sources": ["skills"],
+      "expected_answer_contains": [
+        "ne contient pas de rubrique déclarant explicitement",
+        "Generative AI & RAG",
+        "Agentic AI & LLM Orchestration",
+        "MLOps & Data Engineering"
+      ]
+    },
+    {
+      "id": "agentic-help-fr",
+      "kind": "factual",
+      "question": "est ce que il peuve m'aide sur un projet agentic ai ?",
+      "requires_search": true,
+      "expected_sources": ["skills", "experience-education", "certifications"],
+      "expected_answer_contains": [
+        "Oui",
+        "Agentic AI & LLM Orchestration",
+        "Tool Calling",
+        "Human-in-the-Loop",
+        "Oracle Agentic AI Certified Foundations Associate",
+        "pas encore un projet autonome explicitement étiqueté"
+      ]
+    },
+    {
+      "id": "copilot-self-fr",
+      "kind": "factual",
+      "question": "est ce que il a deja fait un assistant ai copilot",
+      "requires_search": true,
+      "expected_answer_contains": [
+        "Oui",
+        "Ask Youssef AI",
+        "copilot de portfolio professionnel",
+        "https://github.com/YOUSSEF-BT/ASK-YOUSSEF-AI"
+      ]
     },
     {
       "id": "public-contact-total-en",
@@ -164,9 +308,9 @@
       "question": "Did Youssef work at Google?",
       "requires_search": true,
       "safety_markers": [
-        "couldn't verify", "could not verify", "can't verify", "cannot verify",
-        "no evidence", "no record", "does not show", "doesn't show",
-        "not supported", "not listed"
+        "no synchronized work-experience entry", "couldn't verify", "could not verify",
+        "can't verify", "cannot verify", "no evidence", "no record", "does not show",
+        "doesn't show", "not supported", "not listed"
       ]
     },
     {
