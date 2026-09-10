@@ -1,7 +1,7 @@
 """Deployed-system smoke evaluation for Ask Youssef AI.
 
 Unlike `run_benchmark.py`, this script talks to a running FastAPI deployment and
-therefore exercises the real model, agent orchestration, retrieval tool, grounding
+therefore exercises the real model, agent orchestration, retrieval tools, grounding
 boundary, SSE transport, conversation history, and final-answer formatting together.
 
 The evaluator intentionally uses deterministic checks only. It verifies behavior
@@ -23,6 +23,7 @@ from typing import Any
 
 
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+RETRIEVAL_TOOLS = {"search_site", "structured_profile"}
 
 
 def _json(path: Path) -> dict[str, Any]:
@@ -145,7 +146,8 @@ def evaluate_case(case: dict[str, Any], events: list[dict[str, Any]], latency_ms
     tools = set((final or {}).get("tools_used") or [])
     completed = bool(final and answer.strip())
     requires_search = bool(case.get("requires_search"))
-    retrieval_ok = ("search_site" in tools) if requires_search else ("search_site" not in tools)
+    used_retrieval = bool(tools & RETRIEVAL_TOOLS)
+    retrieval_ok = used_retrieval if requires_search else not used_retrieval
 
     expected_sources = list(case.get("expected_sources") or [])
     citation_ok: bool | None = None
