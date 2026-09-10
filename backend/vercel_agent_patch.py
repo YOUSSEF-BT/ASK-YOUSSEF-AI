@@ -1,4 +1,4 @@
-"""Vercel-only latency patch for the portfolio ReAct agent.
+"""Vercel-only latency and reliability patch for the portfolio ReAct agent.
 
 For deterministic factual portfolio routes the router already requires retrieval.
 On serverless Vercel there is no reason to ask Gemini *whether* to search first:
@@ -6,12 +6,69 @@ pre-run the local search tool, seed the ReAct scratchpad with that observation,
 then let Gemini synthesize the final grounded answer. This preserves the normal
 ReAct loop for non-profile/general turns while removing one remote model round
 trip from the common portfolio path.
+
+If the generation provider still fails after retrieval (for example a malformed
+provider response after a quota failover), return a truthful, source-cited
+service fallback instead of leaving the visitor with an empty/error-only turn.
 """
 from __future__ import annotations
 
 import re
 
 import agent as _agent
+from router import detect_language
+
+
+def _retrieved_sources(steps: list[_agent.Step]) -> list[str]:
+    """Extract only source IDs that were actually present in search observations."""
+    seen: list[str] = []
+    for step in steps:
+        if step.action != "search_site" or not step.observation:
+            continue
+        for source in re.findall(
+            r"\[([A-Za-z0-9_.-]+)\s+·\s+relevance\s+[0-9.]+\]",
+            step.observation,
+        ):
+            if source not in seen:
+                seen.append(source)
+    return seen
+
+
+def _provider_fallback_answer(question: str, steps: list[_agent.Step]) -> str:
+    """A grounded service fallback used only after retrieval already succeeded.
+
+    It deliberately does not invent the requested fact. It tells the visitor that
+    evidence retrieval succeeded but answer generation could not be verified, and
+    cites the exact retrieved source IDs so the public grounding boundary remains
+    auditable.
+    """
+    sources = _retrieved_sources(steps)
+    citations = ", ".join(f"[{source}]" for source in sources)
+    suffix_en = f" Retrieved sources: {citations}." if citations else ""
+    suffix_fr = f" Sources récupérées : {citations}." if citations else ""
+    suffix_ar = f" المصادر المسترجعة: {citations}." if citations else ""
+    language = detect_language(question)
+    if language == "fr":
+        return (
+            "Je n’ai pas pu vérifier de façon fiable une réponse générée, car le "
+            "modèle de réponse est temporairement indisponible. La recherche dans "
+            "le portfolio a bien été effectuée."
+            + suffix_fr
+            + " Merci de réessayer dans un instant."
+        )
+    if language == "ar":
+        return (
+            "لم أتمكن من التحقق بشكل موثوق من إجابة مولدة لأن نموذج الإجابة غير "
+            "متاح مؤقتاً. تم استرجاع الأدلة من الملف المهني بنجاح."
+            + suffix_ar
+            + " يرجى المحاولة مرة أخرى بعد قليل."
+        )
+    return (
+        "I couldn't verify a generated answer reliably because the response model "
+        "was temporarily unavailable. Portfolio retrieval completed successfully."
+        + suffix_en
+        + " Please try again in a moment."
+    )
 
 
 def _run_iter(self, question: str, require_retrieval: bool = False):
@@ -51,7 +108,20 @@ def _run_iter(self, question: str, require_retrieval: bool = False):
             scratchpad=scratchpad,
         )
         yield _agent.Event("thinking", {"prompt": prompt, "brain": self.brain_name})
-        raw = self.policy(prompt)
+        try:
+            raw = self.policy(prompt)
+        except Exception:
+            # On factual portfolio routes the expensive/important part — evidence
+            # retrieval — already succeeded. Do not expose provider internals or
+            # end the SSE stream with no final message: return a truthful cited
+            # service fallback that grounding can verify.
+            searched = any(s.action == "search_site" for s in steps)
+            if require_retrieval and searched:
+                answer = _provider_fallback_answer(question, steps)
+                result = _agent.Result(answer=answer, steps=steps)
+                yield _agent.Event("final", {"answer": answer, "result": result})
+                return
+            raise
         yield _agent.Event("model", {"text": raw})
 
         step = _agent._parse(raw)
@@ -128,18 +198,30 @@ def _run_iter(self, question: str, require_retrieval: bool = False):
     answer = _agent._grab("Final Answer: " + raw, r"Final Answer:\s*(.*)") or raw.strip()
     answer = re.split(r"\n(?:Thought|Action|Observation)\s*:", answer)[0].strip()
     if not answer:
-        answer = (
-            "I couldn't quite pull that together just now — please try rephrasing, "
-            "or reach Youssef directly at the email on his site."
-        )
+        if require_retrieval and any(s.action == "search_site" for s in steps):
+            answer = _provider_fallback_answer(question, steps)
+        else:
+            answer = (
+                "I couldn't quite pull that together just now — please try rephrasing, "
+                "or reach Youssef directly at the email on his site."
+            )
     result = _agent.Result(answer=answer, steps=steps, stopped="max_steps")
     yield _agent.Event("final", {"answer": answer, "result": result})
+
+
+def run(self, question: str, require_retrieval: bool = False) -> _agent.Result:
+    result = _agent.Result(answer="")
+    for event in _run_iter(self, question, require_retrieval=require_retrieval):
+        if event.kind == "final":
+            result = event.data["result"]
+    return result
 
 
 def apply() -> None:
     if getattr(_agent.ReActAgent, "_vercel_pre_retrieval_patch", False):
         return
     _agent.ReActAgent.run_iter = _run_iter
+    _agent.ReActAgent.run = run
     _agent.ReActAgent._vercel_pre_retrieval_patch = True
 
     # Gemini 3.7 Flash supports thinking_level=low. It is enough here because
