@@ -55,6 +55,22 @@ class ProductionRuntimeWiringTests(unittest.TestCase):
         self.assertIn('"structured_docs": STATE.structured_docs', text)
         self.assertIn('"retrieval": "semantic+bm25+structured-rrf"', text)
 
+    def test_product_metadata_endpoint_is_present(self):
+        text = APP.read_text(encoding="utf-8")
+        self.assertIn('@app.get("/capabilities")', text)
+        self.assertIn('"name": "Ask Youssef AI"', text)
+        self.assertIn('"languages": ["en", "fr", "ar"]', text)
+        self.assertIn('"suggestions": [', text)
+
+    def test_feedback_endpoint_is_fixed_schema_and_aggregate(self):
+        text = APP.read_text(encoding="utf-8")
+        self.assertIn("from feedback import FEEDBACK", text)
+        self.assertIn('@app.post("/feedback")', text)
+        self.assertIn("FEEDBACK.record(req.rating, req.reason)", text)
+        self.assertIn('snapshot["feedback"] = FEEDBACK.snapshot()', text)
+        self.assertNotIn("class FeedbackRequest(BaseModel):\n    question:", text)
+        self.assertNotIn("class FeedbackRequest(BaseModel):\n    comment:", text)
+
     def test_render_production_path_uses_inprocess_transport(self):
         text = RENDER.read_text(encoding="utf-8")
         self.assertIn("- key: MCP_TRANSPORT\n        value: inprocess", text)
