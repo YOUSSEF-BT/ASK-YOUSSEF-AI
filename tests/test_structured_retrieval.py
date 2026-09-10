@@ -75,7 +75,7 @@ class StructuredProfileRetrieverTests(unittest.TestCase):
         hits = self.retriever.search("Quel projet utilise YOLOv11s et BoT-SORT ?", k=2)
         self.assertTrue(hits)
         self.assertEqual(hits[0].meta["entity_type"], "project")
-        self.assertIn("Road Accident", hits[0].meta["heading"])
+        self.assertIn("Road Accident", hits[0].meta["title"])
 
     def test_certification_intent(self):
         hits = self.retriever.search("Which Oracle certification does Youssef have?", k=2)
