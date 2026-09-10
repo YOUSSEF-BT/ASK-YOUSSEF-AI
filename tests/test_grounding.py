@@ -45,20 +45,55 @@ class GroundingVerifierTests(unittest.TestCase):
         answer, report = enforce_grounding(
             "It uses YOLOv11s. [project-real-time-road-accident-detection]", self.steps
         )
-        self.assertEqual(answer, "It uses YOLOv11s. [project-real-time-road-accident-detection]")
+        self.assertEqual(
+            answer,
+            "It uses YOLOv11s. [project-real-time-road-accident-detection]",
+        )
         self.assertEqual(
             report.valid_citations,
             ("project-real-time-road-accident-detection",),
         )
+        self.assertTrue(report.citation_integrity)
 
-    def test_unknown_citation_is_reported(self):
-        report = verify_grounding("Claim [made-up-source]", self.steps)
+    def test_unknown_citation_is_removed_and_real_source_added(self):
+        answer, report = enforce_grounding("It uses YOLOv11s [made-up-source].", self.steps)
         self.assertEqual(report.unknown_citations, ("made-up-source",))
+        self.assertFalse(report.citation_integrity)
+        self.assertNotIn("[made-up-source]", answer)
+        self.assertIn("[project-real-time-road-accident-detection]", answer)
+
+    def test_unsupported_url_is_blocked(self):
+        answer, report = enforce_grounding(
+            "Repository: https://evil.example/fake [project-real-time-road-accident-detection]",
+            self.steps,
+        )
+        self.assertIn("https://evil.example/fake", report.unsupported_urls)
+        self.assertIn("couldn't verify", answer)
+        self.assertNotIn("https://evil.example/fake", answer)
+
+    def test_unsupported_email_is_blocked(self):
+        answer, report = enforce_grounding(
+            "Email Youssef at fake@example.com [project-real-time-road-accident-detection]",
+            self.steps,
+        )
+        self.assertIn("fake@example.com", report.unsupported_emails)
+        self.assertIn("couldn't verify", answer)
+        self.assertNotIn("fake@example.com", answer)
 
     def test_non_retrieval_turn_is_left_unchanged(self):
         answer, report = enforce_grounding("Hello! How can I help?", [])
         self.assertEqual(answer, "Hello! How can I help?")
         self.assertFalse(report.has_search_evidence)
+
+    def test_sources_are_deduplicated(self):
+        report = verify_grounding(
+            "Supported [project-real-time-road-accident-detection].",
+            self.steps + self.steps,
+        )
+        self.assertEqual(
+            report.evidence_sources,
+            ("project-real-time-road-accident-detection", "skills"),
+        )
 
 
 if __name__ == "__main__":
