@@ -95,6 +95,28 @@ class GroundingVerifierTests(unittest.TestCase):
             ("project-real-time-road-accident-detection", "skills"),
         )
 
+    def test_markdown_emphasis_and_bullets_are_normalized_for_widget(self):
+        answer, _ = enforce_grounding(
+            "**Project**\n- **YOLOv11s** [project-real-time-road-accident-detection]",
+            self.steps,
+        )
+        self.assertNotIn("**", answer)
+        self.assertIn("Project", answer)
+        self.assertIn("• YOLOv11s", answer)
+        self.assertIn("[project-real-time-road-accident-detection]", answer)
+
+    def test_grouped_citations_are_split_and_validated(self):
+        answer, report = enforce_grounding(
+            "Evidence [skills, project-real-time-road-accident-detection]",
+            self.steps,
+        )
+        self.assertIn("[skills]", answer)
+        self.assertIn("[project-real-time-road-accident-detection]", answer)
+        self.assertEqual(
+            set(report.valid_citations),
+            {"skills", "project-real-time-road-accident-detection"},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
