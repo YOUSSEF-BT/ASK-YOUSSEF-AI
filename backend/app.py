@@ -313,7 +313,12 @@ def _stream(question: str, history: list[Turn] | None = None):
                     steps = ev.data["result"].steps
                     used = sorted({s.action for s in steps
                                    if s.action and s.action not in ("__final__",)})
-                    yield _sse("final", answer=ev.data["answer"], tools_used=used)
+                    # Final model output gets a second, deterministic grounding
+                    # boundary. Retrieved source citations are guaranteed and
+                    # unsupported metrics/URLs/emails are blocked before SSE.
+                    from grounding import enforce_grounding
+                    guarded_answer, _report = enforce_grounding(ev.data["answer"], steps)
+                    yield _sse("final", answer=guarded_answer, tools_used=used)
         except Exception as exc:  # never leave the stream hanging on a failure
             low = str(exc).lower()
             if any(s in low for s in ("timed out", "timeout", "deadline")):
