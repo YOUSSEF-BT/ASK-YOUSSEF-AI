@@ -17,8 +17,6 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from typing import Any
 
-from rag import Hit
-
 _TOKEN = re.compile(r"[\w+#.-]+", re.UNICODE)
 
 
@@ -28,6 +26,14 @@ def _tokens(text: str) -> list[str]:
 
 def _key(meta: dict[str, Any]) -> tuple[str, int]:
     return str(meta.get("source", "")), int(meta.get("idx", 0))
+
+
+@dataclass
+class Hit:
+    """Retriever-compatible result used by the agent/search formatting layer."""
+
+    score: float
+    meta: dict[str, Any]
 
 
 @dataclass(frozen=True)
@@ -152,8 +158,6 @@ class HybridRetriever:
         if not fused:
             return []
 
-        # Map RRF to an intuitive [0,1]-ish relevance signal while preserving
-        # ranking. The exact-match boost is intentionally tiny and transparent.
         ideal = (
             self.semantic_weight / (self.rrf_k + 1)
             + self.lexical_weight / (self.rrf_k + 1)
