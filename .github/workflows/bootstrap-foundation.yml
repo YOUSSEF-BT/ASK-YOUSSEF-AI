@@ -26,6 +26,21 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Patch bootstrap host normalization
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/bootstrap_foundation.py')
+          text = p.read_text()
+          needle = "        ('https://adityajain.me', 'https://youssef-bt.github.io'),\n"
+          replacement = needle + "        ('adityajain.me', 'youssef-bt.github.io'),\n"
+          if "('adityajain.me', 'youssef-bt.github.io')" not in text:
+              if needle not in text:
+                  raise SystemExit('Expected replacement anchor not found')
+              text = text.replace(needle, replacement, 1)
+              p.write_text(text)
+          PY
+
       - name: Prepare professional foundation
         run: python scripts/bootstrap_foundation.py
 
