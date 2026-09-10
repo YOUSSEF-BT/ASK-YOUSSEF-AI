@@ -1,0 +1,18 @@
+services:
+  ask-youssef-ai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ask-youssef-ai:local
+    env_file:
+      - .env
+    environment:
+      PORT: "8000"
+      MCP_TRANSPORT: inprocess
+      CRAWL_SITES: ""
+      CORPUS_DIR: /app/backend/data/site
+      EMBED_CACHE_DIR: /app/backend/data/embcache
+      ALLOWED_ORIGINS: http://localhost:5173,http://localhost:8000
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
