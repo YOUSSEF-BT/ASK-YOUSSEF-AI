@@ -5,10 +5,7 @@ on:
     branches: [main]
     paths:
       - "app.py"
-      - "backend/vercel_agent_patch.py"
-      - "backend/vercel_gemini_failover.py"
-      - "backend/retrieval/**"
-      - "backend/data/**"
+      - "backend/**"
       - "scripts/enrich_public_contact.py"
       - "vercel.json"
       - "requirements.txt"
