@@ -1,0 +1,44 @@
+name: One-time product API patch
+
+on:
+  push:
+    paths:
+      - ".github/workflows/one-time-product-api.yml"
+      - "scripts/patch_product_api.py"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Patch backend API
+        run: python scripts/patch_product_api.py
+
+      - name: Compile patched backend
+        run: python -m compileall -q backend tests
+
+      - name: Run tests
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then
+            echo "No changes required"
+            exit 0
+          fi
+          git config user.name "Youssef Bouzit"
+          git config user.email "bt.youssef.369@gmail.com"
+          git add backend/app.py
+          git commit -m "Add product metadata and privacy-safe feedback API"
+          git push
