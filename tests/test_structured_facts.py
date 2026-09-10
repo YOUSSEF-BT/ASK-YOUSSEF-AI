@@ -106,6 +106,11 @@ class StructuredPortfolioFactsTests(unittest.TestCase):
             self.assertIn(row["role"], result.answer)
             self.assertIn(row["company"], result.answer)
 
+    def test_filtered_project_aggregates_are_not_mistaken_for_total_inventory(self):
+        self.assertIsNone(self.resolver.resolve("How many Computer Vision projects does Youssef have?"))
+        self.assertIsNone(self.resolver.resolve("How many RAG projects does Youssef have?"))
+        self.assertIsNone(self.resolver.resolve("List all Python projects"))
+
     def test_specific_project_question_is_not_intercepted(self):
         self.assertIsNone(self.resolver.resolve("Which project uses BoT-SORT?"))
         self.assertIsNone(self.resolver.resolve("Tell me about OpenLegaMa"))
