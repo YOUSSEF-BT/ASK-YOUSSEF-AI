@@ -1,0 +1,35 @@
+name: One-time source cards
+
+on:
+  push:
+    paths:
+      - ".github/workflows/one-time-source-cards.yml"
+      - "scripts/add_source_cards.py"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  enhance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Add source cards
+        run: python scripts/add_source_cards.py
+      - name: Validate widget syntax
+        run: node --check web/widget.js
+      - name: Run widget contract tests
+        run: python -m unittest tests.test_widget_contract -v
+      - name: Commit enhancement
+        run: |
+          if git diff --quiet; then
+            echo "No changes required"
+            exit 0
+          fi
+          git config user.name "Youssef Bouzit"
+          git config user.email "bt.youssef.369@gmail.com"
+          git add web/widget.js
+          git commit -m "Render portfolio evidence as source cards"
+          git push
