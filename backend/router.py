@@ -34,7 +34,8 @@ def _tokens(text: str) -> set[str]:
 # Language detection must use words that are actually discriminative. Domain
 # terms such as "certification", "experience", "contact" and "stage" are valid
 # English too and previously caused English recruiter questions to be labelled
-# French. Intent classification below still contains those shared domain terms.
+# French. The hints below intentionally include common conversational French
+# words because visitors often type without accents or perfect grammar.
 FRENCH_HINTS = {
     "quel", "quelle", "quels", "quelles", "pourquoi", "projet", "projets",
     "competence", "competences", "technologie", "technologies", "certificat",
@@ -42,6 +43,9 @@ FRENCH_HINTS = {
     "bonjour", "salut", "bonsoir", "merci", "avec", "dans", "sont", "ses",
     "meilleur", "meilleurs", "montre", "parle", "soutiennent", "profil",
     "etudie", "diplome", "joindre", "ecris", "ecrire", "envoie", "envoyer",
+    "je", "pense", "quoi", "maintenant", "actuellement", "donne", "moi",
+    "objectif", "objectifs", "but", "buts", "butes", "peut", "peuve", "aider",
+    "aide", "deja", "chez", "combien", "fait", "construit", "construis",
 }
 
 INTENT_TERMS = {
