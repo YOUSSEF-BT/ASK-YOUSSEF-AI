@@ -9,6 +9,7 @@ on:
     paths:
       - "scripts/sync_portfolio.py"
       - "scripts/build_structured_profile.py"
+      - "scripts/enrich_public_contact.py"
       - ".github/workflows/sync-portfolio.yml"
 
 permissions:
@@ -42,6 +43,13 @@ jobs:
       - name: Build structured professional profile
         run: python scripts/build_structured_profile.py --source /tmp/youssef-portfolio --output backend/data/profile.json
 
+      - name: Enrich public contact evidence
+        run: |
+          python scripts/enrich_public_contact.py \
+            --source /tmp/youssef-portfolio \
+            --site backend/data/site \
+            --profile backend/data/profile.json
+
       - name: Validate synchronized knowledge
         run: |
           python - <<'PY'
@@ -57,6 +65,7 @@ jobs:
               "certifications": 1,
               "work_experiences": 1,
               "education_entries": 1,
+              "public_links": 1,
           }
           for key, minimum in required.items():
               value = int(manifest.get(key, 0))
@@ -73,6 +82,7 @@ jobs:
               "certifications": len(profile.get("certifications", [])),
               "work_experiences": len(profile.get("work_experiences", [])),
               "education": len(profile.get("education", [])),
+              "public_links": len(profile.get("public_links", [])),
           }
           if any(value < 1 for value in profile_checks.values()):
               raise SystemExit(f"Incomplete structured profile: {profile_checks}")
@@ -80,9 +90,23 @@ jobs:
               raise SystemExit("Structured profile project count does not match corpus manifest")
           if profile_checks["certifications"] != manifest["certifications"]:
               raise SystemExit("Structured profile certification count does not match corpus manifest")
+          if profile_checks["public_links"] != manifest["public_links"]:
+              raise SystemExit("Structured profile public-link count does not match corpus manifest")
+
+          public_emails = [
+              row.get("value")
+              for row in profile.get("public_links", [])
+              if isinstance(row, dict) and row.get("label") == "Email" and row.get("value")
+          ]
+          if not public_emails:
+              raise SystemExit("Public portfolio email was not synchronized into structured profile")
+          public_links_text = (root / "public-links.md").read_text(encoding="utf-8")
+          if not all(email in public_links_text for email in public_emails):
+              raise SystemExit("Public email is missing from public-links.md")
 
           print("Validated manifest:", manifest)
           print("Validated structured profile:", profile_checks)
+          print("Public email evidence:", public_emails)
           print("Knowledge documents:", len(markdown))
           PY
 
