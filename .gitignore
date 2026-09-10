@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.venv-mcp/
+*.egg-info/
+
+# local env / secrets
+.env
+.env.*
+
+# fastembed downloads its ONNX models into a cache; don't commit them
+.fastembed_cache/
+**/.cache/
+
+# crawl output written at runtime (bundled snapshot in backend/data/site IS committed)
+/tmp/site/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

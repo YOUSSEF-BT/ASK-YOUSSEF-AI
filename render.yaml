@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: ask-youssef-ai
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: FORMSPREE_ENDPOINT
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash
+      - key: EMBEDDER
+        value: gemini
+      - key: GEMINI_EMBED_MODEL
+        value: gemini-embedding-2
+      - key: GEMINI_EMBED_DIM
+        value: "768"
+      - key: GEMINI_EMBED_PER_MIN
+        value: "50"
+      - key: GEMINI_EMBED_COOLDOWN
+        value: "60"
+      - key: CRAWL_SITES
+        value: ""
+      - key: CORPUS_DIR
+        value: /tmp/site
+      - key: MCP_TRANSPORT
+        value: inprocess
+      - key: ALLOWED_ORIGINS
+        value: "https://youssef-bt.github.io"
+      - key: PYTHON_VERSION
+        value: "3.12.6"

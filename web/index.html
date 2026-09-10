@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ask Youssef AI — behind the scenes</title>
+  <meta name="description" content="A from-scratch retrieval-augmented Q&A agent: watch it reason, call MCP tools, and answer — grounded in a live crawl of the site.">
+  <!-- display serif + mono; body uses the system sans stack -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="wrap">
+    <!-- top links: portfolio + the write-up that explains this demo.
+         ↳ EDIT these hrefs to the exact URLs when they change. -->
+    <nav class="topbar">
+      <a class="brand" href="https://youssef-bt.github.io" target="_blank" rel="noopener">Youssef&nbsp;Jain</a>
+      <div class="topbar-links">
+        <a href="https://youssef-bt.github.io" target="_blank" rel="noopener">Portfolio&nbsp;↗</a>
+        <a href="https://youssef-bt.github.io/blogs/building-a-ask-youssef-ai.html" target="_blank" rel="noopener">The blog behind this demo&nbsp;↗</a>
+        <a href="https://github.com/YOUSSEF-BT/ask-youssef-ai" target="_blank" rel="noopener">Code&nbsp;↗</a>
+      </div>
+    </nav>
+
+    <header class="masthead">
+      <p class="eyebrow">Retrieval-Augmented Agent · built from scratch</p>
+      <h1>Chat with my Portfolio —<br>and watch it <em>think</em>.</h1>
+      <p class="lede">
+        This is the transparent view of the chatbot that lives on the site. Every
+        answer is grounded in a crawl of the pages; here you can watch the
+        ReAct agent reason, decide to call an <b>MCP</b> tool, read the passages it
+        retrieves, and only then answer. It's a real conversation — ask a
+        follow-up and it remembers the thread. The clean version is the chat
+        bubble in the corner; this page shows what's happening behind it.
+      </p>
+      <div class="stat-strip" id="stats">
+        <span class="chip">status <span class="dot">●</span> <b id="st-status">connecting…</b></span>
+        <span class="chip">brain <b id="st-brain">—</b></span>
+        <span class="chip">pages <b id="st-pages">—</b></span>
+        <span class="chip">chunks <b id="st-chunks">—</b></span>
+        <span class="chip">MCP <b id="st-transport">—</b></span>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- LEFT: interaction + reasoning -->
+      <section class="panel">
+        <div class="panel-h">
+          <h2>Conversation</h2>
+          <button class="reset" id="reset" type="button" title="Start a new conversation">New chat</button>
+        </div>
+        <div class="panel-b">
+          <div class="thread" id="thread">
+            <div class="thread-empty" id="thread-empty">
+              Ask anything about Youssef — his blogs, projects, or how to reach him.
+              Then keep the conversation going; it remembers what you asked.
+            </div>
+          </div>
+
+          <form class="ask" id="ask">
+            <input id="q" type="text" autocomplete="off" placeholder="e.g. What projects has Youssef built?">
+            <button id="send" type="submit">Ask</button>
+          </form>
+          <div class="examples" id="examples"></div>
+
+          <div class="activity">
+            <div class="activity-h">Agent activity — reason → act → observe <span class="activity-turn" id="activity-turn"></span></div>
+            <div class="steps" id="steps"></div>
+            <details class="transcript" id="transcript" hidden>
+              <summary>Full transcript — exact prompts, raw model output &amp; tool I/O</summary>
+              <div class="transcript-body" id="transcript-body"></div>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT: what the agent can draw on -->
+      <aside class="panel">
+        <div class="panel-h">
+          <h2>Indexed pages</h2>
+          <span class="hint" id="pg-count">—</span>
+        </div>
+        <div class="panel-b">
+          <div class="pages" id="pages"><span class="pages-empty">Loading…</span></div>
+          <p class="mcp-note">
+            Two <b>MCP</b> capabilities back this agent: a <b>search</b> server
+            exposes <code style="font-family:var(--mono)">search_site</code>
+            (it owns the index), and a <b>contact</b> server exposes
+            <code style="font-family:var(--mono)">send_message</code>, which emails
+            Youssef via Formspree when a visitor wants to get in touch. They speak
+            MCP over stdio as separate processes locally, and run in-process on
+            the free-tier host — the agent calls them the same either way.
+          </p>
+        </div>
+      </aside>
+    </div>
+
+    <!-- bottom: the pipeline, explained (same story as the blog) -->
+    <section class="how">
+      <div class="how-h">
+        <p class="eyebrow">Under the hood</p>
+        <h2>What happens when you ask a question</h2>
+        <p class="how-lede">
+          There's no vector-database service and no framework doing the heavy
+          lifting — the whole pipeline is written from scratch and runs on a
+          free-tier box. Here's the path from your question to a grounded answer.
+        </p>
+      </div>
+      <ol class="pipe">
+        <li>
+          <span class="n">1</span>
+          <h3>Crawl</h3>
+          <p>A scheduled job reads the site's sitemap, fetches every page, and
+            strips the HTML down to clean prose — committing a fresh snapshot
+            whenever the site changes, so the backend boots without hitting the
+            live site.</p>
+        </li>
+        <li>
+          <span class="n">2</span>
+          <h3>Chunk &amp; embed</h3>
+          <p>Each page is split into overlapping passages and turned into vectors
+            with the <code>Gemini Embedding</code> API. The vectors are cached to
+            disk, so a corpus is embedded once — not on every boot.</p>
+        </li>
+        <li>
+          <span class="n">3</span>
+          <h3>Retrieve</h3>
+          <p>Your question is embedded the same way and matched against those
+            vectors by cosine similarity, pulling back the handful of passages
+            most likely to hold the answer — with their source URLs.</p>
+        </li>
+        <li>
+          <span class="n">4</span>
+          <h3>Reason (ReAct)</h3>
+          <p>A ReAct agent (Gemini) decides what to do: answer from what it knows,
+            or act. You see each <b>Thought → Action → Observation</b> step play
+            out in the activity log above.</p>
+        </li>
+        <li>
+          <span class="n">5</span>
+          <h3>Act via MCP tools</h3>
+          <p>Two <b>MCP</b> servers give it hands: <code>search_site</code> to look
+            things up in the index, and <code>send_message</code> to email Youssef
+            through Formspree when you want to get in touch.</p>
+        </li>
+        <li>
+          <span class="n">6</span>
+          <h3>Answer &amp; remember</h3>
+          <p>It writes an answer grounded in the retrieved passages, citing the
+            real page URLs — then keeps the turn in context so your follow-ups
+            make sense.</p>
+        </li>
+      </ol>
+      <p class="how-foot">
+        Want the full story? Read
+        <a href="https://youssef-bt.github.io/blogs/building-a-ask-youssef-ai.html" target="_blank" rel="noopener">the write-up on the blog&nbsp;↗</a>.
+      </p>
+    </section>
+
+    <footer class="site-foot">
+      <nav class="social" aria-label="Youssef on the web">
+        <a href="https://github.com/YOUSSEF-BT" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://linkedin.com/in/YOUSSEF-BT" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="https://twitter.com/YOUSSEF-BT" target="_blank" rel="noopener">Twitter</a>
+        <a href="https://hub.docker.com/u/YOUSSEF-BT" target="_blank" rel="noopener">Docker&nbsp;Hub</a>
+        <a href="https://www.instagram.com/YOUSSEF-BT/" target="_blank" rel="noopener">Instagram</a>
+        <a href="https://youssef-bt.github.io/files/Youssef_Jain_resume.pdf" target="_blank" rel="noopener">Résumé</a>
+      </nav>
+      <p class="foot" id="foot">— generation &amp; embeddings by Gemini · retrieval &amp; contact over MCP ·
+        <a href="https://github.com/YOUSSEF-BT/ask-youssef-ai" target="_blank" rel="noopener">source code&nbsp;↗</a></p>
+    </footer>
+  </main>
+
+  <script src="demo.js"></script>
+
+  <!-- The embeddable bubble, on this page too, so you can compare the clean
+       product against the explainer above. In production this same tag goes on
+       the portfolio. data-api is filled from the demo config (see demo.js). -->
+  <script>
+    document.addEventListener("pcb:config", function (e) {
+      var s = document.createElement("script");
+      s.src = "widget.js";
+      s.defer = true;
+      s.setAttribute("data-api", e.detail.api);
+      s.setAttribute("data-title", "Chat with Youssef");
+      s.setAttribute("data-subtitle", "First reply may take ~1 min — Youssef's assistant is waking up.");
+      document.body.appendChild(s);
+    });
+  </script>
+</body>
+</html>

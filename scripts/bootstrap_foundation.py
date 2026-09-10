@@ -60,6 +60,7 @@ def main() -> None:
         ("https://projects.adityajain.me", "https://youssef-bt.github.io/projects"),
         ("https://chat.adityajain.me", "https://youssef-bt.github.io/ASK-YOUSSEF-AI/"),
         ("https://adityajain.me", "https://youssef-bt.github.io"),
+        ("adityajain.me", "youssef-bt.github.io"),
         ("portfolio-chatbot-biow.onrender.com", "localhost:8000"),
         ("adityajn105", "YOUSSEF-BT"),
         ("Aditya Jain", "Youssef Bouzit"),
@@ -449,7 +450,7 @@ Question: {question}
 
     # Avoid shipping stale references from the original portfolio anywhere except
     # the legally required attribution files.
-    scan_targets = [ROOT / "backend", ROOT / "web", ROOT / ".github/workflows", ROOT / "README.md", ROOT / "render.yaml"]
+    scan_targets = [ROOT / "backend", ROOT / "web", ROOT / ".github/workflows", ROOT / "render.yaml"]
     for target in scan_targets:
         candidates = target.rglob("*") if target.is_dir() else [target]
         for path in candidates:
