@@ -6,6 +6,7 @@ on:
     paths:
       - "app.py"
       - "backend/vercel_agent_patch.py"
+      - "backend/vercel_gemini_failover.py"
       - "vercel.json"
       - "requirements.txt"
       - "evaluation/**"
@@ -31,6 +32,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Wait for Vercel production promotion
+        run: sleep 45
 
       - name: Validate production health
         run: |
