@@ -1,5 +1,5 @@
 {
-  "version": "1.2",
+  "version": "1.3",
   "status": "online-regression",
   "description": "Deployed-system smoke benchmark for the public Ask Youssef AI API. These checks validate orchestration behavior, source use, citation presence, safety abstention, conversational follow-ups, and basic scope control without pretending to semantically grade every generated sentence.",
   "thresholds": {
@@ -66,7 +66,7 @@
         "can't verify",
         "cannot verify",
         "no evidence",
-        "no record or evidence",
+        "no record",
         "does not show",
         "doesn't show",
         "not supported",
@@ -84,6 +84,7 @@
         "can't verify",
         "cannot verify",
         "no evidence",
+        "no record",
         "does not show",
         "doesn't show",
         "not supported",
