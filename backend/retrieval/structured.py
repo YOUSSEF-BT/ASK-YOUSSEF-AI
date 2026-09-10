@@ -79,8 +79,8 @@ _INTENT_ALIASES = {
         "etudes", "supmti", "دراسة", "تعليم", "شهادة", "جامعة",
     },
     "public_link": {
-        "contact", "email", "linkedin", "github", "fiverr", "link", "links", "contacte",
-        "contacter", "رابط", "تواصل", "اتصال",
+        "contact", "email", "mail", "adresse", "linkedin", "github", "fiverr", "link", "links",
+        "contacte", "contacter", "joindre", "رابط", "تواصل", "اتصال", "بريد", "ايميل",
     },
 }
 
@@ -260,10 +260,16 @@ class StructuredProfileRetriever:
             url = str(row.get("url") or "")
             if not url:
                 continue
+            label = str(row.get("label") or "Professional link")
+            value = str(row.get("value") or "")
+            visible_value = value or url
+            primary = " ".join(part for part in (label, visible_value) if part)
+            secondary = " ".join(part for part in ("professional contact", label, value) if part)
+            text = f"Public professional contact. {label}: {visible_value}. Link: {url}."
             docs.append(self._doc(
-                "public_link", url, "professional link contact", f"Public professional link: {url}",
+                "public_link", primary, secondary, text,
                 source="public-links", idx=idx, title="Public Professional Links",
-                heading="Professional link", url=url, raw=row,
+                heading=label, url=url, raw=row,
             ))
             idx += 1
 
