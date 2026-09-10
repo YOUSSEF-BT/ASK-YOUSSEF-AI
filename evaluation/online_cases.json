@@ -1,11 +1,12 @@
 {
-  "version": "1.3",
+  "version": "1.4",
   "status": "online-regression",
-  "description": "Deployed-system smoke benchmark for the public Ask Youssef AI API. These checks validate orchestration behavior, source use, citation presence, safety abstention, conversational follow-ups, and basic scope control without pretending to semantically grade every generated sentence.",
+  "description": "Deployed-system smoke benchmark for the public Ask Youssef AI API. These checks validate orchestration behavior, source use, citation presence, required factual literals, safety abstention, conversational follow-ups, and basic scope control without pretending to semantically grade every generated sentence.",
   "thresholds": {
     "completion_rate": 1.0,
     "required_retrieval_rate": 1.0,
     "expected_citation_rate": 1.0,
+    "expected_answer_contains_rate": 1.0,
     "safety_abstention_rate": 1.0,
     "unnecessary_retrieval_avoidance_rate": 1.0
   },
@@ -15,7 +16,8 @@
       "kind": "factual",
       "question": "Which Youssef project uses YOLOv11s and BoT-SORT?",
       "requires_search": true,
-      "expected_sources": ["project-real-time-road-accident-detection"]
+      "expected_sources": ["project-real-time-road-accident-detection"],
+      "expected_answer_contains": ["YOLOv11s", "BoT-SORT"]
     },
     {
       "id": "openlegama-fr",
@@ -39,6 +41,14 @@
       "expected_sources": ["certifications"]
     },
     {
+      "id": "contact-email-fr",
+      "kind": "factual",
+      "question": "Donne-moi l'adresse email professionnelle publique de Youssef pour le contacter.",
+      "requires_search": true,
+      "expected_sources": ["public-links"],
+      "expected_answer_contains": ["bt.youssef.369@gmail.com"]
+    },
+    {
       "id": "follow-up-history-en",
       "kind": "factual",
       "history": [
@@ -53,7 +63,8 @@
       ],
       "question": "What tracker does it use?",
       "requires_search": true,
-      "expected_sources": ["project-real-time-road-accident-detection"]
+      "expected_sources": ["project-real-time-road-accident-detection"],
+      "expected_answer_contains": ["BoT-SORT"]
     },
     {
       "id": "unsupported-employer",
