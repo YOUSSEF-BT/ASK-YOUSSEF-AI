@@ -37,6 +37,7 @@ from pydantic import BaseModel  # noqa: E402
 
 import crawl  # noqa: E402
 from rag import RAG, chunk_markdown, parse_frontmatter  # noqa: E402
+from retrieval.hybrid import HybridRetriever  # noqa: E402
 
 
 # --- config (all env-overridable; defaults suit the Render deploy) ----------
@@ -229,7 +230,8 @@ def _startup() -> None:
         # in-memory MCP clients. Embedder chosen by EMBEDDER env (default gemini —
         # API embeddings, no local model, so no OOM). See rag.make_embedder.
         from rag import make_embedder
-        rag = RAG(embedder=make_embedder()).build(corpus)
+        semantic_rag = RAG(embedder=make_embedder()).build(corpus)
+        rag = HybridRetriever(semantic_rag)
         STATE.agent = build_agent(rag=rag, use_mcp=True, mcp_transport="inprocess")
     STATE.brain = getattr(STATE.agent, "brain_name", "?")
     print(f"[boot] ready — {len(STATE.pages)} pages, {STATE.chunks} chunks, "

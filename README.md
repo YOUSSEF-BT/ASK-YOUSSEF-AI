@@ -6,7 +6,7 @@ Ask Youssef AI is a production-oriented, multilingual AI assistant designed to h
 
 It is being built for general visitors, recruiters, clients, developers, collaborators, and anyone who wants to understand Youssef's projects, skills, certifications, experience, technical work, or ways to get in touch.
 
-> **Current status:** foundation imported and professionally re-scoped. Hybrid retrieval, reranking, automated evaluation, and deep portfolio synchronization are the next implementation milestones. No benchmark metric is published until it is actually measured.
+> **Current status:** professional foundation and first hybrid retrieval layer are implemented. Automated evaluation, deeper structured portfolio synchronization, learned reranking, and production deployment remain in progress. No benchmark metric is published until it is actually measured.
 
 ## Why this project exists
 
@@ -15,6 +15,8 @@ A normal portfolio makes visitors search manually. Ask Youssef AI turns the port
 ## Core capabilities
 
 - Agentic portfolio Q&A with a ReAct-style tool loop
+- Hybrid retrieval combining semantic search with an independent BM25-style lexical index
+- Reciprocal Rank Fusion (RRF) with deterministic evidence-quality reranking
 - Retrieval-augmented generation over the live portfolio
 - Conversation history for follow-up questions
 - Source-aware answers and page linking

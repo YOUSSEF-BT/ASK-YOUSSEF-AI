@@ -46,3 +46,15 @@ Structured retrieval  Lexical search  Vector search
 - Unsupported claims must be rejected rather than guessed.
 - Retrieved content is treated as untrusted data for prompt-injection resistance.
 - Provider-specific LLM/embedding choices should remain replaceable.
+
+
+## Implemented retrieval layer
+
+The current search layer combines the existing semantic vector retriever with an
+independent in-memory BM25-style lexical index. Candidate lists are merged with
+Reciprocal Rank Fusion (RRF), followed by a small deterministic exact-evidence
+boost. Retrieval traces are attached to each result for future evaluation and
+observability.
+
+A learned cross-encoder/API reranker is deliberately not claimed yet; it will be
+added only after it can be measured against the deterministic baseline.

@@ -26,6 +26,7 @@ sys.path.append(ROOT)
 
 from fastmcp import FastMCP  # noqa: E402
 from rag import RAG, make_embedder, search_site_text  # noqa: E402
+from retrieval.hybrid import HybridRetriever  # noqa: E402
 
 mcp = FastMCP("blog-search")
 
@@ -33,8 +34,9 @@ mcp = FastMCP("blog-search")
 # env (default gemini: API embeddings so "email" finds the "get in touch" section
 # with no local model). See rag.make_embedder for the options.
 CORPUS_DIR = os.environ.get("CORPUS_DIR", os.path.join(ROOT, "data", "site"))
-_RAG = RAG(embedder=make_embedder()).build(CORPUS_DIR)
-print(f"[blog-server] indexed {_RAG.num_chunks} chunks from {CORPUS_DIR}",
+_SEMANTIC_RAG = RAG(embedder=make_embedder()).build(CORPUS_DIR)
+_RAG = HybridRetriever(_SEMANTIC_RAG)
+print(f"[blog-server] indexed {_RAG.num_chunks} chunks with hybrid retrieval from {CORPUS_DIR}",
       file=sys.stderr, flush=True)
 
 
