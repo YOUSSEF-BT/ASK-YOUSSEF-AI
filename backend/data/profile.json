@@ -1,0 +1,1410 @@
+{
+  "schema_version": 1,
+  "identity": {
+    "name": "Youssef Bouzit",
+    "portfolio_url": "https://youssef-bt.github.io",
+    "source_repository": "https://github.com/YOUSSEF-BT/YOUSSEF-BT.github.io"
+  },
+  "projects": [
+    {
+      "type": "project",
+      "slug": "real-time-road-accident-detection",
+      "title": "Real-Time Road Accident Detection — Computer Vision & Deep Learning",
+      "url": "https://youssef-bt.github.io/projects/real-time-road-accident-detection",
+      "description": "A hybrid real-time road-safety system that combines YOLOv11 vehicle detection, BoT-SORT tracking, a fine-tuned YOLOv11s accident classifier, and αβγ behavioral analysis to trigger alerts and automatically save MP4 evidence clips with CSV event logs.",
+      "role": "Computer Vision & AI Engineer",
+      "company": "NEXTRONIC — ABA Technology",
+      "period": "February–August 2026",
+      "location": "Casablanca, Morocco",
+      "status": "PFE Prototype",
+      "github": "https://github.com/YOUSSEF-BT/Real-time-vision-accident-detection",
+      "tags": [
+        "Computer Vision",
+        "Deep Learning",
+        "YOLOv11",
+        "BoT-SORT",
+        "OpenCV",
+        "Road Safety"
+      ],
+      "key_achievements": [
+        "86.68% precision, 91.56% recall, and 89.06% F1-score on the held-out image test set",
+        "31.5 FPS measured for the YOLOv11s image inference benchmark",
+        "12,716 manually annotated images split into 10,192 train, 1,290 validation, and 1,234 test images",
+        "Support for multi-vehicle collisions and abnormal single-vehicle events",
+        "Automatic MP4 evidence clips and CSV logs containing timestamps, IDs, scores, paths, and triggering frames",
+        "Theoretical minimum reaction window of approximately 0.1 seconds at 30 FPS after three confirming frames"
+      ],
+      "tech_stack": [
+        "Python 3.9+",
+        "Ultralytics YOLOv11",
+        "BoT-SORT",
+        "OpenCV",
+        "NumPy",
+        "Supervision",
+        "PyYAML",
+        "Roboflow",
+        "CSV",
+        "MPS / CUDA"
+      ],
+      "results": {
+        "precision": "86.68%",
+        "recall": "91.56%",
+        "f1Score": "89.06%",
+        "inferenceSpeed": "31.5 FPS",
+        "datasetSize": "12,716 images",
+        "classes": "2"
+      },
+      "results_note": "Metrics above correspond to the YOLOv11s image test benchmark. The complete hybrid video pipeline still requires a fully annotated temporal evaluation set for official end-to-end precision and recall.",
+      "disclaimer": "The published precision, recall, F1-score, and FPS describe the fine-tuned YOLOv11s image test set, not a fully annotated end-to-end video benchmark. Performance can decrease at night, in rain, under heavy occlusion, or with difficult camera angles.",
+      "limitations": [
+        "No official end-to-end video precision and recall without temporal annotations",
+        "Reduced robustness at night, in rain, and under dense occlusion",
+        "Tracker quality remains sensitive to difficult camera angles"
+      ],
+      "source_file": "src/data/projects/accidentDetection.js"
+    },
+    {
+      "type": "project",
+      "slug": "5-ai-summarizer-2026-03",
+      "title": "AI Summarizer",
+      "url": "https://youssef-bt.github.io/projects/5-ai-summarizer-2026-03",
+      "description": "AI-powered summarizer for articles, PDFs, and Word documents with translation, key points, and audio playback. Built comprehensive NLP application leveraging advanced AI models for intelligent document summarization and content analysis.",
+      "role": "AI Engineer & Full-Stack Developer",
+      "company": "Personal Project",
+      "period": "2026-03",
+      "location": "Morocco",
+      "status": null,
+      "github": "https://github.com/YOUSSEF-BT/Ai-Summarizer",
+      "tags": [
+        "TypeScript",
+        "AI",
+        "NLP",
+        "Document Processing"
+      ],
+      "key_achievements": [
+        "Created AI-powered summarizer for multiple document formats",
+        "Implemented advanced NLP models for accurate summarization",
+        "Built translation functionality for multi-language support",
+        "Developed key points extraction and highlighting",
+        "Added audio playback for summarized content"
+      ],
+      "tech_stack": [
+        "TypeScript",
+        "AI",
+        "NLP",
+        "Document Processing",
+        "Translation",
+        "Text-to-Speech",
+        "React",
+        "Node.js"
+      ],
+      "results": {
+        "formats": "Multiple",
+        "accuracy": "High",
+        "languages": "Multiple",
+        "features": "Comprehensive"
+      },
+      "results_note": null,
+      "disclaimer": null,
+      "limitations": [],
+      "source_file": "src/data/projects/aiSummarizer.js"
+    },
+    {
+      "type": "project",
+      "slug": "openlegama-moroccan-legal-ai",
+      "title": "OpenLegaMa — Moroccan Legal AI Assistant",
+      "url": "https://youssef-bt.github.io/projects/openlegama-moroccan-legal-ai",
+      "description": "A Moroccan legal AI assistant available in French, Modern Standard Arabic, and English. OpenLegaMa uses controlled Retrieval-Augmented Generation to retrieve official legal texts, validate exact law and article references, connect legal claims to accepted evidence, and abstain when verified sources are insufficient.",
+      "role": "AI Engineer • RAG & Full-Stack Developer",
+      "company": "Independent Project",
+      "period": "July 2026",
+      "location": "Morocco",
+      "status": "Stable MVP",
+      "github": "https://github.com/YOUSSEF-BT/OpenLegaMa",
+      "tags": [
+        "Legal AI",
+        "Controlled RAG",
+        "NLP",
+        "Next.js",
+        "TypeScript"
+      ],
+      "key_achievements": [
+        "Released OpenLegaMa v1.0.1 as a stable, publicly accessible MVP",
+        "143 of 143 automated tests passing",
+        "610 curated benchmark cases and 120 independent holdout cases evaluated",
+        "100% document recall at 5 on the current curated retrieval benchmark",
+        "100% exact-article recall and citation integrity on the measured benchmark cases",
+        "30 active official legal texts and 7,708 indexed legal articles",
+        "French, Modern Standard Arabic, and English interaction with Arabic RTL support",
+        "Production build, TypeScript checks, ESLint, corpus validation, and benchmark thresholds passing"
+      ],
+      "tech_stack": [
+        "Next.js 16",
+        "React 18",
+        "TypeScript 5",
+        "Tailwind CSS 4",
+        "Controlled RAG",
+        "Groq SDK",
+        "Python",
+        "NLP",
+        "Legal Retrieval",
+        "Vercel"
+      ],
+      "results": {
+        "automatedTests": "143 / 143 passing",
+        "indexedArticles": "7,708",
+        "activeLegalTexts": "30",
+        "legalDomains": "27",
+        "curatedBenchmark": "610 cases",
+        "holdoutBenchmark": "120 cases",
+        "documentRecallAt5": "100% curated",
+        "exactArticleRecall": "100% measured"
+      },
+      "results_note": "Benchmark figures describe the current evaluation datasets and pipeline behavior. They are not a claim of universal legal accuracy, complete Moroccan-law coverage, or professional legal validation.",
+      "disclaimer": "OpenLegaMa provides structured and sourced legal information, but it does not replace a lawyer or another qualified legal professional. Its legal corpus is curated and partial, and systematic temporal validation of all active texts is not yet complete.",
+      "limitations": [],
+      "source_file": "src/data/projects/chatbot.js"
+    },
+    {
+      "type": "project",
+      "slug": "1-customer-analytics-churn-prediction-2025-11",
+      "title": "Customer Analytics & Churn Prediction Platform",
+      "url": "https://youssef-bt.github.io/projects/1-customer-analytics-churn-prediction-2025-11",
+      "description": "Professional web application with interactive dashboards and automated reporting for customer churn prediction. Built comprehensive analytics platform to identify at-risk customers and provide actionable insights for retention strategies.",
+      "role": "Data Scientist & Full-Stack Developer",
+      "company": "Personal Project",
+      "period": "2025-11",
+      "location": "Morocco",
+      "status": null,
+      "github": "https://github.com/YOUSSEF-BT/Customer-Analytics-Churn-Prediction-Platform",
+      "tags": [
+        "Python",
+        "Machine Learning",
+        "Data Analytics",
+        "Web App"
+      ],
+      "key_achievements": [
+        "Developed ML models with 85%+ accuracy for churn prediction",
+        "Created interactive dashboards for real-time customer analytics",
+        "Implemented automated reporting system",
+        "Reduced customer churn analysis time by 70%",
+        "Provided actionable insights for retention strategies"
+      ],
+      "tech_stack": [
+        "Python",
+        "Machine Learning",
+        "Pandas",
+        "Scikit-learn",
+        "Streamlit",
+        "Plotly",
+        "Data Visualization",
+        "Web Development"
+      ],
+      "results": {
+        "modelAccuracy": "85%+",
+        "timeReduction": "70%",
+        "dashboards": "Multiple",
+        "automation": "High"
+      },
+      "results_note": null,
+      "disclaimer": null,
+      "limitations": [],
+      "source_file": "src/data/projects/churnPrediction.js"
+    },
+    {
+      "type": "project",
+      "slug": "2-data-quality-monitoring-2025-12",
+      "title": "Data Quality Monitoring Platform",
+      "url": "https://youssef-bt.github.io/projects/2-data-quality-monitoring-2025-12",
+      "description": "Professional full-stack data quality monitoring platform with React 18 frontend, Flask backend, and MySQL database. Features interactive Chart.js dashboard, Swagger REST API, and automated PDF/Excel export. Built for real-time quality metrics, anomaly detection, and professional reporting.",
+      "role": "Full-Stack Developer & Data Engineer",
+      "company": "Personal Project",
+      "period": "2025-12",
+      "location": "Morocco",
+      "status": null,
+      "github": "https://github.com/YOUSSEF-BT/Data-Quality-Monitoring",
+      "tags": [
+        "React",
+        "Material-UI",
+        "Chart.js",
+        "Flask",
+        "MySQL",
+        "Data Quality",
+        "Monitoring",
+        "API"
+      ],
+      "key_achievements": [
+        "Created professional monitoring platform with real-time alerts",
+        "Built interactive dashboard for quality metrics visualization",
+        "Implemented REST API for data quality checks",
+        "Developed automated PDF/Excel export functionality",
+        "Set up comprehensive monitoring and alerting system"
+      ],
+      "tech_stack": [
+        "React 18",
+        "Material-UI",
+        "Chart.js",
+        "jsPDF",
+        "Python",
+        "Flask",
+        "MySQL",
+        "REST API",
+        "Swagger",
+        "Data Quality"
+      ],
+      "results": {
+        "monitoring": "Real-time",
+        "alerts": "Automated",
+        "reporting": "Automated",
+        "scalability": "High"
+      },
+      "results_note": null,
+      "disclaimer": null,
+      "limitations": [],
+      "source_file": "src/data/projects/dataQuality.js"
+    },
+    {
+      "type": "project",
+      "slug": "ai-powered-bank-fraud-detection-machine-learning-explainable-ai",
+      "title": "AI-Powered Bank Fraud Detection — Machine Learning & Explainable AI",
+      "url": "https://youssef-bt.github.io/projects/ai-powered-bank-fraud-detection-machine-learning-explainable-ai",
+      "description": "Machine-learning credit-card fraud detection system built on the Kaggle Credit Card Fraud Detection dataset (284,807 transactions, including 492 fraud cases). Uses a Random Forest model with an interactive Streamlit dashboard for transaction analysis, fraud-risk probabilities, and feature-importance inspection.",
+      "role": "AI Engineer & Data Scientist",
+      "company": "Personal Project",
+      "period": "2025-11",
+      "location": "Morocco",
+      "status": null,
+      "github": "https://github.com/YOUSSEF-BT/AI-Powered-Bank-Fraud-Detection-Machine-Learning-Explainable-AI",
+      "tags": [
+        "Python",
+        "Machine Learning",
+        "Random Forest",
+        "Fraud Detection"
+      ],
+      "key_achievements": [
+        "Reported 99.96% model accuracy in the original project evaluation",
+        "Analyzed 284,807 transactions containing 492 fraud cases (0.1727% fraud rate)",
+        "Built an interactive Streamlit dashboard for fraud analysis",
+        "Added transaction-level testing with class predictions and probability scores",
+        "Created feature-importance visualizations for model interpretation"
+      ],
+      "tech_stack": [
+        "Python",
+        "Streamlit",
+        "Scikit-learn",
+        "Random Forest",
+        "Pandas",
+        "NumPy",
+        "Matplotlib",
+        "Seaborn",
+        "Joblib"
+      ],
+      "results": {
+        "accuracy": "99.96%",
+        "transactions": "284,807",
+        "fraudCases": "492",
+        "fraudRate": "0.1727%"
+      },
+      "results_note": null,
+      "disclaimer": null,
+      "limitations": [],
+      "source_file": "src/data/projects/fraudDetection.js"
+    },
+    {
+      "type": "project",
+      "slug": "8-hybrid-movie-recommender",
+      "title": "Hybrid Movie Recommender",
+      "url": "https://youssef-bt.github.io/projects/8-hybrid-movie-recommender",
+      "description": "Advanced hybrid recommendation system combining collaborative filtering and content-based approaches for personalized movie suggestions. Built comprehensive recommendation engine using multiple algorithms to improve accuracy and user experience.",
+      "role": "Data Scientist & Machine Learning Engineer",
+      "company": "Personal Project",
+      "period": "2026-01",
+      "location": "Morocco",
+      "status": null,
+      "github": "https://github.com/YOUSSEF-BT/hybrid_movie_recommender",
+      "tags": [
+        "Python",
+        "TypeScript",
+        "React",
+        "Vite",
+        "Machine Learning",
+        "Recommender Systems",
+        "API"
+      ],
+      "key_achievements": [
+        "Implemented hybrid approach with improved accuracy",
+        "Solved cold-start problem using content-based filtering",
+        "Optimized model performance with hyperparameter tuning",
+        "Created scalable recommendation engine",
+        "Achieved high recommendation accuracy on test dataset"
+      ],
+      "tech_stack": [
+        "Python",
+        "TypeScript",
+        "React",
+        "Vite",
+        "Machine Learning",
+        "Scikit-learn",
+        "Pandas",
+        "NumPy",
+        "Recommender Systems",
+        "Data Science",
+        "Collaborative Filtering",
+        "Content-Based Filtering",
+        "API Development"
+      ],
+      "results": {
+        "accuracy": "High",
+        "coldStart": "Solved",
+        "diversity": "High",
+        "scalability": "Good"
+      },
+      "results_note": null,
+      "disclaimer": null,
+      "limitations": [],
+      "source_file": "src/data/projects/hybridMovieRecommender.js"
+    },
+    {
+      "type": "project",
+      "slug": "customer-churn-mlops-platform",
+      "title": "Customer MLOps Pipeline",
+      "url": "https://youssef-bt.github.io/projects/customer-churn-mlops-platform",
+      "description": "Complete MLOps platform for customer churn prediction with automated orchestration (Airflow), experiment tracking (MLflow), artifact storage (MinIO), and interactive dashboard (Streamlit). End-to-end machine learning pipeline for production deployment.",
+      "role": "MLOps Engineer & Data Scientist",
+      "company": "Personal Project",
+      "period": "2025-12",
+      "location": "Morocco",
+      "status": null,
+      "github": "https://github.com/YOUSSEF-BT/customer-mlops-pipeline",
+      "tags": [
+        "Python",
+        "MLOps",
+        "Airflow",
+        "MLflow",
+        "DevOps"
+      ],
+      "key_achievements": [
+        "Implemented automated ML pipeline with Airflow orchestration",
+        "Set up complete experiment tracking with MLflow",
+        "Created artifact storage system with MinIO",
+        "Built interactive monitoring dashboard with Streamlit",
+        "Automated CI/CD pipeline for model deployment"
+      ],
+      "tech_stack": [
+        "Python",
+        "Airflow",
+        "MLflow",
+        "MinIO",
+        "Streamlit",
+        "Docker Compose",
+        "PostgreSQL",
+        "MLOps",
+        "Experiment Tracking",
+        "Orchestration"
+      ],
+      "results": {
+        "automation": "Complete",
+        "tracking": "Comprehensive",
+        "deployment": "Automated",
+        "monitoring": "Real-time"
+      },
+      "results_note": null,
+      "disclaimer": null,
+      "limitations": [],
+      "source_file": "src/data/projects/mlopsPipeline.js"
+    },
+    {
+      "type": "project",
+      "slug": "traffic-mvp-image-processing",
+      "title": "Traffic MVP: Computer Vision Traffic Analysis",
+      "url": "https://youssef-bt.github.io/projects/traffic-mvp-image-processing",
+      "description": "Real-time vehicle detection and traffic flow analysis using YOLOv8 and OpenCV. Processes video streams, counts vehicles, exports metrics to CSV, and provides a Streamlit dashboard for visualization.",
+      "role": "Computer Vision Engineer",
+      "company": "Personal Project",
+      "period": "2026-01",
+      "location": "Morocco",
+      "status": null,
+      "github": "https://github.com/YOUSSEF-BT/traffic-mvp-image-processing",
+      "tags": [
+        "Python",
+        "OpenCV",
+        "YOLOv8",
+        "Computer Vision",
+        "Streamlit",
+        "Traffic Analysis"
+      ],
+      "key_achievements": [
+        "High accuracy vehicle detection using YOLOv8",
+        "Real-time processing with visual overlays",
+        "Comprehensive metrics export (time, count, speed, congestion)",
+        "User-friendly Streamlit dashboard for exploration",
+        "Easy configuration via YAML"
+      ],
+      "tech_stack": [
+        "Python 3",
+        "OpenCV",
+        "Ultralytics YOLOv8",
+        "Streamlit",
+        "Pandas",
+        "NumPy",
+        "FFmpeg"
+      ],
+      "results": {
+        "detection": "Real-time YOLOv8",
+        "fps": "30+ on CPU",
+        "export": "CSV with metrics",
+        "dashboard": "Streamlit"
+      },
+      "results_note": null,
+      "disclaimer": null,
+      "limitations": [
+        "Speed estimation is approximate without camera calibration",
+        "False positives may occur with poor video quality or unusual angles",
+        "Single-video processing; multi-camera not yet implemented"
+      ],
+      "source_file": "src/data/projects/trafficMVP.js"
+    },
+    {
+      "type": "project",
+      "slug": "pulsestream-real-time-social-media-intelligence",
+      "title": "PulseStream — Real-Time Big Data & Social Media Intelligence",
+      "url": "https://youssef-bt.github.io/projects/pulsestream-real-time-social-media-intelligence",
+      "description": "A containerized Big Data platform for real-time social media analytics. PulseStream ingests live Reddit posts and comments through Apache Kafka, processes streaming data with Apache Spark Structured Streaming, persists raw and enriched records in MongoDB, and supports downstream NLP, sentiment analysis, and topic modeling.",
+      "role": "Data Engineer — Streaming ETL & Storage",
+      "company": "Academic Team Project",
+      "period": "Feb 2026 — Aug 2026",
+      "location": "Morocco",
+      "status": "Resolved",
+      "github": "https://github.com/YOUSSEF-BT/PulseStream_Real-Time-Social-Media-Sentiment-Intelligence",
+      "tags": [
+        "Apache Kafka",
+        "Apache Spark",
+        "MongoDB",
+        "Docker",
+        "Data Engineering",
+        "NLP"
+      ],
+      "key_achievements": [
+        "Delivered a working Kafka-to-Spark-to-MongoDB streaming pipeline",
+        "Implemented real-time ETL for cleaning, normalization, and enrichment",
+        "Added time-based aggregations to prepare data for analytical workloads",
+        "Containerized the processing environment to improve reproducibility and compatibility",
+        "Validated the streaming and storage layers end to end"
+      ],
+      "tech_stack": [
+        "Apache Kafka",
+        "Apache Spark Structured Streaming",
+        "MongoDB",
+        "Docker",
+        "Python",
+        "Data Engineering",
+        "Streaming ETL",
+        "NLP"
+      ],
+      "results": {
+        "pipeline": "End-to-end validated",
+        "processing": "Real-time streaming",
+        "storage": "MongoDB",
+        "deployment": "Dockerized"
+      },
+      "results_note": null,
+      "disclaimer": null,
+      "limitations": [],
+      "source_file": "src/data/projects/tweetsSentiment.js"
+    }
+  ],
+  "skill_categories": [
+    {
+      "type": "skill_category",
+      "id": "machine-learning",
+      "name": "Machine Learning",
+      "description": "From structured data and feature engineering to evaluated, explainable predictive models.",
+      "skills": [
+        "Scikit-learn",
+        "Pandas",
+        "NumPy",
+        "Feature Engineering",
+        "Model Evaluation",
+        "Cross-Validation",
+        "Classification",
+        "Imbalanced Learning",
+        "Explainable AI"
+      ],
+      "evidence": [
+        {
+          "label": "Bank Fraud Detection",
+          "url": "https://youssef-bt.github.io/projects/ai-powered-bank-fraud-detection-machine-learning-explainable-ai",
+          "meta": null
+        },
+        {
+          "label": "Customer Churn Prediction",
+          "url": "https://youssef-bt.github.io/projects/1-customer-analytics-churn-prediction-2025-11",
+          "meta": null
+        }
+      ],
+      "url": "https://youssef-bt.github.io/skills",
+      "source_file": "src/pages/Skills.jsx"
+    },
+    {
+      "type": "skill_category",
+      "id": "computer-vision",
+      "name": "Computer Vision & Deep Learning",
+      "description": "Real-time detection and tracking pipelines built for video understanding, safety, and traffic analytics.",
+      "skills": [
+        "YOLOv11",
+        "YOLOv8",
+        "OpenCV",
+        "BoT-SORT",
+        "Object Detection",
+        "Multi-Object Tracking",
+        "Real-Time Video",
+        "Deep Learning",
+        "Roboflow"
+      ],
+      "evidence": [
+        {
+          "label": "Real-Time Road Accident Detection",
+          "url": "https://youssef-bt.github.io/projects/real-time-road-accident-detection",
+          "meta": null
+        },
+        {
+          "label": "Traffic MVP",
+          "url": "https://youssef-bt.github.io/projects/traffic-mvp-image-processing",
+          "meta": null
+        }
+      ],
+      "url": "https://youssef-bt.github.io/skills",
+      "source_file": "src/pages/Skills.jsx"
+    },
+    {
+      "type": "skill_category",
+      "id": "genai-rag",
+      "name": "Generative AI & RAG",
+      "description": "Grounded LLM applications that retrieve evidence, control context, validate citations, and abstain when evidence is insufficient.",
+      "skills": [
+        "RAG",
+        "LLM Applications",
+        "Embeddings",
+        "Semantic Search",
+        "Document Processing",
+        "Prompt Engineering",
+        "Context Engineering",
+        "NLP",
+        "Evaluation"
+      ],
+      "evidence": [
+        {
+          "label": "OpenLegaMa — Moroccan Legal AI",
+          "url": "https://youssef-bt.github.io/projects/openlegama-moroccan-legal-ai",
+          "meta": null
+        },
+        {
+          "label": "AI Document Summarizer",
+          "url": "https://youssef-bt.github.io/projects/5-ai-summarizer-2026-03",
+          "meta": null
+        }
+      ],
+      "url": "https://youssef-bt.github.io/skills",
+      "source_file": "src/pages/Skills.jsx"
+    },
+    {
+      "type": "skill_category",
+      "id": "agentic-ai",
+      "name": "Agentic AI & LLM Orchestration",
+      "description": "Design patterns for AI systems that reason across state, tools, workflows, approvals, and reliability boundaries.",
+      "skills": [
+        "Agent Workflows",
+        "Tool Calling",
+        "Human-in-the-Loop",
+        "State Management",
+        "Model Context Protocol",
+        "Guardrails",
+        "Evaluation",
+        "API Integration"
+      ],
+      "evidence": [
+        {
+          "label": "Agentic AI & LLM Certifications",
+          "url": "https://youssef-bt.github.io/certifications",
+          "meta": "Training evidence"
+        }
+      ],
+      "url": "https://youssef-bt.github.io/skills",
+      "source_file": "src/pages/Skills.jsx"
+    },
+    {
+      "type": "skill_category",
+      "id": "mlops-data",
+      "name": "MLOps & Data Engineering",
+      "description": "Reproducible ML workflows with orchestration, experiment tracking, containers, monitoring, and data-quality controls.",
+      "skills": [
+        "Docker",
+        "Apache Airflow",
+        "MLflow",
+        "PostgreSQL",
+        "MinIO",
+        "Model Monitoring",
+        "Experiment Tracking",
+        "Data Quality",
+        "CI/CD"
+      ],
+      "evidence": [
+        {
+          "label": "Customer MLOps Pipeline",
+          "url": "https://youssef-bt.github.io/projects/customer-churn-mlops-platform",
+          "meta": null
+        },
+        {
+          "label": "Data Quality Monitoring",
+          "url": "https://youssef-bt.github.io/projects/2-data-quality-monitoring-2025-12",
+          "meta": null
+        }
+      ],
+      "url": "https://youssef-bt.github.io/skills",
+      "source_file": "src/pages/Skills.jsx"
+    },
+    {
+      "type": "skill_category",
+      "id": "backend",
+      "name": "Backend & AI Engineering",
+      "description": "The engineering layer around AI systems: Python services, APIs, databases, version control, and deployment-ready interfaces.",
+      "skills": [
+        "Python",
+        "FastAPI",
+        "REST APIs",
+        "SQL",
+        "Git",
+        "GitHub",
+        "Linux",
+        "Streamlit",
+        "TypeScript"
+      ],
+      "evidence": [
+        {
+          "label": "Explore implementation repositories",
+          "url": "https://github.com/YOUSSEF-BT",
+          "meta": "GitHub evidence"
+        }
+      ],
+      "url": "https://youssef-bt.github.io/skills",
+      "source_file": "src/pages/Skills.jsx"
+    }
+  ],
+  "certifications": [
+    {
+      "type": "certification",
+      "title": "Claude 101",
+      "issuer": "Anthropic",
+      "date": "May 2026",
+      "description": "Comprehensive training in Claude AI assistant, prompt engineering, and AI interaction best practices.",
+      "category": "prompt-engineering",
+      "verification_url": "https://verify.skilljar.com/c/669dhjfv4jgt",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "AI Capabilities and Limitations",
+      "issuer": "Anthropic",
+      "date": "May 2026",
+      "description": "Training focused on understanding AI capabilities, limitations, reliability boundaries, failure modes, and responsible use of AI systems.",
+      "category": "anthropic",
+      "verification_url": "https://verify.skilljar.com/c/5wfw9hexvaax",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "AI Fluency for Educators",
+      "issuer": "Anthropic",
+      "date": "May 2026",
+      "description": "Training in AI fluency for educational contexts, understanding AI tools and their applications in teaching and learning.",
+      "category": "anthropic",
+      "verification_url": "https://verify.skilljar.com/c/qettazf8qd36",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Claude Code 101",
+      "issuer": "Anthropic",
+      "date": "May 2026",
+      "description": "Advanced training in Claude Code for software development, code review, and AI-assisted programming.",
+      "category": "anthropic",
+      "verification_url": "https://verify.skilljar.com/c/66qabf9vriu9",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "AI Fluency for Students",
+      "issuer": "Anthropic",
+      "date": "May 2026",
+      "description": "Training in AI fluency for students, understanding AI tools and their applications in learning and development.",
+      "category": "anthropic",
+      "verification_url": "https://verify.skilljar.com/c/b9sh9wj2tb6b",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "AI Fluency Framework & Foundations",
+      "issuer": "Anthropic",
+      "date": "May 2026",
+      "description": "Foundational training in AI fluency framework, understanding core AI concepts and their practical applications.",
+      "category": "anthropic",
+      "verification_url": "https://verify.skilljar.com/c/nr75vo6xp889",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Teaching the AI Fluency Framework",
+      "issuer": "Anthropic",
+      "date": "May 2026",
+      "description": "Advanced training in teaching the AI fluency framework, methodologies for educating others about AI concepts and applications.",
+      "category": "anthropic",
+      "verification_url": "https://verify.skilljar.com/c/p44jhhdgju3z",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "AI Fluency for Nonprofits",
+      "issuer": "Anthropic",
+      "date": "May 2026",
+      "description": "Training in AI fluency for nonprofit organizations, understanding AI tools and their applications in social impact work.",
+      "category": "anthropic",
+      "verification_url": "https://verify.skilljar.com/c/nm4fhq8fjw3j",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Introduction to Claude Cowork",
+      "issuer": "Anthropic",
+      "date": "May 2026",
+      "description": "Introduction to Claude Cowork, understanding AI collaboration tools and their applications in team workflows.",
+      "category": "anthropic",
+      "verification_url": "https://verify.skilljar.com/c/7eahci6bmgxb",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Introduction to Agent Skills",
+      "issuer": "Anthropic",
+      "date": "May 2026",
+      "description": "Introduction to agent skills, understanding AI agent capabilities and their applications in automated workflows.",
+      "category": "agentic-ai-llms",
+      "verification_url": "https://verify.skilljar.com/c/wy7mgcgom536",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Introduction to Subagents",
+      "issuer": "Anthropic",
+      "date": "May 2026",
+      "description": "Introduction to subagents, understanding hierarchical AI systems and their applications in complex task management.",
+      "category": "agentic-ai-llms",
+      "verification_url": "https://verify.skilljar.com/c/mmyj2epvatui",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Introduction to Model Context Protocol",
+      "issuer": "Anthropic",
+      "date": "May 2026",
+      "description": "Introduction to Model Context Protocol, understanding standardized communication between AI models and external tools.",
+      "category": "agentic-ai-llms",
+      "verification_url": "https://verify.skilljar.com/c/twqnruaazwjq",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Claude with Google Cloud's Vertex AI",
+      "issuer": "Anthropic",
+      "date": "May 2026",
+      "description": "Training in integrating Claude with Google Cloud's Vertex AI platform for enterprise AI solutions.",
+      "category": "anthropic",
+      "verification_url": "https://verify.skilljar.com/c/hkxuzh9i8mbd",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Model Context Protocol: Advanced Topics",
+      "issuer": "Anthropic",
+      "date": "May 2026",
+      "description": "Advanced training in Model Context Protocol, exploring complex implementations and enterprise use cases.",
+      "category": "agentic-ai-llms",
+      "verification_url": "https://verify.skilljar.com/c/pramdigjasq9",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Claude in Amazon Bedrock",
+      "issuer": "Anthropic",
+      "date": "May 2026",
+      "description": "Training in using Claude with Amazon Bedrock, understanding AWS integration and enterprise AI deployment.",
+      "category": "anthropic",
+      "verification_url": "https://verify.skilljar.com/c/rkepkwh37idh",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Building with the Claude API",
+      "issuer": "Anthropic",
+      "date": "May 2026",
+      "description": "Comprehensive training in building applications with the Claude API, including prompt engineering, API integration, and best practices for production deployments.",
+      "category": "agentic-ai-llms",
+      "verification_url": "https://verify.skilljar.com/c/tharwi7o229k",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Claude Code in Action",
+      "issuer": "Anthropic",
+      "date": "May 2026",
+      "description": "Practical training in Claude Code for real-world software development, including hands-on projects and advanced AI-assisted programming techniques.",
+      "category": "anthropic",
+      "verification_url": "https://verify.skilljar.com/c/gmxxb5rt47dw",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Claude Academy: AI Fluency for pK–12 Educators",
+      "issuer": "Anthropic",
+      "date": "Aug 2026",
+      "description": "Practical AI fluency training for pK–12 education, covering responsible Claude use, effective delegation, evaluation, and classroom workflows.",
+      "category": "anthropic",
+      "verification_url": "https://academy.claude.com/verify/043d6624c8f26fbecd0be08bfbbcb151",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Claude Academy: AI Fluency for Creative Work",
+      "issuer": "Anthropic",
+      "date": "Aug 2026",
+      "description": "AI fluency for creative workflows, focusing on collaborating with Claude for ideation, drafting, iteration, and responsible creative production.",
+      "category": "anthropic",
+      "verification_url": "https://academy.claude.com/verify/89a0959713560284be32adea434a5b97",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Claude Academy: AI Fluency for Small Businesses",
+      "issuer": "Anthropic",
+      "date": "Aug 2026",
+      "description": "Practical AI fluency for small businesses, covering Claude-assisted operations, productivity, decision support, and responsible adoption.",
+      "category": "anthropic",
+      "verification_url": "https://academy.claude.com/verify/3344bddad7340844c2ab7c09c7d61c56",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Claude Academy: Deploying Claude Enterprise with Confidence: The five decisions that shape your rollout",
+      "issuer": "Anthropic",
+      "date": "Aug 2026",
+      "description": "Enterprise deployment training focused on the five key decisions that shape a secure, effective, and scalable Claude rollout.",
+      "category": "anthropic",
+      "verification_url": "https://academy.claude.com/verify/b96cdded36c3413418125e3e61d23310",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Claude Academy: AI Fluency for Builders",
+      "issuer": "Anthropic",
+      "date": "Aug 2026",
+      "description": "AI fluency for builders, covering effective collaboration with Claude across product development, prototyping, technical workflows, and evaluation.",
+      "category": "anthropic",
+      "verification_url": "https://academy.claude.com/verify/b655ec5f1364105a670a01c79d581ef0",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Claude Academy: Claude Platform 101",
+      "issuer": "Anthropic",
+      "date": "Aug 2026",
+      "description": "Foundational training on the Claude Platform, including core capabilities, platform concepts, API-oriented workflows, and best practices for building with Claude.",
+      "category": "agentic-ai-llms",
+      "verification_url": "https://academy.claude.com/verify/d9a17d8d3e773246c479e8fbe32d5562",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "OpenCV Bootcamp",
+      "issuer": "OpenCV University",
+      "date": "May 2026",
+      "description": "Comprehensive training in OpenCV for computer vision applications, image processing, and real-time video analysis.",
+      "category": "computer-vision",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Vision Language Models (VLM) Bootcamp",
+      "issuer": "OpenCV University",
+      "date": "May 2026",
+      "description": "Advanced training in Vision Language Models for multimodal AI applications, combining computer vision with natural language processing.",
+      "category": "computer-vision",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "PyTorch Bootcamp",
+      "issuer": "OpenCV University",
+      "date": "May 2026",
+      "description": "Comprehensive training in PyTorch for deep learning, neural networks, and AI model development.",
+      "category": "machine-learning-dl",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "TensorFlow-Keras Bootcamp",
+      "issuer": "OpenCV University",
+      "date": "May 2026",
+      "description": "Comprehensive training in TensorFlow and Keras for deep learning, neural networks, and AI model development.",
+      "category": "machine-learning-dl",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Big Data 101",
+      "issuer": "IBM Cognitive Class",
+      "date": "May 2026",
+      "description": "Comprehensive fundamentals of Big Data processing, Hadoop, Spark, and distributed computing systems.",
+      "category": "data-science",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Data Science 101",
+      "issuer": "IBM Cognitive Class",
+      "date": "May 2026",
+      "description": "Comprehensive introduction to data science fundamentals, statistical analysis, and machine learning basics.",
+      "category": "data-science",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Prompt Engineering for Everyone",
+      "issuer": "IBM Cognitive Class",
+      "date": "May 2026",
+      "description": "Comprehensive training in prompt engineering techniques, best practices, and applications for AI models.",
+      "category": "prompt-engineering",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Python 101 for Data Science",
+      "issuer": "IBM Cognitive Class",
+      "date": "May 2026",
+      "description": "Comprehensive introduction to Python programming for data science, including data manipulation, visualization, and analysis.",
+      "category": "data-science",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "MLOps and Data Pipeline Orchestration for AI Systems",
+      "issuer": "LinkedIn Learning Community",
+      "date": "May 2026",
+      "description": "Comprehensive training in MLOps practices, data pipeline orchestration, and AI systems deployment.",
+      "category": "machine-learning-dl",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "PyTorch Essential Training Deep Learning",
+      "issuer": "LinkedIn Learning Community",
+      "date": "May 2026",
+      "description": "Comprehensive training in deep learning using PyTorch, covering neural networks, CNNs, RNNs, and advanced techniques.",
+      "category": "machine-learning-dl",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Hands-On AI: Computer Vision Projects with Ultralytics and OpenCV",
+      "issuer": "LinkedIn Learning Community",
+      "date": "May 2026",
+      "description": "Comprehensive hands-on projects in computer vision using Ultralytics YOLO and OpenCV for AI applications.",
+      "category": "computer-vision",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Deep Learning and Generative AI: Data Prep, Analysis, and Visualization with Python",
+      "issuer": "LinkedIn",
+      "date": "May 2026",
+      "description": "Comprehensive training in data preparation, analysis, and visualization for deep learning and generative AI using Python.",
+      "category": "machine-learning-dl",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Vibe Coding with Lovable: From Idea to Prototype in Under an Hour (No Code Required)",
+      "issuer": "LinkedIn Learning Community",
+      "date": "May 2026",
+      "description": "Learn to rapidly prototype applications using Lovable's no-code platform, transforming ideas into functional prototypes in under an hour.",
+      "category": "prompt-engineering",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Artificial Intelligence Foundations: Machine Learning",
+      "issuer": "LinkedIn",
+      "date": "May 2026",
+      "description": "Comprehensive introduction to artificial intelligence and machine learning fundamentals, covering key concepts, algorithms, and real-world applications.",
+      "category": "machine-learning-dl",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Data Science Foundations: Fundamentals",
+      "issuer": "LinkedIn Learning Community",
+      "date": "May 2026",
+      "description": "Comprehensive introduction to data science fundamentals, covering essential concepts, methodologies, and tools for data analysis and interpretation.",
+      "category": "data-science",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Generative AI: Introduction to Large Language Models",
+      "issuer": "LinkedIn Learning Community",
+      "date": "May 2026",
+      "description": "Comprehensive introduction to Large Language Models (LLMs), covering the fundamentals of generative AI, transformer architecture, training methodologies, and real-world applications.",
+      "category": "agentic-ai-llms",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "The Non-Technical Skills of Effective Data Scientists",
+      "issuer": "LinkedIn Learning Community",
+      "date": "May 2026",
+      "description": "Comprehensive training in essential non-technical skills for data scientists, including communication, collaboration, problem-solving, and business acumen.",
+      "category": "data-science",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Python for Data Visualization",
+      "issuer": "LinkedIn Learning Community",
+      "date": "May 2026",
+      "description": "Comprehensive training in data visualization using Python, covering libraries such as Matplotlib, Seaborn, and interactive visualization techniques for effective data storytelling.",
+      "category": "data-science",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Machine Learning with Python: Foundations",
+      "issuer": "LinkedIn Learning Community",
+      "date": "May 2026",
+      "description": "Comprehensive introduction to machine learning with Python, covering essential libraries like scikit-learn, numpy, and pandas, with hands-on projects and real-world applications.",
+      "category": "machine-learning-dl",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Low Code/No-Code Data Literacy with KNIME: From Basic to Advanced",
+      "issuer": "LinkedIn Learning Community",
+      "date": "May 2026",
+      "description": "Comprehensive training in low-code/no-code data literacy using KNIME, covering basic to advanced workflows for data integration, transformation, and analysis.",
+      "category": "data-science",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Chat with Your Data Using ChatGPT",
+      "issuer": "LinkedIn Learning Community",
+      "date": "May 2026",
+      "description": "Comprehensive training in using ChatGPT to interact with and analyze data, enabling natural language querying and insights from datasets.",
+      "category": "prompt-engineering",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Machine Learning with Python: Decision Trees",
+      "issuer": "LinkedIn Learning Community",
+      "date": "May 2026",
+      "description": "Comprehensive training in decision tree algorithms, covering concepts from splitting criteria to pruning, and their application in classification and regression tasks.",
+      "category": "machine-learning-dl",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Data Science Professional Certificate by KNIME",
+      "issuer": "KNIME",
+      "date": "May 2026",
+      "description": "Professional training in data science using KNIME's visual data analytics platform, covering data preprocessing, analysis, and predictive modeling.",
+      "category": "data-science",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Machine Learning with Python: Logistic Regression",
+      "issuer": "LinkedIn Learning Community",
+      "date": "May 2026",
+      "description": "Comprehensive training in logistic regression for binary and multiclass classification, covering theory, implementation, and evaluation metrics.",
+      "category": "machine-learning-dl",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Machine Learning with Python: kMeans Clustering",
+      "issuer": "LinkedIn Learning Community",
+      "date": "May 2026",
+      "description": "Comprehensive training in k-means clustering algorithm for unsupervised learning, covering centroid initialization, cluster assignment, and evaluation techniques.",
+      "category": "machine-learning-dl",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Advance Your Skills in Deep Learning and Neural Networks",
+      "issuer": "LinkedIn",
+      "date": "Jun 2026",
+      "description": "Advanced training in deep learning and neural networks, covering sophisticated architectures, optimization techniques, and real-world AI applications.",
+      "category": "machine-learning-dl",
+      "verification_url": null,
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Advance Your Skills as a Machine Learning Specialist",
+      "issuer": "LinkedIn",
+      "date": "Jun 2026",
+      "description": "Professional learning path focused on strengthening practical machine learning expertise, supervised learning skills, and applied ML problem-solving.",
+      "category": "machine-learning-dl",
+      "verification_url": "https://www.linkedin.com/learning/certificates/efacaf1c460bf5299784a116fd71608a595fdeae9d8cfa459d3bd8ac74ad8d17/",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Advance Your Skills in AI and Machine Learning",
+      "issuer": "LinkedIn",
+      "date": "Jun 2026",
+      "description": "Advanced learning path covering artificial intelligence, machine learning, neural networks, and practical techniques for modern AI systems.",
+      "category": "machine-learning-dl",
+      "verification_url": "https://www.linkedin.com/learning/certificates/2f7a247a803599cd339f507f239afb0e76b37ebfae9153cd894ac5f1c8723d7f/?trk=share_certificate",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Machine Learning with Python Professional Certificate by Anaconda",
+      "issuer": "Anaconda",
+      "date": "Jun 2026",
+      "description": "Professional certificate in machine learning with Python, covering core ML workflows, model development, evaluation, and practical use of the Python data science ecosystem.",
+      "category": "machine-learning-dl",
+      "verification_url": "https://www.linkedin.com/learning/certificates/670cf723a2e3113adfb47b5a6acf04902b664d0f0d3ae22d7187a99ea6afdefa/?trk=share_certificate",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Introduction to Artificial Intelligence",
+      "issuer": "LinkedIn",
+      "date": "May 2026",
+      "description": "Foundational training in artificial intelligence, covering core AI concepts, terminology, capabilities, and practical applications.",
+      "category": "machine-learning-dl",
+      "verification_url": "https://www.linkedin.com/learning/certificates/b80361cb9f0a09530b24417d8733ecce79ebb8adaa55a9bcf416342e96063e2e/?trk=share_certificate",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Oracle Agentic AI Certified Foundations Associate",
+      "issuer": "Oracle",
+      "date": "Aug 2026 · Expires Aug 2028",
+      "description": "Foundational certification in agentic AI, covering core AI agent concepts, LLM-enabled workflows, and practical foundations for building and using agentic AI solutions with Oracle technologies.",
+      "category": "agentic-ai-llms",
+      "verification_url": "https://catalog-education.oracle.com/pls/certview/sharebadge?id=4ED881F3563D305B8064FC31D3992AE57F09F08EBB25565878C4609D1706F328",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Oracle AI Database Certified Foundations Associate",
+      "issuer": "Oracle",
+      "date": "Sep 2026 · Expires Sep 2028",
+      "description": "Foundational certification in Oracle AI Database, covering core concepts for AI-enabled database technologies, data management, and AI-oriented database capabilities.",
+      "category": "data-science",
+      "verification_url": "https://catalog-education.oracle.com/pls/certview/sharebadge?id=7022BC9CA3F2FE2B58B4706AE7646E5212D5D17F87BAA6D5A3E1B137AF38CE50",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    },
+    {
+      "type": "certification",
+      "title": "Oracle Cloud Infrastructure 2026 Certified Architect Associate",
+      "issuer": "Oracle",
+      "date": "Sep 2026 · Expires Sep 2028",
+      "description": "Associate-level certification validating cloud architecture skills across Oracle Cloud Infrastructure, including core compute, networking, storage, identity, security, availability, and resilient solution design.",
+      "category": "cloud-architecture",
+      "verification_url": "https://catalog-education.oracle.com/pls/certview/sharebadge?id=7465F31933EE411B1EB7C5C55C45F6DAD74F72D873EE0DA369F50F835F7F78D6",
+      "url": "https://youssef-bt.github.io/certifications",
+      "source_file": "src/pages/CertificationsPage.jsx"
+    }
+  ],
+  "work_experiences": [
+    {
+      "type": "work_experience",
+      "period": "Sep 2026 — Present",
+      "role": "Freelance AI/ML Engineer",
+      "company": "Fiverr",
+      "context": "Independent AI/ML Services",
+      "description": "Designing and delivering practical AI solutions for client use cases, with a focus on retrieval, LLM applications, intelligent automation, and applied machine learning.",
+      "highlights": [
+        "RAG systems and LLM-powered applications",
+        "AI agents and document intelligence workflows",
+        "Machine Learning and Computer Vision solutions"
+      ],
+      "technologies": [
+        "RAG",
+        "LLMs",
+        "AI Agents",
+        "Python",
+        "Machine Learning"
+      ],
+      "company_url": null,
+      "url": "https://youssef-bt.github.io/#experience",
+      "source_file": "src/sections/Experience.jsx"
+    },
+    {
+      "type": "work_experience",
+      "period": "Feb 2026 — Aug 2026",
+      "role": "AI/ML Engineer Intern | Computer Vision",
+      "company": "NEXTRONIC — ABA Technology",
+      "context": "Casablanca Technopark",
+      "description": "Designed and developed a real-time road accident detection system combining deep learning, multi-object tracking, and behavioral analysis for CCTV-based monitoring.",
+      "highlights": [
+        "YOLOv11s image model: 86.68% precision and 91.56% recall",
+        "Real-time inference at approximately 31.5 FPS",
+        "Automated alerts, video clip preservation, and CSV event logging"
+      ],
+      "technologies": [
+        "Python",
+        "YOLO",
+        "OpenCV",
+        "BoT-SORT",
+        "Deep Learning"
+      ],
+      "company_url": "https://aba.technology/",
+      "url": "https://youssef-bt.github.io/#experience",
+      "source_file": "src/sections/Experience.jsx"
+    }
+  ],
+  "education": [
+    {
+      "type": "education",
+      "period": "Oct 2023 — Jul 2026",
+      "degree": "State Engineering Degree in Data Science",
+      "school": "SUP'MTI Rabat",
+      "program": "Engineering Cycle — Data Science specialization",
+      "description": "Engineering curriculum covering Data Science, Machine Learning, Artificial Intelligence, Big Data, MLOps, and software engineering. Graduation project defended with an Excellent distinction and a score of 18/20.",
+      "focus": [
+        "Data Science",
+        "Machine Learning",
+        "AI",
+        "Big Data",
+        "MLOps"
+      ],
+      "school_url": "https://supmti.ac.ma/ingenierie-data-science-et-iot/",
+      "url": "https://youssef-bt.github.io/#experience",
+      "source_file": "src/sections/Experience.jsx"
+    },
+    {
+      "type": "education",
+      "period": "Oct 2021 — Jul 2023",
+      "degree": "Preparatory Classes",
+      "school": "SUP'MTI Rabat",
+      "program": "Engineering Preparatory Program",
+      "description": "Intensive foundation in mathematics, physics, computer science, algorithms, and engineering fundamentals before entering the engineering cycle.",
+      "focus": [
+        "Mathematics",
+        "Physics",
+        "Computer Science",
+        "Algorithms"
+      ],
+      "school_url": "https://supmti.ac.ma/classes-preparatoires-technologies-de-linformation/",
+      "url": "https://youssef-bt.github.io/#experience",
+      "source_file": "src/sections/Experience.jsx"
+    }
+  ],
+  "public_links": [
+    {
+      "type": "public_link",
+      "url": "https://github.com/YOUSSEF-BT"
+    },
+    {
+      "type": "public_link",
+      "url": "https://www.fiverr.com/youssef_bouzit"
+    },
+    {
+      "type": "public_link",
+      "url": "https://www.linkedin.com/in/youssef-bouzit-74863239b/"
+    }
+  ]
+}
