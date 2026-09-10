@@ -36,6 +36,7 @@ function askYoussefWidget() {
 
   var copy = getCopy();
   var sources = {};
+  var sourceMeta = {};
   var capabilities = null;
   var history = [];
   var busy = false;
@@ -95,7 +96,13 @@ function askYoussefWidget() {
     var pages = values[0];
     capabilities = values[1];
     (pages.pages || []).forEach(function (page) {
-      if (page.source && page.url) sources[page.source] = page.url;
+      if (page.source && page.url) {
+        sources[page.source] = page.url;
+        sourceMeta[page.source] = {
+          url: page.url,
+          title: page.title || page.source
+        };
+      }
     });
     setConnection(true);
     if (!log.dataset.initialized) renderWelcome();
@@ -304,6 +311,7 @@ function askYoussefWidget() {
   function completeAnswer(message, answer) {
     message.bubble.classList.remove("aya-pending", "aya-error");
     message.bubble.innerHTML = renderAnswer(answer);
+    appendSourceCards(message.row, answer);
     appendFeedback(message.row);
     scrollLog();
   }
@@ -313,6 +321,43 @@ function askYoussefWidget() {
     message.bubble.classList.add("aya-error");
     message.bubble.textContent = text;
     scrollLog();
+  }
+
+  function appendSourceCards(row, answer) {
+    var seen = {};
+    var cited = [];
+    var regex = /\[([a-z0-9][a-z0-9_.:-]{1,120})\]/gi;
+    var match;
+    while ((match = regex.exec(answer || "")) && cited.length < 3) {
+      var slug = match[1];
+      if (!seen[slug] && sourceMeta[slug] && sourceMeta[slug].url) {
+        seen[slug] = true;
+        cited.push({ slug: slug, meta: sourceMeta[slug] });
+      }
+    }
+    if (!cited.length) return;
+
+    var wrap = document.createElement("div");
+    wrap.className = "aya-source-wrap";
+    var label = document.createElement("div");
+    label.className = "aya-source-label";
+    label.textContent = copy.sourceLabel;
+    wrap.appendChild(label);
+
+    cited.forEach(function (entry) {
+      var card = document.createElement("a");
+      card.className = "aya-source-card";
+      card.href = entry.meta.url;
+      card.target = "_blank";
+      card.rel = "noopener noreferrer";
+      card.innerHTML =
+        '<span class="aya-source-icon">' + ARROW_ICON + '</span>' +
+        '<span class="aya-source-copy"><strong>' + esc(entry.meta.title) + '</strong>' +
+        '<small>' + esc(entry.slug) + '</small></span>' +
+        '<span class="aya-source-open" aria-hidden="true">↗</span>';
+      wrap.appendChild(card);
+    });
+    row.appendChild(wrap);
   }
 
   function appendFeedback(row) {
@@ -690,6 +735,19 @@ var CSS = `
 .aya-bubble a { color: #55cfc5; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent); text-underline-offset: 3px; }
 .aya-citation { display: inline; font-size: .92em; }
 .aya-error { color: #ffb1b1 !important; border-color: rgba(255,120,120,.2) !important; }
+.aya-source-wrap { width: min(92%, 340px); margin-top: 7px; display: grid; gap: 6px; }
+.aya-source-label { color: #6f7b86; font-size: 9px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+.aya-source-card {
+  color: inherit; text-decoration: none; border: 1px solid var(--border); background: color-mix(in srgb, var(--surface) 76%, transparent);
+  border-radius: 11px; padding: 8px 9px; display: flex; align-items: center; gap: 8px; transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+.aya-source-card:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); background: color-mix(in srgb, var(--accent) 6%, var(--surface)); transform: translateY(-1px); }
+.aya-source-icon { width: 24px; height: 24px; flex: 0 0 24px; display: grid; place-items: center; border-radius: 8px; color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.aya-source-icon svg { width: 14px; height: 14px; }
+.aya-source-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+.aya-source-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #dce3e8; font-size: 10.5px; font-weight: 620; }
+.aya-source-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; color: #6f7b86; font-size: 8.5px; }
+.aya-source-open { color: #65717c; font-size: 12px; }
 .aya-feedback { max-width: 88%; margin-top: 5px; min-height: 25px; display: flex; flex-wrap: wrap; align-items: center; gap: 5px; color: #73808c; font-size: 9.5px; }
 .aya-feedback-label { margin-right: 2px; }
 .aya-feedback-btn { appearance: none; border: 0; background: transparent; color: #73808c; width: 28px; height: 25px; border-radius: 8px; display: grid; place-items: center; cursor: pointer; }
