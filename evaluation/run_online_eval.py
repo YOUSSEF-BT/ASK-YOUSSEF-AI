@@ -6,8 +6,9 @@ boundary, SSE transport, conversation history, and final-answer formatting toget
 
 The evaluator intentionally uses deterministic checks only. It verifies behavior
 we can observe reliably (completion, required retrieval, expected citations,
-safety abstention, and avoiding unnecessary retrieval) and reports latency. It is
-not an LLM judge and must not be described as semantic answer accuracy.
+required factual literals, safety abstention, and avoiding unnecessary retrieval)
+and reports latency. It is not an LLM judge and must not be described as semantic
+answer accuracy.
 """
 from __future__ import annotations
 
@@ -151,6 +152,12 @@ def evaluate_case(case: dict[str, Any], events: list[dict[str, Any]], latency_ms
     if expected_sources:
         citation_ok = any(f"[{source}]" in answer for source in expected_sources)
 
+    expected_answer_contains = [str(value) for value in case.get("expected_answer_contains") or []]
+    answer_contains_ok: bool | None = None
+    if expected_answer_contains:
+        lower_answer = answer.lower()
+        answer_contains_ok = all(value.lower() in lower_answer for value in expected_answer_contains)
+
     safety_ok: bool | None = None
     if case.get("kind") == "safety":
         lower = answer.lower()
@@ -167,6 +174,8 @@ def evaluate_case(case: dict[str, Any], events: list[dict[str, Any]], latency_ms
         "retrieval_ok": retrieval_ok,
         "expected_sources": expected_sources,
         "citation_ok": citation_ok,
+        "expected_answer_contains": expected_answer_contains,
+        "answer_contains_ok": answer_contains_ok,
         "safety_ok": safety_ok,
         "latency_ms": round(latency_ms, 2),
         "tools_used": sorted(tools),
@@ -192,6 +201,9 @@ def summarize(dataset: dict[str, Any], details: list[dict[str, Any]], health: di
         ),
         "expected_citation_rate": _rate(
             details, lambda row: row.get("citation_ok") is not None, "citation_ok"
+        ),
+        "expected_answer_contains_rate": _rate(
+            details, lambda row: row.get("answer_contains_ok") is not None, "answer_contains_ok"
         ),
         "safety_abstention_rate": _rate(
             details, lambda row: row.get("safety_ok") is not None, "safety_ok"
@@ -260,6 +272,7 @@ def run(
             detail = evaluate_case(case, events, latency_ms)
             detail["retry_count"] = retry_count
         except Exception as exc:  # record the failure so the full run is inspectable
+            expected_terms = [str(value) for value in case.get("expected_answer_contains") or []]
             detail = {
                 "id": case["id"],
                 "kind": case.get("kind"),
@@ -270,6 +283,8 @@ def run(
                 "retrieval_ok": False,
                 "expected_sources": list(case.get("expected_sources") or []),
                 "citation_ok": False if case.get("expected_sources") else None,
+                "expected_answer_contains": expected_terms,
+                "answer_contains_ok": False if expected_terms else None,
                 "safety_ok": False if case.get("kind") == "safety" else None,
                 "latency_ms": 0.0,
                 "tools_used": [],
@@ -281,7 +296,7 @@ def run(
         details.append(detail)
         print(
             "  completion={completed} retrieval={retrieval_ok} citation={citation_ok} "
-            "safety={safety_ok} latency_ms={latency_ms}".format(**detail),
+            "answer_contains={answer_contains_ok} safety={safety_ok} latency_ms={latency_ms}".format(**detail),
             flush=True,
         )
 
