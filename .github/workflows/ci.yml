@@ -25,7 +25,7 @@ jobs:
           python-version: "3.12"
 
       - name: Compile backend
-        run: python -m compileall -q backend scripts tests
+        run: python -m compileall -q backend scripts tests evaluation
 
       - name: Run deterministic retrieval tests
         run: python -m unittest discover -s tests -p "test_*.py" -v
@@ -36,6 +36,9 @@ jobs:
           python -m json.tool backend/data/profile.json >/dev/null
           python -m json.tool backend/data/site/manifest.json >/dev/null
 
+      - name: Run portfolio quality benchmark
+        run: python evaluation/run_benchmark.py --strict --output /tmp/portfolio-benchmark.json
+
       - name: Verify required project files
         run: |
           test -f LICENSE
@@ -44,11 +47,14 @@ jobs:
           test -f backend/app.py
           test -f backend/agent.py
           test -f backend/rag.py
+          test -f backend/grounding.py
+          test -f backend/router.py
           test -f backend/retrieval/hybrid.py
           test -f backend/retrieval/structured.py
           test -f backend/data/profile.json
           test -f scripts/sync_portfolio.py
           test -f scripts/build_structured_profile.py
+          test -f evaluation/run_benchmark.py
           test -f web/widget.js
           test -f docs/architecture.md
 
