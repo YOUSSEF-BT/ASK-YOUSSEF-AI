@@ -30,6 +30,12 @@ jobs:
       - name: Validate widget JavaScript
         run: node --check web/widget.js
 
+      - name: Validate container configuration
+        run: |
+          cp .env.example .env
+          docker compose config --quiet
+          rm .env
+
       - name: Run deterministic retrieval tests
         run: python -m unittest discover -s tests -p "test_*.py" -v
 
@@ -54,9 +60,13 @@ jobs:
 
       - name: Verify required project files
         run: |
-          test -f LICENSE
+          test -s LICENSE
+          grep -q "Copyright (c) 2026 Aditya Jain" LICENSE
           test -f NOTICE.md
           test -f .env.example
+          test -f .dockerignore
+          test -f Dockerfile
+          test -f docker-compose.yml
           test -f backend/app.py
           test -f backend/agent.py
           test -f backend/rag.py
