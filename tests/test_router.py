@@ -18,6 +18,19 @@ class LanguageRouterTests(unittest.TestCase):
     def test_english_default(self):
         self.assertEqual(detect_language("What are his strongest projects?"), "en")
 
+    def test_english_certification_is_not_misclassified_as_french(self):
+        self.assertEqual(
+            detect_language("Which Oracle certification does Youssef have?"), "en"
+        )
+
+    def test_english_experience_is_not_misclassified_as_french(self):
+        self.assertEqual(
+            detect_language("What was Youssef's experience at NEXTRONIC?"), "en"
+        )
+
+    def test_english_contact_is_not_misclassified_as_french(self):
+        self.assertEqual(detect_language("How can I contact Youssef on LinkedIn?"), "en")
+
 
 class IntentRouterTests(unittest.TestCase):
     def test_project_fact_requires_retrieval(self):
@@ -51,6 +64,11 @@ class IntentRouterTests(unittest.TestCase):
         route = route_question("Send Youssef a message for me")
         self.assertEqual(route.intent, "contact_action")
         self.assertFalse(route.requires_retrieval)
+
+    def test_sentence_final_period_does_not_break_intent(self):
+        route = route_question("Tell me about Youssef's experience.")
+        self.assertEqual(route.intent, "experience")
+        self.assertTrue(route.requires_retrieval)
 
     def test_unrelated_general_question_outside_scope(self):
         route = route_question("What is the capital of Japan?")
