@@ -2,7 +2,7 @@
 
 Unlike `run_benchmark.py`, this script talks to a running FastAPI deployment and
 therefore exercises the real model, agent orchestration, retrieval tool, grounding
-boundary, SSE transport, and final-answer formatting together.
+boundary, SSE transport, conversation history, and final-answer formatting together.
 
 The evaluator intentionally uses deterministic checks only. It verifies behavior
 we can observe reliably (completion, required retrieval, expected citations,
@@ -54,10 +54,11 @@ def _chat_once(
     api_url: str,
     question: str,
     *,
+    history: list[dict[str, str]] | None,
     origin: str,
     timeout: float,
 ) -> tuple[list[dict[str, Any]], float]:
-    payload = json.dumps({"question": question, "history": []}).encode("utf-8")
+    payload = json.dumps({"question": question, "history": history or []}).encode("utf-8")
     req = urllib.request.Request(
         api_url.rstrip("/") + "/chat",
         data=payload,
@@ -94,6 +95,7 @@ def chat(
     api_url: str,
     question: str,
     *,
+    history: list[dict[str, str]] | None = None,
     origin: str,
     timeout: float,
     retries: int,
@@ -102,7 +104,11 @@ def chat(
     for attempt in range(retries + 1):
         try:
             events, latency_ms = _chat_once(
-                api_url, question, origin=origin, timeout=timeout
+                api_url,
+                question,
+                history=history,
+                origin=origin,
+                timeout=timeout,
             )
             return events, latency_ms, attempt
         except urllib.error.HTTPError as exc:
@@ -155,6 +161,7 @@ def evaluate_case(case: dict[str, Any], events: list[dict[str, Any]], latency_ms
         "id": case["id"],
         "kind": case.get("kind"),
         "question": case["question"],
+        "history_turns": len(case.get("history") or []),
         "completed": completed,
         "requires_search": requires_search,
         "retrieval_ok": retrieval_ok,
@@ -245,6 +252,7 @@ def run(
             events, latency_ms, retry_count = chat(
                 api_url,
                 case["question"],
+                history=list(case.get("history") or []),
                 origin=origin,
                 timeout=timeout,
                 retries=retries,
@@ -256,6 +264,7 @@ def run(
                 "id": case["id"],
                 "kind": case.get("kind"),
                 "question": case["question"],
+                "history_turns": len(case.get("history") or []),
                 "completed": False,
                 "requires_search": bool(case.get("requires_search")),
                 "retrieval_ok": False,
