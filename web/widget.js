@@ -9,7 +9,7 @@
  *   data-subtitle="Professional Portfolio Copilot"
  *   data-accent="#20b2a6" defer></script>
  */
-(function () {
+function askYoussefWidget() {
   "use strict";
 
   var scripts = document.querySelectorAll("script[data-api]");
@@ -507,7 +507,7 @@
   reset.innerHTML = RESET_ICON;
   close.innerHTML = CLOSE_ICON;
   send.innerHTML = SEND_ICON;
-})();
+}
 
 var TEMPLATE = [
   '<button class="aya-launcher" type="button" aria-label="Open Ask Youssef AI" aria-expanded="false">',
@@ -729,3 +729,6 @@ var CSS = `
   .aya-bubble, .aya-feedback { max-width: 92%; }
 }
 `;
+
+// TEMPLATE and CSS are initialized before mounting the widget.
+askYoussefWidget();
