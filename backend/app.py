@@ -12,6 +12,11 @@ stays light (it only parses page metadata for /pages and /health, never embeds).
 A second FastMCP child serves the contact tool. Set MCP_TRANSPORT=inprocess to
 skip the subprocesses (this parent then builds the index itself) for offline dev.
 
+Exact whole-dataset facts (for example certification totals and issuer-specific
+inventories) are resolved directly from the synchronized structured profile.
+This prevents a top-k retrieval slice from ever being mistaken for the complete
+set.
+
 Endpoints:
   POST /chat    {question, history?}  → text/event-stream of agent events
   GET  /health                  → {ok, pages, chunks, transport, brain}
@@ -44,6 +49,7 @@ from observability import TELEMETRY  # noqa: E402
 from feedback import FEEDBACK  # noqa: E402
 from retrieval.hybrid import HybridRetriever  # noqa: E402
 from retrieval.structured import StructuredProfileRetriever  # noqa: E402
+from structured_facts import StructuredFactResolver  # noqa: E402
 from router import route_question  # noqa: E402
 
 
@@ -148,6 +154,7 @@ def _origin_allowed(request: Request) -> bool:
 # --- shared state, populated on startup -------------------------------------
 class _State:
     agent = None
+    structured_facts = None
     pages: list[dict] = []          # [{title, url, source, chunks}]
     chunks = 0
     structured_docs = 0
@@ -233,6 +240,9 @@ def _startup() -> None:
     STATE.pages, STATE.chunks = _page_index(corpus)
     structured_retriever = StructuredProfileRetriever.from_path(PROFILE_PATH)
     STATE.structured_docs = structured_retriever.count
+    # Whole-set questions (counts / issuer inventories) read the exact same
+    # synchronized profile. They bypass top-k retrieval and model arithmetic.
+    STATE.structured_facts = StructuredFactResolver(structured_retriever.profile)
 
     if MCP_TRANSPORT == "process":
         # retrieval + contact each run as their own FastMCP child; the blog child
@@ -311,9 +321,7 @@ def _error_stream(message: str) -> StreamingResponse:
 
 
 def _stream(question: str, history: list[Turn] | None = None):
-    """Drive the agent and translate each Event into an SSE line. Runs under a
-    lock because the agent's MCP tools talk to a single shared stdio child —
-    concurrent turns would interleave on that pipe."""
+    """Drive exact structured facts or the agent, then stream public SSE events."""
     started = time.monotonic()
     route = route_question(question)
     TELEMETRY.record_request(route)
@@ -321,6 +329,26 @@ def _stream(question: str, history: list[Turn] | None = None):
         TELEMETRY.record_error(latency_ms=(time.monotonic() - started) * 1000.0)
         yield _sse("error", message="agent not ready")
         return
+
+    # Whole-dataset facts are deterministic. In particular, certification totals
+    # and issuer-specific inventories must be computed from ALL profile records,
+    # never inferred from the 3-4 passages returned by a normal top-k search.
+    exact = (
+        STATE.structured_facts.resolve(question, history or [])
+        if STATE.structured_facts is not None
+        else None
+    )
+    if exact is not None:
+        yield _sse("tool_call", tool=exact.tool, input=question)
+        yield _sse("observation", tool=exact.tool, output=exact.evidence)
+        TELEMETRY.record_completed(
+            latency_ms=(time.monotonic() - started) * 1000.0,
+            retrieval_used=True,
+            grounding_intervened=False,
+        )
+        yield _sse("final", answer=exact.answer, tools_used=[exact.tool])
+        return
+
     contextual = _with_history(question, history or [])
     # bounded wait: if another turn is mid-flight (the agent shares one stdio
     # child), fail fast with a clear message rather than hanging the browser.
@@ -420,7 +448,7 @@ def capabilities():
     return {
         "name": "Ask Youssef AI",
         "subtitle": "Professional Portfolio Copilot",
-        "status": "beta",
+        "status": "live",
         "languages": ["en", "fr", "ar"],
         "retrieval": "semantic+bm25+structured-rrf",
         "features": [
@@ -429,6 +457,7 @@ def capabilities():
             "multilingual routing",
             "conversation context",
             "automatic portfolio synchronization",
+            "exact structured aggregate facts",
             "privacy-safe feedback",
         ],
         "suggestions": [
