@@ -15,7 +15,10 @@ skip the subprocesses (this parent then builds the index itself) for offline dev
 Endpoints:
   POST /chat    {question, history?}  → text/event-stream of agent events
   GET  /health                  → {ok, pages, chunks, transport, brain}
-  GET  /pages                   → [{title, url, chunks}] for the demo panel
+  GET  /pages                   → [{title, url, chunks}] for source links
+  GET  /capabilities            → public product metadata + suggestions
+  POST /feedback                → fixed-category privacy-safe feedback
+  GET  /metrics                 → aggregate operational metrics
 
 Run:  uvicorn app:app --host 0.0.0.0 --port $PORT
 """
@@ -30,7 +33,7 @@ from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from fastapi import FastAPI, Request  # noqa: E402
+from fastapi import FastAPI, HTTPException, Request  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import StreamingResponse  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
@@ -38,6 +41,7 @@ from pydantic import BaseModel  # noqa: E402
 import crawl  # noqa: E402
 from rag import RAG, chunk_markdown, parse_frontmatter  # noqa: E402
 from observability import TELEMETRY  # noqa: E402
+from feedback import FEEDBACK  # noqa: E402
 from retrieval.hybrid import HybridRetriever  # noqa: E402
 from retrieval.structured import StructuredProfileRetriever  # noqa: E402
 from router import route_question  # noqa: E402
@@ -261,6 +265,11 @@ class ChatRequest(BaseModel):
     history: list[Turn] = []   # prior turns, oldest→newest (for follow-ups)
 
 
+class FeedbackRequest(BaseModel):
+    rating: str                 # "up" | "down"
+    reason: str | None = None   # fixed category only; no free-text comments
+
+
 # how many prior turns to feed back in (keeps the prompt — and cost — bounded)
 _MAX_HISTORY = 8
 
@@ -396,7 +405,48 @@ def health():
 @app.get("/metrics")
 def metrics():
     """Privacy-safe process-lifetime operational metrics; no visitor content."""
-    return TELEMETRY.snapshot()
+    snapshot = TELEMETRY.snapshot()
+    snapshot["feedback"] = FEEDBACK.snapshot()
+    return snapshot
+
+
+@app.get("/capabilities")
+def capabilities():
+    """Public, non-secret product metadata used by the portfolio widget."""
+    return {
+        "name": "Ask Youssef AI",
+        "subtitle": "Professional Portfolio Copilot",
+        "status": "beta",
+        "languages": ["en", "fr", "ar"],
+        "retrieval": "semantic+bm25+structured-rrf",
+        "features": [
+            "grounded portfolio answers",
+            "source citations",
+            "multilingual routing",
+            "conversation context",
+            "automatic portfolio synchronization",
+            "privacy-safe feedback",
+        ],
+        "suggestions": [
+            "Show me Youssef's strongest AI projects",
+            "What is his Computer Vision experience?",
+            "Show evidence of his RAG and LLM skills",
+            "Which certifications does he have?",
+            "How can I contact Youssef?",
+        ],
+    }
+
+
+@app.post("/feedback")
+def feedback(req: FeedbackRequest, request: Request):
+    """Collect fixed-category aggregate feedback without retaining visitor text."""
+    if not _origin_allowed(request):
+        raise HTTPException(status_code=403, detail="origin not allowed")
+    try:
+        FEEDBACK.record(req.rating, req.reason)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"ok": True}
 
 
 @app.get("/pages")
