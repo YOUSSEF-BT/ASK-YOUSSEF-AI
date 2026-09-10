@@ -15,124 +15,124 @@ Markdown evidence corpus + structured profile.json
 Portfolio visitor             CI / evaluation
         |                           |
         v                           +--> deterministic regression benchmark
-Ask Youssef AI widget              +--> deployed smoke evaluation harness
+Ask Youssef AI widget              +--> Vercel production regression
+        |
+        | HTTPS / SSE
+        v
+Vercel FastAPI /chat
         |
         v
-FastAPI /chat (SSE)
+Deterministic EN / FR / AR router
         |
-        v
-Deterministic language + intent router
+        +--> greeting ----------> deterministic local response
         |
-        +--> greeting / contact action / out-of-scope handling
+        +--> out-of-scope ------> scoped model response, no portfolio retrieval
         |
-        +--> factual portfolio turn -> retrieval required
-                                      |
-                     +----------------+----------------+
-                     |                |                |
-                     v                v                v
-             Structured profile     BM25         Semantic vectors
-                     |                |                |
-                     +----------------+----------------+
-                                      |
-                                      v
-                          Reciprocal Rank Fusion
-                         + bounded evidence boosts
-                                      |
-                                      v
-                               search_site tool
-                                      |
-                                      v
-                              ReAct-style LLM
-                                      |
-                                      v
-                       Deterministic grounding gate
-                                      |
-                     +----------------+----------------+
-                     |                                 |
-                     v                                 v
-              supported answer                  conservative abstention
-              + real citations                  on unsafe literals
-                     |
-                     v
-                  SSE client
-                     |
-                     v
-          privacy-safe aggregate telemetry
+        +--> factual portfolio turn
+                    |
+             retrieval required
+                    |
+       +------------+-------------+
+       |            |             |
+       v            v             v
+   Structured      BM25       FastEmbed semantic
+    Profile                    vectors / ONNX
+       |            |             |
+       +------------+-------------+
+                    |
+                    v
+        Reciprocal Rank Fusion (RRF)
+        + bounded evidence boosts
+                    |
+                    v
+               search_site
+                    |
+                    v
+          Gemini 3.7 Flash
+             |          |
+       transient        success
+        failure         |
+             v          |
+     Gemini 3.5 Flash-Lite
+             |          |
+             +-----+----+
+                   |
+                   v
+        deterministic grounding gate
+              /                 \
+             v                   v
+      grounded answer      safe abstention /
+      + real citations     cited service fallback
+                   |
+                   v
+                SSE client
+                   |
+                   v
+        privacy-safe aggregate telemetry
 ```
 
 ## Source-of-truth synchronization
 
-The public portfolio repository is authoritative for professional facts. The
-synchronization pipeline extracts project data, skills, certifications,
-experience, education, and public professional links without executing portfolio
-JavaScript. It writes two retrieval views:
+The public portfolio repository is authoritative for professional facts. The synchronization pipeline extracts project data, skills, certifications, experience, education and public professional links without executing portfolio JavaScript.
 
-- `backend/data/site/`: concise Markdown evidence documents used by semantic and
-  lexical retrieval.
-- `backend/data/profile.json`: field-aware structured professional entities used
-  for exact project, technology, employer, certification, skill, education, and
-  public-link queries.
+It writes two retrieval views:
 
-`.github/workflows/sync-portfolio.yml` refreshes these generated assets
-periodically and whenever the synchronization code changes. Generated counts are
-validated against `backend/data/site/manifest.json` before changes are committed.
+- `backend/data/site/` — concise Markdown evidence used by semantic and lexical retrieval;
+- `backend/data/profile.json` — structured entities used for exact project, technology, employer, certification, skill, education and public-link queries.
+
+`.github/workflows/sync-portfolio.yml` refreshes these generated assets periodically and when synchronization logic changes. Generated counts are checked against `backend/data/site/manifest.json`.
 
 ## Retrieval layer
 
-The production retriever uses three independent evidence signals over the same
-public professional source of truth:
+The production retriever combines three independent evidence signals over the same professional source of truth:
 
-1. **Semantic retrieval** for conceptual similarity.
-2. **BM25 lexical retrieval** for exact names, technologies, issuers, model IDs,
-   and other sparse terms.
-3. **Structured profile retrieval** for field-aware matching across projects,
-   skills, certifications, work experience, education, and public links.
+1. **FastEmbed semantic retrieval** for conceptual similarity;
+2. **BM25 lexical retrieval** for exact names, technologies, issuers and sparse identifiers;
+3. **structured profile retrieval** for field-aware matching across projects, skills, certifications, work experience, education and public links.
 
-Candidate lists are fused with **Reciprocal Rank Fusion (RRF)**. Structured
-results receive only a bounded confidence contribution, and exact-term evidence
-gets a small deterministic boost. Retrieval traces retain semantic, lexical, and
-structured ranks so quality regressions remain inspectable.
+Candidate lists are fused with **Reciprocal Rank Fusion (RRF)**. Structured results receive a bounded confidence contribution and exact-term evidence can receive a small deterministic boost. Retrieval traces retain independent ranks so regressions remain inspectable.
 
-Both supported runtime paths are wired to the structured retriever:
+### Vercel production path
 
-- Render's configured `inprocess` transport builds `HybridRetriever` with the
-  structured profile directly in the FastAPI process.
-- The optional subprocess MCP transport builds the same structured-aware hybrid
-  retriever inside `backend/mcp_server/blog_server.py`.
+Vercel uses `MCP_TRANSPORT=inprocess`. The FastAPI process builds `HybridRetriever` using the bundled synchronized corpus, the structured profile and local FastEmbed/ONNX vectors. The FastEmbed model is prepared during the Vercel build to avoid downloading model files on a user request.
 
-The `/health` endpoint reports the active retrieval strategy and structured
-document count so a deployment can be checked without exposing user content.
+### Alternative runtime path
+
+The optional subprocess MCP transport builds the same structured-aware hybrid retriever inside `backend/mcp_server/blog_server.py`. Docker/Render files remain available as alternative deployment configurations, but they are not the active public production path.
+
+The `/health` endpoint reports the active retrieval strategy, corpus counts and structured-document count without exposing conversation content.
 
 ## Routing and orchestration
 
-`backend/router.py` performs deterministic English/French/Arabic language and
-intent routing before the LLM is called. Portfolio-factual intents such as
-projects, skills, certifications, experience, education, and contact information
-are marked `requires_retrieval=true`.
+`backend/router.py` performs deterministic English/French/Arabic language and intent routing before the LLM is called.
 
-The ReAct-style agent can use `search_site` and the explicit contact action. A
-portfolio-factual turn cannot bypass retrieval and rely only on model memory.
-Greetings and clearly out-of-scope general questions do not have to spend a
-retrieval call. Tool inputs containing visitor contact information are not
-exposed in the public SSE stream.
+Portfolio-factual intents such as projects, skills, certifications, experience, education and public contact information are marked `requires_retrieval=true`.
+
+On Vercel, factual requests are **pre-retrieved deterministically** before the generation call. This means grounding does not depend on Gemini choosing to call `search_site`, and it removes an unnecessary model round trip from the common path.
+
+Short history-dependent references such as “What about the second one?”, French equivalents and Arabic equivalents are also routed back through grounded retrieval.
+
+Greetings use a deterministic localized response and therefore consume neither retrieval nor Gemini generation. Clearly out-of-scope requests avoid portfolio retrieval and are redirected toward the assistant's portfolio scope.
+
+## Provider reliability
+
+The production generation path starts with **Gemini 3.7 Flash**. On quota, overload, timeout or related transient provider signals, the Vercel runtime immediately switches to **Gemini 3.5 Flash-Lite** rather than spending the serverless request window retrying the same unavailable primary model.
+
+Generation timeout/retry settings are bounded to fit inside the Vercel Hobby function duration.
+
+If generation still fails after factual retrieval has already succeeded, the assistant does not invent a requested fact and does not end with an empty error-only turn. It returns a truthful service message explaining that the generated answer could not be verified, together with source IDs that were actually retrieved. The normal grounding boundary still processes that final output.
 
 ## Grounding and citation integrity
 
-`backend/grounding.py` is a model-independent output boundary. When search
-evidence was used, it:
+`backend/grounding.py` is a model-independent output boundary. When search evidence was used, it can:
 
-- validates that bracket citations refer to sources actually retrieved for the
-  current turn;
-- removes hallucinated source labels;
-- appends a real retrieved source citation when a supported answer omitted one;
-- blocks unsupported high-risk literals such as invented numeric metrics, URLs,
-  and email addresses;
-- replaces unsafe high-risk claims with a conservative evidence-based
-  abstention.
+- validate that bracket citations refer to sources retrieved for the current turn;
+- remove hallucinated source labels;
+- append a real retrieved citation when supported evidence exists but the answer omitted one;
+- block unsupported high-risk literals such as invented numeric metrics, URLs and email addresses;
+- replace unsafe high-risk claims with a conservative evidence-based abstention.
 
-This verifier is intentionally not described as full semantic entailment. It is
-a deterministic production guard for high-impact factual failures; broader
-answer quality is evaluated separately.
+This verifier is intentionally not described as full semantic entailment. It is a deterministic guard for high-impact factual failures; broader answer quality is evaluated separately.
 
 ## Evaluation
 
@@ -140,52 +140,38 @@ Two complementary evaluation layers are maintained.
 
 ### Deterministic regression benchmark
 
-`evaluation/run_benchmark.py` runs without network calls or an LLM judge. It
-measures multilingual routing, structured retrieval Hit@1/Hit@3/MRR, grounding
-safety behavior, and synchronized-profile integrity against
-`evaluation/dataset.json`. CI runs it in strict mode so a threshold regression
-fails the build.
+`evaluation/run_benchmark.py` runs without provider calls or an LLM judge. It measures multilingual routing, retrieval Hit@1/Hit@3/MRR, grounding-safety behavior and synchronized-profile integrity against `evaluation/dataset.json`.
 
-These scores are regression metrics on a fixed benchmark and must not be
-presented as end-to-end LLM accuracy.
+CI runs it in strict mode so a threshold regression fails the build. These scores are fixed regression metrics and must not be presented as universal end-to-end LLM accuracy.
 
-### Deployed-system smoke evaluation
+### Vercel deployed-system regression
 
-`evaluation/run_online_eval.py` can test a real running API through `/health` and
-`/chat`. It observes completion, required retrieval, expected source citations,
-safety abstention, unnecessary-retrieval avoidance, and response latency. The
-manual `.github/workflows/online-eval.yml` workflow publishes the resulting JSON
-report as an artifact.
+`evaluation/run_online_eval.py` tests the running production API through `/health` and `/chat`.
 
-This layer exercises the actual model + routing + retrieval + tool orchestration
-+ grounding + SSE path, while still using deterministic assertions rather than
-claiming subjective semantic scoring.
+`.github/workflows/vercel-production-eval.yml` automatically waits for the production deployment promotion and then checks completion, required retrieval, expected citations, safety abstention, unnecessary-retrieval avoidance, history-aware follow-ups and response latency.
+
+The verified 2026-09-10 production run passed all five configured rates at `1.0`, with 9/9 completed cases, median latency of approximately 1.14 seconds and P95 of approximately 1.55 seconds.
+
+This layer exercises the actual router + retrieval + model/failover + grounding + SSE path while still using deterministic assertions rather than subjective semantic scoring.
 
 ## Observability and privacy
 
-`backend/observability.py` records only process-lifetime aggregate operational
-metrics: request/completion/error counts, retrieval-use counts, grounding
-interventions, language/intent counters, and a bounded latency window. The public
-`/metrics` endpoint returns those aggregates.
+`backend/observability.py` stores only process-lifetime aggregate operational metrics: request/completion/error counts, retrieval-use counts, grounding interventions, language/intent counters and a bounded latency window. `/metrics` exposes those aggregates.
 
-No prompts, answers, IP addresses, email addresses, tool inputs, or conversation
-history are retained by this telemetry layer. Metrics reset on process restart.
+No prompts, answers, IP addresses, email addresses, tool inputs or conversation history are retained by this telemetry layer. Metrics reset on process restart.
 
 ## Security and production boundaries
 
 - Portfolio evidence is the source of truth for claims about Youssef.
-- Retrieved text is treated as untrusted data, not as executable instructions.
-- Internal prompts and raw model reasoning are not emitted through the public SSE
-  API.
-- Browser Origin/Referer restrictions reduce unauthorized embedding of the
-  public endpoint.
-- Per-IP and global request limits bound public model spend and abuse.
-- Secrets stay in deployment environment variables and are not committed.
-- Contact actions require explicit visitor intent and user-provided contact data.
+- Retrieved text is treated as untrusted data, not executable instructions.
+- Internal prompts and raw model reasoning are not emitted through the public SSE API.
+- Browser Origin/Referer restrictions reduce unauthorized embedding.
+- Per-IP and global request limits bound public provider spend and abuse.
+- Secrets stay in server-side deployment environment variables.
+- Contact actions require explicit visitor intent and visitor-provided contact data.
 - Unsupported professional claims are rejected rather than guessed.
+- The frontend contains only the public Vercel API URL, never `GEMINI_API_KEY`.
 
 ## Deliberate non-claims
 
-A learned cross-encoder reranker, persistent distributed telemetry, semantic LLM
-judge scores, and production-scale load guarantees are not claimed. They should
-only be added to the project description after implementation and measurement.
+The project does not claim universal semantic entailment checking, subjective LLM-judge accuracy, persistent distributed telemetry or enterprise-scale load/availability guarantees. Such claims should only be added after the corresponding capability is implemented and measured.
