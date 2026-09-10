@@ -74,6 +74,17 @@ def _unsupported_literals(answer: str, evidence: str) -> tuple[list[str], list[s
     return unsupported_numbers, unsupported_urls, unsupported_emails
 
 
+def _remove_unknown_citations(answer: str, unknown: Iterable[str]) -> str:
+    """Drop hallucinated citation labels while preserving answer prose."""
+    cleaned = answer or ""
+    for citation in unknown:
+        cleaned = cleaned.replace(f"[{citation}]", "")
+    # Removing a citation can leave doubled spaces before punctuation/newlines.
+    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
+    cleaned = re.sub(r"[ \t]+([.,;:!?])", r"\1", cleaned)
+    return cleaned.strip()
+
+
 @dataclass(frozen=True)
 class GroundingReport:
     has_search_evidence: bool
@@ -87,6 +98,10 @@ class GroundingReport:
     @property
     def high_risk_supported(self) -> bool:
         return not (self.unsupported_numbers or self.unsupported_urls or self.unsupported_emails)
+
+    @property
+    def citation_integrity(self) -> bool:
+        return not self.unknown_citations
 
 
 def verify_grounding(answer: str, steps: Iterable[Any]) -> GroundingReport:
@@ -114,7 +129,8 @@ def enforce_grounding(answer: str, steps: Iterable[Any]) -> tuple[str, Grounding
     No search evidence means no post-hoc claim of grounding is made; the answer is
     left alone (useful for greetings/clarifying turns/contact confirmations). When
     search was used, unsupported high-risk literals trigger a conservative
-    abstention. Otherwise at least one real retrieved-source citation is ensured.
+    abstention. Hallucinated citation labels are removed, and at least one real
+    retrieved-source citation is guaranteed on supported factual answers.
     """
     report = verify_grounding(answer, steps)
     if not report.has_search_evidence:
@@ -130,8 +146,11 @@ def enforce_grounding(answer: str, steps: Iterable[Any]) -> tuple[str, Grounding
             safe += f" Retrieved sources: {sources}."
         return safe, report
 
-    if report.valid_citations or not report.evidence_sources:
-        return answer, report
+    guarded = _remove_unknown_citations(answer, report.unknown_citations)
+    remaining_citations = set(_answer_citations(guarded))
+    valid_remaining = remaining_citations & set(report.evidence_sources)
+    if valid_remaining or not report.evidence_sources:
+        return guarded, report
 
     sources = ", ".join(f"[{s}]" for s in report.evidence_sources[:3])
-    return f"{answer.rstrip()}\n\nSources: {sources}", report
+    return f"{guarded.rstrip()}\n\nSources: {sources}", report
