@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "EMBEDDER=gemini GEMINI_EMBED_MODEL=gemini-embedding-2 GEMINI_EMBED_DIM=768 GEMINI_EMBED_PER_MIN=40 GEMINI_EMBED_COOLDOWN=65 CORPUS_DIR=backend/data/site EMBED_CACHE_DIR=backend/data/embcache python backend/precompute_embeddings.py",
+  "functions": {
+    "app.py": {
+      "maxDuration": 300
+    }
+  }
+}
