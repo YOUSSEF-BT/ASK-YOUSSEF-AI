@@ -27,6 +27,9 @@ jobs:
       - name: Compile backend
         run: python -m compileall -q backend scripts tests evaluation
 
+      - name: Validate widget JavaScript
+        run: node --check web/widget.js
+
       - name: Run deterministic retrieval tests
         run: python -m unittest discover -s tests -p "test_*.py" -v
 
@@ -60,6 +63,7 @@ jobs:
           test -f backend/grounding.py
           test -f backend/router.py
           test -f backend/observability.py
+          test -f backend/feedback.py
           test -f backend/retrieval/hybrid.py
           test -f backend/retrieval/structured.py
           test -f backend/data/profile.json
@@ -72,9 +76,12 @@ jobs:
           test -f tests/test_runtime_wiring.py
           test -f tests/test_observability.py
           test -f tests/test_online_eval.py
+          test -f tests/test_feedback.py
           test -f web/widget.js
           test -f docs/architecture.md
           test -f docs/evaluation.md
+          test -f docs/security.md
+          test -f docs/deployment.md
 
       - name: Validate synchronized profile counts
         run: |
