@@ -63,7 +63,15 @@ PROFILE = {
             "url": "https://example.com/#experience",
         }
     ],
-    "public_links": [{"url": "https://github.com/YOUSSEF-BT"}],
+    "public_links": [
+        {"url": "https://github.com/YOUSSEF-BT"},
+        {
+            "type": "public_link",
+            "label": "Email",
+            "value": "bt.youssef.369@gmail.com",
+            "url": "mailto:bt.youssef.369@gmail.com",
+        },
+    ],
 }
 
 
@@ -93,6 +101,25 @@ class StructuredProfileRetrieverTests(unittest.TestCase):
         hits = self.retriever.search("expérience NEXTRONIC ABA", k=2)
         self.assertTrue(hits)
         self.assertEqual(hits[0].meta["entity_type"], "work_experience")
+
+    def test_public_email_query_french(self):
+        hits = self.retriever.search("Donne-moi l'adresse email de Youssef pour le contacter", k=3)
+        self.assertTrue(hits)
+        self.assertEqual(hits[0].meta["entity_type"], "public_link")
+        self.assertEqual(hits[0].meta["heading"], "Email")
+        self.assertIn("bt.youssef.369@gmail.com", hits[0].meta["text"])
+
+    def test_public_email_query_english(self):
+        hits = self.retriever.search("What is Youssef's public email?", k=3)
+        self.assertTrue(hits)
+        self.assertEqual(hits[0].meta["heading"], "Email")
+        self.assertIn("bt.youssef.369@gmail.com", hits[0].meta["text"])
+
+    def test_public_email_query_arabic(self):
+        hits = self.retriever.search("ما هو بريد يوسف الإلكتروني للتواصل؟", k=3)
+        self.assertTrue(hits)
+        self.assertEqual(hits[0].meta["entity_type"], "public_link")
+        self.assertIn("bt.youssef.369@gmail.com", hits[0].meta["text"])
 
 
 @dataclass
