@@ -25,7 +25,10 @@ jobs:
           python-version: "3.12"
 
       - name: Compile backend
-        run: python -m compileall -q backend scripts
+        run: python -m compileall -q backend scripts tests
+
+      - name: Run deterministic retrieval tests
+        run: python -m unittest discover -s tests -p "test_*.py" -v
 
       - name: Validate evaluation dataset
         run: python -m json.tool evaluation/dataset.json >/dev/null
@@ -39,6 +42,7 @@ jobs:
           test -f backend/app.py
           test -f backend/agent.py
           test -f backend/rag.py
+          test -f backend/retrieval/hybrid.py
           test -f web/widget.js
           test -f docs/architecture.md
 
