@@ -56,6 +56,7 @@ jobs:
           git config user.name "YOUSSEF-BT"
           git config user.email "YOUSSEF-BT@users.noreply.github.com"
           git add -A
+          git reset -- .github/workflows/ci.yml .github/workflows/crawl.yml .github/workflows/pages.yml
           if git diff --cached --quiet; then
             echo "No foundation changes to commit."
           else
