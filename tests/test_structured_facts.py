@@ -23,6 +23,15 @@ class StructuredPortfolioFactsTests(unittest.TestCase):
             {"role": "user", "content": "Which certifications does he have?"},
             {"role": "assistant", "content": "His certifications include credentials from Oracle and other issuers."},
         ]
+        cls.oracle_history = [
+            {"role": "user", "content": "What about Oracle?"},
+            {"role": "assistant", "content": (
+                "Youssef's public portfolio lists 3 Oracle certifications: "
+                "1. Oracle Agentic AI Certified Foundations Associate "
+                "2. Oracle AI Database Certified Foundations Associate "
+                "3. Oracle Cloud Infrastructure 2026 Certified Architect Associate"
+            )},
+        ]
 
     def test_total_certification_count_comes_from_complete_profile(self):
         expected = len(self.profile["certifications"])
@@ -40,22 +49,41 @@ class StructuredPortfolioFactsTests(unittest.TestCase):
         self.assertIn("Oracle", result.answer)
         self.assertIn("Anthropic", result.answer)
         self.assertIn("LinkedIn", result.answer)
-        self.assertNotIn("currently lists three certifications issued by LinkedIn", result.answer.lower())
+        self.assertNotIn("three certifications issued by LinkedIn", result.answer.lower())
 
     def test_oracle_inventory_is_complete_as_followup(self):
-        self.assertEqual(len(self.oracle), 3, "Current public portfolio should contain three Oracle certifications")
+        self.assertEqual(len(self.oracle), 3)
         result = self.resolver.resolve("What about Oracle?", self.cert_history)
         self.assertIsNotNone(result)
         self.assertIn("3", result.answer)
         for row in self.oracle:
             self.assertIn(row["title"], result.answer)
 
-    def test_oracle_challenge_in_french_returns_real_inventory(self):
+    def test_matching_oracle_claim_is_confirmed_in_french(self):
         result = self.resolver.resolve("je pense il a 3 certifications de oracle")
         self.assertIsNotNone(result)
+        self.assertTrue(result.answer.startswith("Oui"))
         self.assertIn("3", result.answer)
         for row in self.oracle:
             self.assertIn(row["title"], result.answer)
+
+    def test_wrong_oracle_claim_is_corrected_not_agreed_with(self):
+        result = self.resolver.resolve("je pense il a 4 certifications de oracle")
+        self.assertIsNotNone(result)
+        self.assertTrue(result.answer.startswith("Pas exactement"))
+        self.assertIn("3", result.answer)
+        self.assertIn("pas 4", result.answer)
+        for row in self.oracle:
+            self.assertIn(row["title"], result.answer)
+
+    def test_ordinal_certification_followup_uses_current_language_and_full_details(self):
+        result = self.resolver.resolve("talk about the first one.", self.oracle_history)
+        self.assertIsNotNone(result)
+        self.assertTrue(result.answer.startswith("Oracle Agentic AI Certified Foundations Associate is"))
+        self.assertIn("Aug 2026", result.answer)
+        self.assertIn("Foundational certification in agentic AI", result.answer)
+        self.assertIn("Verification:", result.answer)
+        self.assertNotIn("La première", result.answer)
 
     def test_specific_oracle_certification_stays_specific(self):
         result = self.resolver.resolve("Which Oracle Agentic AI certification does Youssef have?")
@@ -69,9 +97,20 @@ class StructuredPortfolioFactsTests(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertIn(str(len(self.profile["certifications"])), result.answer)
 
-    def test_issuer_name_does_not_hijack_employer_question(self):
-        self.assertIsNone(self.resolver.resolve("Did Youssef work at IBM?"))
-        self.assertIsNone(self.resolver.resolve("Did Youssef work at Oracle?"))
+    def test_employer_question_uses_work_history_and_disambiguates_issuer(self):
+        result = self.resolver.resolve("Did Youssef work at IBM?")
+        self.assertIsNotNone(result)
+        self.assertIn("No synchronized work-experience entry", result.answer)
+        self.assertIn("certification issuer, not as an employer", result.answer)
+        self.assertIn("[experience-education]", result.answer)
+        self.assertIn("[certifications]", result.answer)
+
+    def test_known_employer_is_confirmed_from_structured_experience(self):
+        result = self.resolver.resolve("Did Youssef work at NEXTRONIC?")
+        self.assertIsNotNone(result)
+        self.assertIn("NEXTRONIC", result.answer)
+        self.assertIn("AI/ML Engineer Intern", result.answer)
+        self.assertIn("[experience-education]", result.answer)
 
     def test_issuer_only_without_certification_history_is_not_intercepted(self):
         self.assertIsNone(self.resolver.resolve("What about Oracle?"))
@@ -106,17 +145,74 @@ class StructuredPortfolioFactsTests(unittest.TestCase):
             self.assertIn(row["role"], result.answer)
             self.assertIn(row["company"], result.answer)
 
-    def test_filtered_project_aggregates_are_not_mistaken_for_total_inventory(self):
-        self.assertIsNone(self.resolver.resolve("How many Computer Vision projects does Youssef have?"))
-        self.assertIsNone(self.resolver.resolve("How many RAG projects does Youssef have?"))
-        self.assertIsNone(self.resolver.resolve("List all Python projects"))
+    def test_computer_vision_project_count_is_exact_and_project_only(self):
+        result = self.resolver.resolve("How many Computer Vision projects does Youssef have?")
+        self.assertIsNotNone(result)
+        self.assertIn("exactly 2 Computer Vision project", result.answer)
+        self.assertIn("Real-Time Road Accident Detection", result.answer)
+        self.assertIn("Traffic MVP", result.answer)
+        self.assertNotIn("certification", result.answer.lower())
+
+    def test_python_project_list_is_complete_from_structured_project_metadata(self):
+        result = self.resolver.resolve("List all Python projects")
+        self.assertIsNotNone(result)
+        expected = []
+        for row in self.profile["projects"]:
+            values = list(row.get("tags", []) or []) + list(row.get("tech_stack", []) or [])
+            if any("python" in str(value).lower() for value in values):
+                expected.append(row)
+        self.assertEqual(len(expected), 9)
+        self.assertIn("9 Python project", result.answer)
+        for row in expected:
+            self.assertIn(row["title"], result.answer)
+
+    def test_rag_project_count_distinguishes_public_projects_from_freelance_work(self):
+        result = self.resolver.resolve("combien de rag a construis")
+        self.assertIsNotNone(result)
+        self.assertIn("exactement 1 projet", result.answer.lower())
+        self.assertIn("OpenLegaMa", result.answer)
+        self.assertIn("expérience freelance", result.answer)
+        self.assertIn("[experience-education]", result.answer)
+
+    def test_current_work_question_returns_present_role_first(self):
+        result = self.resolver.resolve("youssef il fait quoi maintenant")
+        self.assertIsNotNone(result)
+        self.assertTrue(result.answer.startswith("Actuellement"))
+        self.assertIn("Freelance AI/ML Engineer", result.answer)
+        self.assertIn("Fiverr", result.answer)
+        self.assertIn("Sep 2026 — Present", result.answer)
+        self.assertIn("RAG systems", result.answer)
+
+    def test_goals_are_not_inferred_when_not_explicitly_declared(self):
+        result = self.resolver.resolve("donne moi les objectif et les butes de youssef")
+        self.assertIsNotNone(result)
+        self.assertIn("ne contient pas de rubrique déclarant explicitement", result.answer)
+        self.assertIn("Generative AI & RAG", result.answer)
+        self.assertIn("Agentic AI & LLM Orchestration", result.answer)
+        self.assertIn("[skills]", result.answer)
+
+    def test_agentic_ai_capability_uses_explicit_skills_experience_and_training(self):
+        result = self.resolver.resolve("est ce que il peuve m'aide sur un projet agentic ai ?")
+        self.assertIsNotNone(result)
+        self.assertTrue(result.answer.startswith("Oui"))
+        self.assertIn("Agentic AI & LLM Orchestration", result.answer)
+        self.assertIn("Tool Calling", result.answer)
+        self.assertIn("Oracle Agentic AI Certified Foundations Associate", result.answer)
+        self.assertIn("[skills]", result.answer)
+        self.assertIn("[experience-education]", result.answer)
+        self.assertIn("[certifications]", result.answer)
+
+    def test_copilot_question_recognizes_this_product(self):
+        result = self.resolver.resolve("est ce que il a deja fait un assistant ai copilot")
+        self.assertIsNotNone(result)
+        self.assertTrue(result.answer.startswith("Oui"))
+        self.assertIn("Ask Youssef AI", result.answer)
+        self.assertIn("portfolio", result.answer.lower())
+        self.assertIn("https://github.com/YOUSSEF-BT/ASK-YOUSSEF-AI", result.answer)
 
     def test_specific_project_question_is_not_intercepted(self):
         self.assertIsNone(self.resolver.resolve("Which project uses BoT-SORT?"))
         self.assertIsNone(self.resolver.resolve("Tell me about OpenLegaMa"))
-
-    def test_specific_experience_question_is_not_intercepted(self):
-        self.assertIsNone(self.resolver.resolve("Did Youssef work at NEXTRONIC?"))
 
 
 if __name__ == "__main__":
