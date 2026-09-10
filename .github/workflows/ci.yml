@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "backend/data/site/**"
+      - "backend/data/embcache/**"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile backend
+        run: python -m compileall -q backend scripts
+
+      - name: Validate evaluation dataset
+        run: python -m json.tool evaluation/dataset.json >/dev/null
+
+      - name: Verify required project files
+        run: |
+          test -f README.md
+          test -f LICENSE
+          test -f NOTICE.md
+          test -f .env.example
+          test -f backend/app.py
+          test -f backend/agent.py
+          test -f backend/rag.py
+          test -f web/widget.js
+          test -f docs/architecture.md
+
+      - name: Guard against stale upstream identity data
+        run: |
+          if grep -R -n --exclude='LICENSE' --exclude='NOTICE.md' --exclude='README.md' --exclude='bootstrap_foundation.py' --exclude='bootstrap-foundation.yml' -E 'adityajain\.me|Aditya Jain|Ask about Aditya|Chat with Aditya' backend web render.yaml .env.example; then
+            echo "Stale upstream identity reference found."
+            exit 1
+          fi
