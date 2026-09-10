@@ -6,19 +6,18 @@ pydantic>=2.0
 # Pipeline (from-scratch RAG): NumPy only for the store/chunking
 numpy>=1.24
 
-# Gemini — generation AND embeddings (EMBEDDER=gemini: gemini-embedding-001).
-# API embeddings mean NO local model in RAM, so it fits Render's 512 MB free tier.
-# Floor is 2.x: older releases mis-serialize newer config (e.g. thinking_config)
-# and the gemini-3.5-* model ids, which surfaced as a 400 INVALID_ARGUMENT.
+# Gemini — generation AND API embeddings (EMBEDDER=gemini).
+# Production currently uses the stable gemini-embedding-2 model at 768 dimensions,
+# so no local embedding model has to remain resident in the Render process.
+# Floor is 2.x for current Gemini model/config serialization support.
 google-genai>=2.0
 
-# Optional local ONNX embedder (EMBEDDER=fastembed). NOT used by default — the
-# deploy uses Gemini embeddings because loading fastembed OOMs at 512 MB. Kept for
-# local/offline use; remove it to slim the build if you never use it.
+# Optional local ONNX embedder (EMBEDDER=fastembed). NOT used by default — kept
+# for local/offline experimentation and provider-independent retrieval tests.
 fastembed>=0.3
 
-# MCP servers — the real FastMCP framework (retrieval + contact children)
+# MCP servers — retrieval + contact tool transport.
 fastmcp>=2.0
 
-# NOTE: intentionally NO torch / sentence-transformers / transformers here —
-# they'd blow the memory budget. contact.py uses only the stdlib (urllib).
+# NOTE: intentionally NO torch / sentence-transformers / transformers in the
+# production dependency set; contact.py uses only the stdlib (urllib).
