@@ -198,6 +198,20 @@ class RecruiterReasoningStressTests(unittest.TestCase):
         self.assertIn("Top 3 strengths", answer)
         self.assertIn("public-evidence gaps", answer)
 
+    def test_language_fallback_does_not_recurse_on_hiring_question(self):
+        result = self.resolver.resolve(
+            "Why should a company hire Youssef instead of another junior AI Engineer?"
+        )
+        self.assertIsNotNone(result)
+        self.assertIn("Youssef", result.answer)
+        self.assertIn("NEXTRONIC", result.answer)
+
+    def test_language_fallback_does_not_recurse_on_rag_evidence_question(self):
+        # This phrasing previously fell through the planner language heuristic and
+        # recursively called the patched detector until the Vercel SSE stream died.
+        result = self.resolver.resolve("Show evidence of his RAG and LLM skills.")
+        self.assertTrue(result is None or isinstance(result.answer, str))
+
 
 if __name__ == "__main__":
     unittest.main()
