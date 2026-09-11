@@ -43,6 +43,7 @@ for _key, _value in _DEFAULTS.items():
 _BACKEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend")
 if _BACKEND_DIR not in sys.path:
     sys.path.insert(0, _BACKEND_DIR)
+import vercel_language_patch  # noqa: E402,F401
 import vercel_quality_patch  # noqa: E402,F401
 import project_fingerprint_patch  # noqa: E402,F401
 import vercel_agent_patch  # noqa: E402,F401
