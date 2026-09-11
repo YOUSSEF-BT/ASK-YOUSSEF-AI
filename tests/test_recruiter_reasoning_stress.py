@@ -203,8 +203,8 @@ class RecruiterReasoningStressTests(unittest.TestCase):
             "Why should a company hire Youssef instead of another junior AI Engineer?"
         )
         self.assertIsNotNone(result)
-        self.assertIn("Youssef", result.answer)
         self.assertIn("NEXTRONIC", result.answer)
+        self.assertIn("OpenLegaMa", result.answer)
 
     def test_language_fallback_does_not_recurse_on_rag_evidence_question(self):
         # This phrasing previously fell through the planner language heuristic and
