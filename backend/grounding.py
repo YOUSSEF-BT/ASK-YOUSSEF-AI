@@ -90,6 +90,28 @@ def _search_observations(steps: Iterable[Any]) -> list[str]:
     return outputs
 
 
+def _question_language(steps: Iterable[Any], answer: str) -> str:
+    """Prefer the visitor's question language over a drifting model answer.
+
+    A grounding intervention can replace the model's prose entirely. Detecting
+    the replacement language from that prose is unsafe because the model may
+    itself have switched languages. The first search action preserves the exact
+    question (or the history-aware wrapper), so use it as the authoritative hint.
+    """
+    for step in steps:
+        if getattr(step, "action", None) != "search_site":
+            continue
+        raw = str(getattr(step, "action_input", None) or "").strip()
+        if not raw:
+            continue
+        # History-aware requests are wrapped in English scaffolding. The actual
+        # visitor question is always the final Follow-up segment.
+        if "Follow-up:" in raw:
+            raw = raw.rsplit("Follow-up:", 1)[-1].strip()
+        return detect_language(raw)
+    return detect_language(answer or "")
+
+
 def evidence_sources(steps: Iterable[Any]) -> list[str]:
     """Return source slugs in retrieval order, de-duplicated."""
     found: list[str] = []
@@ -133,8 +155,8 @@ def _remove_unknown_citations(answer: str, unknown: Iterable[str]) -> str:
     return cleaned.strip()
 
 
-def _grounding_abstention(answer: str) -> str:
-    language = detect_language(answer or "")
+def _grounding_abstention(answer: str, language: str | None = None) -> str:
+    language = language or detect_language(answer or "")
     if language == "fr":
         return (
             "Je n’ai pas pu vérifier ce détail exact dans les éléments du portfolio "
@@ -191,18 +213,21 @@ def verify_grounding(answer: str, steps: Iterable[Any]) -> GroundingReport:
 
 def enforce_grounding(answer: str, steps: Iterable[Any]) -> tuple[str, GroundingReport]:
     """Return a guarded, widget-ready answer plus its verification report."""
+    steps = list(steps)
     formatted = _normalize_public_format(answer)
     report = verify_grounding(formatted, steps)
     if not report.has_search_evidence:
         return formatted, report
 
+    language = _question_language(steps, formatted)
+
     if not report.high_risk_supported:
         sources = ", ".join(f"[{s}]" for s in report.evidence_sources[:3])
-        safe = _grounding_abstention(formatted)
+        safe = _grounding_abstention(formatted, language=language)
         if sources:
-            if detect_language(formatted) == "fr":
+            if language == "fr":
                 safe += f" Sources récupérées : {sources}."
-            elif detect_language(formatted) == "ar":
+            elif language == "ar":
                 safe += f" المصادر المسترجعة: {sources}."
             else:
                 safe += f" Retrieved sources: {sources}."
@@ -215,4 +240,10 @@ def enforce_grounding(answer: str, steps: Iterable[Any]) -> tuple[str, Grounding
         return guarded, report
 
     sources = ", ".join(f"[{s}]" for s in report.evidence_sources[:3])
-    return f"{guarded.rstrip()}\n\nSources: {sources}", report
+    if language == "fr":
+        label = "Sources"
+    elif language == "ar":
+        label = "المصادر"
+    else:
+        label = "Sources"
+    return f"{guarded.rstrip()}\n\n{label}: {sources}", report
