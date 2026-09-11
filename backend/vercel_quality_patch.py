@@ -8,12 +8,14 @@ cache again.
 This module also applies narrow production-hardening fixes that are safer to keep
 deterministic than to delegate to a generative model: grammatical cleanup after
 an invalid citation is removed, multilingual employer verification, concise
-professional profile summaries, and unsupported private-profile questions.
+professional profile summaries, recruiter-oriented skill/certification ranking,
+and unsupported private-profile questions.
 """
 from __future__ import annotations
 
 import os
 import re
+from dataclasses import replace
 
 import grounding as _grounding
 import precision_facts as _precision
@@ -73,6 +75,22 @@ _PROFILE_SUMMARY_PATTERNS = (
     re.compile(r"\b(?:tell|talk)\s+(?:me\s+)?about\s+(?:youssef|him)\b", re.I),
     re.compile(r"\b(?:bio|resume)\s+professionnelle?\b.*\b(?:youssef|lui)\b", re.I),
     re.compile(r"\b(?:parle|parler)\b.*\b(?:de\s+)?(?:youssef|lui)\b", re.I),
+)
+
+_SKILL_RANKING_PATTERNS = (
+    re.compile(r"\b(?:strongest|best|top|key|core|most\s+(?:valuable|relevant|important))\b.*\b(?:technical\s+)?skills?\b", re.I),
+    re.compile(r"\b(?:technical\s+)?skills?\b.*\b(?:strongest|best|top|key|core|most\s+(?:valuable|relevant|important))\b", re.I),
+    re.compile(r"\b(?:competences?|compétences?)\b.*\b(?:techniques?\b)?.*\b(?:plus\s+fortes?|meilleures?|principales?|cles?|clés?|plus\s+pertinentes?)\b", re.I),
+    re.compile(r"\b(?:plus\s+fortes?|meilleures?|principales?|cles?|clés?)\b.*\b(?:competences?|compétences?)\b", re.I),
+    re.compile(r"(?:أقوى|أفضل|أهم).*مهارات|مهارات.*(?:أقوى|أفضل|أهم)", re.I),
+)
+
+_CERT_RANKING_PATTERNS = (
+    re.compile(r"\b(?:most\s+(?:valuable|relevant|important)|strongest|best|top|key)\b.*\b(?:certifications?|certificates?|credentials?)\b", re.I),
+    re.compile(r"\b(?:certifications?|certificates?|credentials?)\b.*\b(?:most\s+(?:valuable|relevant|important)|strongest|best|top|key)\b", re.I),
+    re.compile(r"\b(?:certifications?|certificats?)\b.*\b(?:plus\s+(?:utiles?|pertinentes?|importantes?|fortes?)|meilleures?|principales?)\b", re.I),
+    re.compile(r"\b(?:plus\s+(?:utiles?|pertinentes?|importantes?|fortes?)|meilleures?|principales?)\b.*\b(?:certifications?|certificats?)\b", re.I),
+    re.compile(r"(?:أهم|أفضل|أقوى).*شهاد|شهاد.*(?:أهم|أفضل|أقوى)", re.I),
 )
 
 _PRIVATE_PROFILE_PATTERNS = {
@@ -177,7 +195,10 @@ def _profile_summary_answer(resolver, language: str):
         period = str(current.get("period_fr") or current.get("period") or "")
         prev_role = str(previous.get("role_fr") or previous.get("role") or "")
         prev_company = str(previous.get("company_fr") or previous.get("company") or "")
-        text = f"Youssef Bouzit exerce actuellement comme {role} chez {company}"
+        if "fiverr" in _precision._normalize(company) and "freelance" in _precision._normalize(role):
+            text = f"Youssef Bouzit exerce actuellement comme {role}, en indépendant via {company}"
+        else:
+            text = f"Youssef Bouzit exerce actuellement comme {role} chez {company}"
         if period:
             text += f" ({period})"
         text += ". Son profil public documente des travaux en RAG/LLM, agents IA, Machine Learning et vision par ordinateur."
@@ -191,7 +212,10 @@ def _profile_summary_answer(resolver, language: str):
         period = str(current.get("period") or "")
         prev_role = str(previous.get("role") or "")
         prev_company = str(previous.get("company") or "")
-        text = f"يعمل يوسف بوزيت حالياً كـ {role} لدى {company}"
+        if "fiverr" in _precision._normalize(company) and "freelance" in _precision._normalize(role):
+            text = f"يعمل يوسف بوزيت حالياً كـ {role} بشكل مستقل عبر {company}"
+        else:
+            text = f"يعمل يوسف بوزيت حالياً كـ {role} لدى {company}"
         if period:
             text += f" ({period})"
         text += ". ويوثق ملفه المهني أعمالاً في RAG/LLM وAI Agents وMachine Learning وComputer Vision."
@@ -205,7 +229,10 @@ def _profile_summary_answer(resolver, language: str):
         period = str(current.get("period") or "")
         prev_role = str(previous.get("role") or "")
         prev_company = str(previous.get("company") or "")
-        text = f"Youssef Bouzit currently works as a {role} at {company}"
+        if "fiverr" in _precision._normalize(company) and "freelance" in _precision._normalize(role):
+            text = f"Youssef Bouzit currently works as an independent {role} via {company}"
+        else:
+            text = f"Youssef Bouzit currently works as a {role} at {company}"
         if period:
             text += f" ({period})"
         text += ". His public portfolio documents work across RAG/LLM applications, AI agents, Machine Learning, and Computer Vision."
@@ -218,6 +245,158 @@ def _profile_summary_answer(resolver, language: str):
         text + " [experience-education] [career-status] [skills]",
         source="experience-education",
         evidence="Deterministic professional summary from synchronized current/prior experience, career availability, and skills.",
+    )
+
+
+def _project_by_slug(resolver, slug: str):
+    target = _precision._normalize(slug)
+    return next(
+        (
+            row for row in resolver.projects
+            if _precision._normalize(str(row.get("slug") or "")) == target
+        ),
+        {},
+    )
+
+
+def _cert_by_title(resolver, title: str):
+    target = _precision._normalize(title)
+    return next(
+        (
+            row for row in resolver.certifications
+            if _precision._normalize(str(row.get("title") or "")) == target
+        ),
+        None,
+    )
+
+
+def _strong_skills_answer(resolver, language: str):
+    accident = _project_by_slug(resolver, "real-time-road-accident-detection")
+    legal = _project_by_slug(resolver, "openlegama-moroccan-legal-ai")
+    accident_results = accident.get("results") or {}
+    legal_results = legal.get("results") or {}
+
+    if language == "fr":
+        text = (
+            "D’après les **preuves publiques les plus fortes**, et pas seulement les libellés de compétences, les principaux domaines techniques de Youssef sont :\n\n"
+            f"1. **Computer Vision & Deep Learning** — expérience PFE chez NEXTRONIC — ABA Technology avec YOLOv11, BoT-SORT et OpenCV ; {accident_results.get('precision','86.68%')} précision, {accident_results.get('recall','91.56%')} rappel et ~{accident_results.get('inferenceSpeed','31.5 FPS')}. [experience-education] [project-real-time-road-accident-detection]\n"
+            f"2. **RAG / LLM & Grounded AI** — OpenLegaMa : Controlled RAG, citations, abstention, {legal_results.get('automatedTests','143 / 143 passing')} et {legal_results.get('indexedArticles','7,708')} articles indexés. [project-openlegama-moroccan-legal-ai] [skills]\n"
+            "3. **MLOps & AI Systems** — Airflow, MLflow, MinIO, PostgreSQL, Docker Compose, suivi d’expériences et monitoring via Customer MLOps Pipeline. [project-customer-churn-mlops-platform] [skills]\n"
+            "4. **Machine Learning** — Scikit-learn, feature engineering, évaluation, cross-validation, classification et Explainable AI. [skills]\n"
+            "5. **Backend & AI Engineering** — Python, FastAPI, REST APIs, SQL, Git, Linux et interfaces de déploiement. [skills]\n\n"
+            "Ses preuves mesurées les plus fortes aujourd’hui sont surtout en **Computer Vision** et **RAG/LLM**."
+        )
+    elif language == "ar":
+        text = (
+            "بناءً على **أقوى الأدلة العامة** وليس مجرد أسماء المهارات، أبرز المجالات التقنية لدى يوسف هي:\n\n"
+            f"1. **Computer Vision & Deep Learning** — خبرة PFE لدى NEXTRONIC — ABA Technology باستخدام YOLOv11 وBoT-SORT وOpenCV، مع {accident_results.get('precision','86.68%')} دقة و{accident_results.get('recall','91.56%')} استرجاع و~{accident_results.get('inferenceSpeed','31.5 FPS')}. [experience-education] [project-real-time-road-accident-detection]\n"
+            f"2. **RAG / LLM & Grounded AI** — OpenLegaMa مع Controlled RAG والاستشهادات والامتناع عند نقص الأدلة، و{legal_results.get('automatedTests','143 / 143 passing')} و{legal_results.get('indexedArticles','7,708')} مادة مفهرسة. [project-openlegama-moroccan-legal-ai] [skills]\n"
+            "3. **MLOps & AI Systems** — Airflow وMLflow وMinIO وPostgreSQL وDocker Compose والمراقبة. [project-customer-churn-mlops-platform] [skills]\n"
+            "4. **Machine Learning** — Scikit-learn وFeature Engineering وModel Evaluation وExplainable AI. [skills]\n"
+            "5. **Backend & AI Engineering** — Python وFastAPI وREST APIs وSQL وGit وLinux. [skills]\n\n"
+            "أقوى الأدلة المقاسة حالياً تظهر خصوصاً في **Computer Vision** و**RAG/LLM**."
+        )
+    else:
+        text = (
+            "Based on the **strongest public evidence**, not just declared skill labels, Youssef's strongest technical areas are:\n\n"
+            f"1. **Computer Vision & Deep Learning** — professional PFE work at NEXTRONIC — ABA Technology with YOLOv11, BoT-SORT, and OpenCV; {accident_results.get('precision','86.68%')} precision, {accident_results.get('recall','91.56%')} recall, and ~{accident_results.get('inferenceSpeed','31.5 FPS')}. [experience-education] [project-real-time-road-accident-detection]\n"
+            f"2. **RAG / LLM & Grounded AI** — OpenLegaMa demonstrates controlled RAG, citations, abstention, {legal_results.get('automatedTests','143 / 143 passing')}, and {legal_results.get('indexedArticles','7,708')} indexed articles. [project-openlegama-moroccan-legal-ai] [skills]\n"
+            "3. **MLOps & AI Systems** — Airflow, MLflow, MinIO, PostgreSQL, Docker Compose, experiment tracking, and monitoring through Customer MLOps Pipeline. [project-customer-churn-mlops-platform] [skills]\n"
+            "4. **Machine Learning** — Scikit-learn, feature engineering, evaluation, cross-validation, classification, and Explainable AI. [skills]\n"
+            "5. **Backend & AI Engineering** — Python, FastAPI, REST APIs, SQL, Git, Linux, and deployment-oriented interfaces. [skills]\n\n"
+            "His strongest measured evidence today is especially in **Computer Vision** and **RAG/LLM**."
+        )
+    return _precision.StructuredFactAnswer(
+        text,
+        source="skills",
+        evidence="Evidence-ranked technical skill summary from synchronized experience, projects, and skill categories.",
+    )
+
+
+def _valuable_certifications_answer(resolver, language: str):
+    wanted = [
+        "Machine Learning with Python Professional Certificate by Anaconda",
+        "Oracle Agentic AI Certified Foundations Associate",
+        "OpenCV Bootcamp",
+        "Vision Language Models (VLM) Bootcamp",
+        "PyTorch Bootcamp",
+        "Building with the Claude API",
+        "Model Context Protocol: Advanced Topics",
+        "Oracle Cloud Infrastructure 2026 Certified Architect Associate",
+        "Oracle AI Database Certified Foundations Associate",
+    ]
+    present = {title: _cert_by_title(resolver, title) for title in wanted}
+
+    def has(title: str) -> bool:
+        return present.get(title) is not None
+
+    if language == "fr":
+        lines = []
+        if has(wanted[0]):
+            lines.append("1. **Machine Learning with Python Professional Certificate by Anaconda** — directement aligné avec le Machine Learning appliqué.")
+        if has(wanted[1]):
+            lines.append("2. **Oracle Agentic AI Certified Foundations Associate** — pertinent pour les agents IA et workflows LLM.")
+        vision = [title for title in wanted[2:5] if has(title)]
+        if vision:
+            lines.append("3. **OpenCV University** — " + ", ".join(vision) + " : forte cohérence avec Computer Vision / Deep Learning / VLM.")
+        llm = [title for title in wanted[5:7] if has(title)]
+        if llm:
+            lines.append("4. **Anthropic** — " + ", ".join(llm) + " : pratique API LLM et MCP.")
+        if has(wanted[7]):
+            lines.append("5. **Oracle Cloud Infrastructure 2026 Certified Architect Associate** — utile pour l’architecture cloud et le déploiement.")
+        if has(wanted[8]):
+            lines.append("6. **Oracle AI Database Certified Foundations Associate** — complément data/database pour les systèmes IA.")
+        text = (
+            "Pour un poste **AI Engineer**, voici les certifications documentées les plus directement alignées avec le rôle :\n\n"
+            + "\n".join(lines)
+            + f"\n\nYoussef possède {len(resolver.certifications)} certifications/certificats au total. Cette sélection est un **classement par pertinence pour un poste AI Engineer**, pas une valeur universelle des certifications. [certifications]"
+        )
+    elif language == "ar":
+        lines = []
+        if has(wanted[0]):
+            lines.append("1. **Machine Learning with Python Professional Certificate by Anaconda** — مرتبط مباشرة بتطبيقات Machine Learning.")
+        if has(wanted[1]):
+            lines.append("2. **Oracle Agentic AI Certified Foundations Associate** — مناسب لـ AI Agents وLLM workflows.")
+        vision = [title for title in wanted[2:5] if has(title)]
+        if vision:
+            lines.append("3. **OpenCV University** — " + ", ".join(vision) + " — دعم قوي لـ Computer Vision / Deep Learning / VLM.")
+        llm = [title for title in wanted[5:7] if has(title)]
+        if llm:
+            lines.append("4. **Anthropic** — " + ", ".join(llm) + " — خبرة مرتبطة بـ LLM APIs وMCP.")
+        if has(wanted[7]):
+            lines.append("5. **Oracle Cloud Infrastructure 2026 Certified Architect Associate** — مفيدة للبنية السحابية والنشر.")
+        if has(wanted[8]):
+            lines.append("6. **Oracle AI Database Certified Foundations Associate** — تكمل جانب البيانات وقواعد البيانات في أنظمة AI.")
+        text = (
+            "بالنسبة إلى منصب **AI Engineer**، هذه أكثر الشهادات الموثقة ارتباطاً بالدور:\n\n"
+            + "\n".join(lines)
+            + f"\n\nلدى يوسف {len(resolver.certifications)} شهادة/اعتماداً في ملفه العام. هذا **ترتيب حسب ملاءمة الدور** وليس حكماً عالمياً على قيمة الشهادات. [certifications]"
+        )
+    else:
+        lines = []
+        if has(wanted[0]):
+            lines.append("1. **Machine Learning with Python Professional Certificate by Anaconda** — directly aligned with applied Machine Learning.")
+        if has(wanted[1]):
+            lines.append("2. **Oracle Agentic AI Certified Foundations Associate** — relevant to AI agents and LLM-enabled workflows.")
+        vision = [title for title in wanted[2:5] if has(title)]
+        if vision:
+            lines.append("3. **OpenCV University** — " + ", ".join(vision) + " — strong alignment with Computer Vision / Deep Learning / VLM work.")
+        llm = [title for title in wanted[5:7] if has(title)]
+        if llm:
+            lines.append("4. **Anthropic** — " + ", ".join(llm) + " — practical LLM API and MCP relevance.")
+        if has(wanted[7]):
+            lines.append("5. **Oracle Cloud Infrastructure 2026 Certified Architect Associate** — useful cloud architecture and deployment evidence.")
+        if has(wanted[8]):
+            lines.append("6. **Oracle AI Database Certified Foundations Associate** — useful data/database context for AI systems.")
+        text = (
+            "For an **AI Engineer** position, these are the documented certifications most directly aligned with the role:\n\n"
+            + "\n".join(lines)
+            + f"\n\nYoussef has {len(resolver.certifications)} certifications/certificates in total. This is a **role-fit ranking**, not a claim that these credentials are universally more valuable than all others. [certifications]"
+        )
+    return _precision.StructuredFactAnswer(
+        text,
+        source="certifications",
+        evidence="Role-fit certification ranking from the synchronized certification inventory.",
     )
 
 
@@ -285,10 +464,49 @@ def _patch_precision_quality() -> None:
     _precision._vercel_precision_quality_patch = True
 
 
+def _patch_structured_professional_quality() -> None:
+    # Imported lazily so the Vercel entrypoint can still apply this module before
+    # backend.app builds its shared resolver.
+    import structured_facts as _structured
+
+    cls = _structured.StructuredFactResolver
+    if getattr(cls, "_vercel_recruiter_quality_patch", False):
+        return
+
+    original_resolve = cls.resolve
+    original_realtime = cls._realtime
+
+    def realtime(self, question, language):
+        result = original_realtime(self, question, language)
+        if result is not None and "30+ on CPU" in result.answer:
+            result = replace(result, answer=result.answer.replace("30+ on CPU", "30+ FPS on CPU"))
+        return result
+
+    def resolve(self, question, history=None):
+        normalized = _precision._normalize(question)
+        language = self._effective_language(question) if hasattr(self, "_effective_language") else _precision.detect_language(question)
+
+        if any(pattern.search(normalized) for pattern in _SKILL_RANKING_PATTERNS):
+            return _strong_skills_answer(self, language)
+
+        if any(pattern.search(normalized) for pattern in _CERT_RANKING_PATTERNS):
+            return _valuable_certifications_answer(self, language)
+
+        result = original_resolve(self, question, history)
+        if result is not None and "30+ on CPU" in result.answer:
+            return replace(result, answer=result.answer.replace("30+ on CPU", "30+ FPS on CPU"))
+        return result
+
+    cls._realtime = realtime
+    cls.resolve = resolve
+    cls._vercel_recruiter_quality_patch = True
+
+
 def apply() -> None:
     _patch_fastembed_cache()
     _patch_grounding_cleanup()
     _patch_precision_quality()
+    _patch_structured_professional_quality()
 
 
 apply()
