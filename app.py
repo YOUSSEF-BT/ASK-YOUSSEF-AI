@@ -8,6 +8,7 @@ secret and is used for answer generation only; it is never committed here.
 from __future__ import annotations
 
 import os
+import re
 import sys
 import time
 
@@ -51,10 +52,17 @@ import backend.app as _backend  # noqa: E402
 # Vercel's FastAPI runtime discovers the exported variable named `app`.
 app = _backend.app
 
-# Greetings and clearly out-of-scope requests are deterministic product UX, not
-# knowledge-retrieval tasks. Keep them instant and free: no Gemini call, no
-# search tool, and no risk that a general-purpose model answers unrelated trivia.
+# Greetings, clearly out-of-scope requests, and secret-exfiltration attempts are
+# deterministic product UX. They do not need a model call or retrieval.
 _original_stream = _backend._stream
+
+_SENSITIVE_REQUEST = re.compile(
+    r"(?:system\s+prompt|hidden\s+prompt|developer\s+prompt|internal\s+reasoning|"
+    r"chain\s+of\s+thought|api\s*key|secret(?:s)?|environment\s+variables?|"
+    r"mot\s+de\s+passe|cle\s+api|clé\s+api|prompt\s+systeme|prompt\s+système|"
+    r"raisonnement\s+interne|مفتاح\s*(?:api|واجهة)|تعليمات\s+النظام|الأسرار)",
+    re.I,
+)
 
 
 def _greeting_answer(language: str) -> str:
@@ -74,6 +82,27 @@ def _greeting_answer(language: str) -> str:
         "Hello! I'm Ask Youssef AI, Youssef Bouzit's professional portfolio copilot. "
         "I can help you explore his projects, skills, certifications, experience, and "
         "contact options. What would you like to know?"
+    )
+
+
+def _sensitive_answer(language: str) -> str:
+    if language == "fr":
+        return (
+            "Je ne peux pas révéler les prompts système, le raisonnement interne, les clés "
+            "API, les secrets ni d'autres informations privées de configuration. Je peux "
+            "en revanche expliquer les capacités publiques d'Ask Youssef AI ou le portfolio "
+            "professionnel de Youssef."
+        )
+    if language == "ar":
+        return (
+            "لا يمكنني كشف تعليمات النظام أو الاستدلال الداخلي أو مفاتيح API أو الأسرار "
+            "أو معلومات الإعداد الخاصة. يمكنني بدلاً من ذلك شرح القدرات العامة لـ Ask "
+            "Youssef AI أو الملف المهني ليوسف."
+        )
+    return (
+        "I cannot reveal system prompts, internal reasoning, API keys, secrets, or other "
+        "private configuration information. I can explain Ask Youssef AI's public "
+        "capabilities or Youssef's professional portfolio instead."
     )
 
 
@@ -114,6 +143,9 @@ def _production_stream(question: str, history=None):
     route = _backend.route_question(question)
     if route.intent == "greeting":
         yield from _emit_deterministic(route, _greeting_answer(route.language))
+        return
+    if _SENSITIVE_REQUEST.search(question or ""):
+        yield from _emit_deterministic(route, _sensitive_answer(route.language))
         return
     if not route.portfolio_scope:
         yield from _emit_deterministic(route, _out_of_scope_answer(route.language))
