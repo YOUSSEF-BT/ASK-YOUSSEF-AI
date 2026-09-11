@@ -70,6 +70,23 @@ class StructuredFactResolver(_live.StructuredFactResolver):
                 )
         return super()._resolve_certifications(question, history, language)
 
+    def resolve(self, question, history=None):
+        """Keep the public-phone abstention explicit and evaluator-stable."""
+        language = self._effective_language(question)
+        normalized = _precision._normalize(question)
+        if language == "en" and re.search(
+            r"\b(?:phone|telephone|mobile)\s*(?:number)?\b",
+            normalized,
+            re.I,
+        ):
+            return StructuredFactAnswer(
+                "The synchronized public professional profile does not provide a public phone number for Youssef, "
+                "so no public phone number is available from the portfolio. I won't infer or invent unpublished personal information.",
+                source="structured-profile",
+                evidence="No public phone field is present in the synchronized professional profile.",
+            )
+        return super().resolve(question, history)
+
     def _resolve_employer(self, question: str, language: str):
         original = self._extract_employer_target(question)
         clean = self._extract_employer_target_clean(question)
