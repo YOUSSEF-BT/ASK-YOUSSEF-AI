@@ -1,0 +1,35 @@
+name: HTTP contract audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "evaluation/run_http_contract_audit.py"
+      - ".github/workflows/http-contract-audit.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: http-contract-audit
+  cancel-in-progress: true
+
+jobs:
+  http-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Wait for latest Vercel production deployment
+        run: sleep 90
+
+      - name: Audit public HTTP contract
+        run: python evaluation/run_http_contract_audit.py
