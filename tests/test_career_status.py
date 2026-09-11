@@ -42,15 +42,16 @@ class CareerStatusRegressionTests(unittest.TestCase):
         self.assertIn("full-time", result.answer)
         self.assertIn("[career-status]", result.answer)
 
-    def test_french_current_work_answer_is_localized(self):
+    def test_french_current_work_answer_positions_freelance_as_parallel(self):
         result = self.resolver.resolve("youssef il fait quoi maintenant ?")
         self.assertIsNotNone(result)
-        self.assertIn("Ingénieur IA/ML Freelance", result.answer)
-        self.assertIn("Sept 2026 — Aujourd’hui", result.answer)
-        self.assertIn("Conception et réalisation", result.answer)
-        self.assertIn("recherche une opportunité en CDI", result.answer)
-        self.assertNotIn("Designing and delivering", result.answer)
-        self.assertNotIn("RAG systems and LLM-powered applications", result.answer)
+        answer = result.answer.lower()
+        self.assertIn("en indépendant via fiverr", answer)
+        self.assertIn("cdi à temps plein", answer)
+        self.assertIn("activité parallèle", answer)
+        self.assertIn("[experience-education]", result.answer)
+        self.assertIn("[career-status]", result.answer)
+        self.assertNotIn("chez fiverr", answer)
 
     def test_current_freelance_and_full_time_search_are_both_true(self):
         current = next(
@@ -59,6 +60,36 @@ class CareerStatusRegressionTests(unittest.TestCase):
         )
         self.assertIn("Freelance", current.get("role", ""))
         self.assertIs((self.profile.get("career_status") or {}).get("seeking_full_time"), True)
+
+    def test_why_youssef_uses_strong_evidence_not_secondary_summarizer(self):
+        result = self.resolver.resolve("pour quoi youssef et pas un autre")
+        self.assertIsNotNone(result)
+        answer = result.answer.lower()
+        self.assertIn("raisons concrètes", answer)
+        self.assertIn("86.68%", result.answer)
+        self.assertIn("openlegama", answer)
+        self.assertIn("cdi", answer)
+        self.assertIn("[project-real-time-road-accident-detection]", result.answer)
+        self.assertIn("[project-openlegama-moroccan-legal-ai]", result.answer)
+        self.assertNotIn("ai summarizer", answer)
+        self.assertNotIn("meilleur que tous", answer.split("en revanche", 1)[-1])
+
+    def test_expression_typo_is_understood_as_professional_experience(self):
+        result = self.resolver.resolve("donne moi les expressions de Youssef")
+        self.assertIsNotNone(result)
+        answer = result.answer.lower()
+        self.assertIn("expériences professionnelles", answer)
+        self.assertIn("nextronic", answer)
+        self.assertIn("fiverr", answer)
+        self.assertIn("indépendant", answer)
+        self.assertIn("cdi", answer)
+        self.assertIn("[experience-education]", result.answer)
+
+    def test_literal_quote_request_is_not_reinterpreted_as_experience(self):
+        result = self.resolver._resolve_experience_overview(
+            "donne moi les expressions ou citations favorites de Youssef", "fr"
+        )
+        self.assertIsNone(result)
 
 
 if __name__ == "__main__":
