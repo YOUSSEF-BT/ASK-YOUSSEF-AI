@@ -1,10 +1,45 @@
 # Evaluation & Quality Gates
 
-Ask Youssef AI uses layered deterministic QA instead of a single vague "accuracy" score. Offline tests validate components; deployed suites validate the real Vercel API; an adversarial suite deliberately searches for regressions and unsafe behavior.
+Ask Youssef AI uses layered deterministic QA instead of a single vague "accuracy" score. Offline tests validate reproducible components; deployed suites validate the real Vercel API; adversarial and persona-oriented checks deliberately search for regressions, unsafe behavior, misleading professional claims, and language drift.
 
-A 100% pass rate below means **all predefined assertions in that suite passed**. It is not a claim that arbitrary future model answers are universally 100% correct.
+A 100% pass rate below means **all predefined assertions in that suite passed**. It is not a claim that every arbitrary future model answer will be universally correct.
 
-## 1. Offline deterministic benchmark
+## Current validation status
+
+The current production architecture is validated through the following layers:
+
+| Layer | Current verified result | Purpose |
+|---|---:|---|
+| Python unit/regression suite | 218+ tests* | Routing, grounding, structured facts, retrieval, recruiter/client reasoning, widget/runtime contracts, output-language policy |
+| Offline deterministic benchmark | All configured gates passed | Routing, retrieval Hit@1/Hit@3/MRR, grounding safety, profile integrity |
+| Career-state production regression | 3/3 passed | Current freelance role + simultaneous full-time/CDI search |
+| Core production regression | 25/25 passed | End-to-end public API contract |
+| Deep adversarial production audit | 20/20 passed | Prompt injection, false claims, private data, multilingual ambiguity, citation integrity |
+| Human recruiter/client/visitor audit | 21/21 final scenarios passed | Professional usefulness and evidence ranking |
+| Targeted final client regressions | 2/2 passed | Client-risk calibration and OpenLegaMa client-ready ranking |
+| Dependency vulnerability audit | `pip-audit` gate | Known-vulnerability scan of the resolved Python dependency graph |
+| Static security analysis | CodeQL | Python static security analysis on push/PR/schedule |
+
+\*The exact unit-test count can increase as new regressions are added; the CI result is authoritative.
+
+## Latency interpretation
+
+Latency is **observed telemetry, not an SLA and not a correctness gate**. Vercel cold starts, provider load, Gemini failover, network conditions and question complexity can materially change individual response times.
+
+Older latency numbers in repository history or README benchmark snapshots are valid for the specific runs that produced them, but they should not be interpreted as the latest guaranteed performance. During final 2026-09-11 validation, the system remained correct while at least one provider-dependent adversarial request took roughly 11 seconds. The service therefore makes no enterprise latency guarantee.
+
+For this portfolio-scale product, the quality gates prioritize:
+
+1. completion;
+2. factual evidence and required retrieval;
+3. citation integrity;
+4. absence of unsupported high-risk claims;
+5. correct professional positioning;
+6. safe abstention and privacy behavior;
+7. language consistency;
+8. then latency as an operational observation.
+
+## 1. Offline deterministic CI benchmark
 
 `evaluation/run_benchmark.py` checks reproducible components without depending on a live LLM response:
 
@@ -14,46 +49,54 @@ A 100% pass rate below means **all predefined assertions in that suite passed**.
 - grounding safety for unsupported metrics, URLs, emails and citations;
 - synchronization integrity between the portfolio manifest and structured profile.
 
-Current verified results:
+The maintained strict thresholds are:
 
-| Metric | Result | Threshold |
-|---|---:|---:|
-| Routing accuracy | 1.000 | 0.950 |
-| Retrieval Hit@1 | 1.000 | 0.750 |
-| Retrieval Hit@3 | 1.000 | 0.950 |
-| Retrieval MRR | 1.000 | 0.850 |
-| Grounding safety rate | 1.000 | 1.000 |
-| Profile integrity rate | 1.000 | 1.000 |
+| Metric | Required threshold |
+|---|---:|
+| Routing accuracy | >= 0.950 |
+| Retrieval Hit@1 | >= 0.750 |
+| Retrieval Hit@3 | >= 0.950 |
+| Retrieval MRR | >= 0.850 |
+| Grounding safety rate | 1.000 |
+| Profile integrity rate | 1.000 |
 
-CI also compiles the backend, validates synchronized data, validates the widget JavaScript and runs the regression/unit-test suite.
+The latest verified benchmark passed all configured gates.
 
-## 2. Live career-state regression
+## 2. Unit and regression suite
+
+The Python suite protects behavior that previously failed in real testing, including:
+
+- recruiter-style evidence ranking;
+- NEXTRONIC professional-experience recognition;
+- OpenLegaMa RAG evidence and client-ready ranking;
+- Agentic AI calibration so training/skills are not overstated as production proof;
+- PostgreSQL and structured-data evidence;
+- exact top-N project responses;
+- false employer and issuer/employer disambiguation;
+- current freelance + CDI/full-time positioning;
+- language fallback recursion prevention;
+- Arabic output-language policy;
+- citation cleanup and unsupported literal blocking;
+- privacy-safe contact and personal-detail handling;
+- public API and SSE contracts.
+
+A regression should be added when a human or production test finds a new meaningful failure class.
+
+## 3. Live career-state regression
 
 Dataset: `evaluation/career_cases.json`
 
-This small fail-fast suite protects a high-risk professional fact that previously exposed a misleading inference: current freelance work does **not** imply that Youssef is not looking for a full-time/CDI role. The portfolio explicitly documents both facts.
+This fail-fast suite protects a professionally sensitive state: current freelance activity does **not** imply that Youssef is unavailable for full-time/CDI work. It verifies localized current work and explicit job-search availability against the production API.
 
-The suite checks:
+Current verified result: **3/3 passed**.
 
-- current role in French with localized fields;
-- explicit full-time/CDI availability in French;
-- explicit full-time availability in English;
-- required citations and structured retrieval behavior.
-
-Verified against `https://ask-youssef-ai.vercel.app` on **2026-09-11**:
-
-- **3/3 cases passed**;
-- Median: **77.53 ms**;
-- P95: **171.56 ms**;
-- Max: **182.01 ms**.
-
-## 3. Live strict core production regression
+## 4. Live strict core production regression
 
 Dataset: `evaluation/core_production_cases.json`
 
-This is the main end-to-end deployed regression. It sends requests to the real `/chat` SSE endpoint and verifies observable behavior including:
+This is the main end-to-end deployed regression. It sends requests to the real `/chat` SSE endpoint and checks observable behavior including:
 
-- English/French/Arabic profile questions;
+- English, French and Arabic profile questions;
 - exact certification counts and issuer inventories;
 - the three Oracle credentials;
 - complete structured counts;
@@ -68,91 +111,83 @@ This is the main end-to-end deployed regression. It sends requests to the real `
 - greeting and out-of-scope paths;
 - citation integrity.
 
-Verified against production on **2026-09-11**:
+Current verified result: **25/25 passed**, with every configured strict correctness/safety metric passing at its required threshold.
 
-- **25/25 cases passed**;
-- every configured strict metric passed at **1.000 / 1.000**;
-- Median: **102.16 ms**;
-- P95: **2.674 s**;
-- Max: **3.842 s**.
-
-The strict metrics include completion, required retrieval, expected citations, required sources, expected content, forbidden-content absence, safety abstention, citation integrity and unnecessary-retrieval avoidance where applicable.
-
-## 4. Deep adversarial production audit
+## 5. Deep adversarial production audit
 
 Dataset: `evaluation/deep_audit_cases.json`
 
 Workflow: `.github/workflows/deep-production-audit.yml`
 
-This is intentionally a bug-hunting suite rather than a happy-path demo. It tests:
+This suite intentionally searches for failure rather than demonstrating happy paths. It covers:
 
-- conversational French and typo-heavy phrasing;
-- biography/summary requests that must not be mistaken for contact actions;
-- current-work localization;
-- full-time/CDI follow-ups;
-- Oracle ordinal follow-ups;
-- employer vs certification-issuer confusion;
-- unsupported salary, home address and marital status;
-- false-employer assertions;
-- prompt injection;
+- conversational and typo-heavy French;
+- multilingual safety;
+- false employers and unsupported personal details;
 - fake citation pressure;
-- hidden system prompt/internal reasoning/API-key exfiltration requests;
-- OpenLegaMa Controlled RAG;
-- Arabic career/employer cases;
-- out-of-scope trivia.
+- prompt, secret and hidden-reasoning exfiltration attempts;
+- current-work localization;
+- Controlled RAG evidence;
+- out-of-scope behavior.
 
-Verified against production on **2026-09-11**:
+Current verified result: **20/20 passed**, including citation-integrity and safety assertions.
 
-- **20/20 cases passed**;
-- Completion: **1.000 / 1.000**;
-- Required retrieval: **1.000 / 1.000**;
-- Required sources: **1.000 / 1.000**;
-- Expected content: **1.000 / 1.000**;
-- Forbidden-content absence: **1.000 / 1.000**;
-- Safety abstention: **1.000 / 1.000**;
-- Citation integrity: **1.000 / 1.000**;
-- Unnecessary-retrieval avoidance: **1.000 / 1.000**;
-- Median: **132.56 ms**;
-- P95: **2.281 s**;
-- Max: **3.399 s**.
+## 6. Human professional audit
 
-The final adversarial run contained no unknown or malformed citations.
+Automated assertions cannot fully judge whether a recruiter or client would find an answer useful. Final validation therefore also included manual role-based questioning as:
 
-## 5. Why there are several suites
+- a recruiter evaluating experience, evidence, strengths and gaps;
+- a freelance client evaluating delivery readiness, RAG reliability, structured data and project risk;
+- a normal visitor asking simple profile/contact/privacy questions.
 
-A single benchmark can hide entire classes of failures. The project therefore separates concerns:
+The final 21-scenario audit passed after the discovered semantic defects were converted into deterministic regression tests. Two previously weak client cases were also rechecked separately: candid client-risk positioning and selection of OpenLegaMa as the strongest client-ready public AI product.
 
-1. **Offline CI** catches deterministic code/data regressions quickly.
-2. **Career regression** fails fast on a professionally sensitive state.
-3. **Core production regression** checks the real deployed system broadly.
-4. **Deep adversarial audit** actively probes safety, ambiguity, language and regression edge cases.
+These human checks complement, rather than replace, the deterministic suites.
 
-GitHub Actions waits for Vercel production promotion before deployed tests. Long suites are paced so the test harness does not trigger the public per-IP rate limit and create false failures.
+## 7. Output-language consistency
 
-## 6. Reliability behavior exercised by tests
+The production prompt now treats language matching as a **hard output contract**, not a preference:
 
-Production testing has encountered real provider conditions such as quota/overload responses. The deployed path therefore includes:
+- English question -> English prose;
+- French question -> French prose;
+- Arabic question -> Arabic-script prose;
+- technical model/product names and citations may remain in their canonical Latin form.
 
-- Gemini 3.7 Flash as the primary generator;
-- immediate Gemini 3.5 Flash-Lite failover for quota/overload/timeout signals;
-- local FastEmbed/ONNX retrieval rather than consuming Gemini embedding quota;
-- factual pre-retrieval so evidence exists before generative synthesis;
-- deterministic precision facts for exact/high-risk portfolio questions;
-- evidence-based fallback when generation fails after successful retrieval;
-- deterministic greetings, scope responses and secret-exfiltration refusals.
+For history-aware prompts, the language of the current follow-up takes precedence over the English conversation wrapper or older turns.
 
-## 7. Grounding policy
+This policy specifically addresses an observed Arabic RAG answer that was factually correct but returned in English.
+
+## 8. Dependency and static-security gates
+
+Production uses Python 3.12 and exact direct dependency pins in `requirements.txt`. Dependabot monitors both Python packages and GitHub Actions weekly.
+
+`.github/workflows/security.yml` adds two independent checks:
+
+- **pip-audit** resolves the Python dependency graph and fails on known vulnerable dependencies;
+- **CodeQL v4** performs static Python security analysis on pushes, pull requests and a weekly schedule.
+
+These controls improve supply-chain and code-security hygiene without claiming that automated scanning proves the absence of all vulnerabilities.
+
+## 9. Grounding policy
 
 Factual claims about Youssef's public professional profile must be grounded in synchronized evidence. The final response passes through deterministic checks that can reject unsupported high-impact literals and unknown citations.
 
 Retrieved portfolio content is treated as untrusted data, never as higher-priority instructions. Requests to reveal hidden prompts, internal reasoning, API keys or private configuration are refused.
 
-## 8. Reproducing the checks
+The grounding layer is deliberately described as a deterministic safety boundary rather than universal semantic entailment verification.
+
+## 10. Reproducing the checks
 
 Offline benchmark:
 
 ```bash
 python evaluation/run_benchmark.py --strict --output portfolio-benchmark.json
+```
+
+Unit/regression suite:
+
+```bash
+python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 Core deployed suite:
@@ -178,13 +213,21 @@ python evaluation/run_online_eval.py \
   --strict
 ```
 
-## 9. Rules for public quality claims
+Dependency audit:
+
+```bash
+python -m pip install pip-audit
+python -m pip_audit -r requirements.txt --strict
+```
+
+## 11. Rules for public quality claims
 
 Keep these categories separate:
 
 - offline deterministic regression metrics;
 - deployed-system regression metrics;
-- adversarial QA results;
+- human professional QA;
+- security scan results;
 - model/project metrics imported from portfolio evidence, such as Computer Vision precision/recall.
 
-Never combine them into a universal assistant-accuracy percentage. A passing fixed suite demonstrates protection against the tested regressions; it does not eliminate the possibility of future bugs or model/provider variability.
+Never combine them into a universal assistant-accuracy percentage. A passing fixed suite demonstrates strong protection against the tested regressions; it does not eliminate future bugs, provider variability or previously unseen semantic edge cases.
