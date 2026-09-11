@@ -25,7 +25,7 @@ class HumanAuditReasoningTests(unittest.TestCase):
         self.assertIsNotNone(result)
         answer = result.answer
         self.assertIn("NEXTRONIC", answer)
-        self.assertIn("Road", answer)
+        self.assertIn("YOLOv11", answer)
         self.assertIn("OpenLegaMa", answer)
         self.assertIn("31.5 FPS", answer)
         self.assertNotIn("AI Summarizer", answer)
@@ -48,11 +48,23 @@ class HumanAuditReasoningTests(unittest.TestCase):
         )
         self.assertIsNotNone(result)
         answer = result.answer
-        self.assertIn("public proof is weaker", answer)
+        self.assertIn("more limited", answer.lower())
         self.assertIn("does not yet show a standalone LangGraph/Agentic AI project", answer)
         self.assertIn("Oracle Agentic AI Certified Foundations Associate", answer)
         self.assertIn("Building with the Claude API", answer)
         self.assertNotIn("Anthropic's Agentic AI", answer)
+
+    def test_cv_vs_agentic_comparison_prefers_measured_cv_evidence(self):
+        result = self.resolver.resolve(
+            "If I need someone stronger in Computer Vision than Agentic AI today, is Youssef a fit? Explain with evidence."
+        )
+        self.assertIsNotNone(result)
+        answer = result.answer
+        self.assertIn("more strongly proven", answer)
+        self.assertIn("NEXTRONIC", answer)
+        self.assertIn("86.68%", answer)
+        self.assertIn("Agentic AI", answer)
+        self.assertIn("not yet a standalone LangGraph", answer)
 
     def test_postgresql_and_structured_business_data_question_uses_tabular_evidence(self):
         result = self.resolver.resolve(
@@ -64,6 +76,7 @@ class HumanAuditReasoningTests(unittest.TestCase):
         self.assertIn("PostgreSQL", answer)
         self.assertIn("AI-Powered Bank Fraud Detection", answer)
         self.assertIn("284,807", answer)
+        self.assertIn("MySQL", answer)
         self.assertIn("OpenLegaMa", answer)
 
     def test_client_ready_project_is_openlegama_not_small_demo(self):
@@ -130,6 +143,15 @@ class HumanAuditReasoningTests(unittest.TestCase):
         self.assertIn("120 cases", answer)
         self.assertIn("7,708", answer)
 
+    def test_client_risk_answer_is_candid_but_evidence_scoped(self):
+        result = self.resolver.resolve("What would make Youssef a risky choice for my AI project? Be candid.")
+        self.assertIsNotNone(result)
+        answer = result.answer
+        self.assertIn("Junior/early-career", answer)
+        self.assertIn("Agentic AI/LangGraph", answer)
+        self.assertIn("Very large enterprise scope", answer)
+        self.assertIn("OpenLegaMa", answer)
+
     def test_simple_identity_positions_ai_ml_not_only_computer_vision(self):
         result = self.resolver.resolve("Who is Youssef in simple words?")
         self.assertIsNotNone(result)
@@ -140,16 +162,17 @@ class HumanAuditReasoningTests(unittest.TestCase):
         self.assertIn("NEXTRONIC", answer)
 
     def test_semantic_variants_are_not_exact_phrase_only(self):
-        variants = [
-            "Does Youssef have genuine corporate experience, or only portfolio projects?",
-            "What is the biggest gap in his public proof today?",
-            "For a paying customer, which project looks most product-ready?",
-        ]
-        for question in variants:
+        expected = {
+            "Does Youssef have genuine corporate experience, or only portfolio projects?": ("NEXTRONIC",),
+            "What is the biggest gap in his public proof today?": ("Agentic AI / LangGraph", "enterprise"),
+            "For a paying customer, which project looks most product-ready?": ("OpenLegaMa", "143 / 143"),
+        }
+        for question, needles in expected.items():
             with self.subTest(question=question):
                 result = self.resolver.resolve(question)
                 self.assertIsNotNone(result)
-                self.assertTrue(result.answer.strip())
+                for needle in needles:
+                    self.assertIn(needle, result.answer)
 
 
 if __name__ == "__main__":
