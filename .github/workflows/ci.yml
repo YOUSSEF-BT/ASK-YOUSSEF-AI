@@ -46,6 +46,9 @@ jobs:
         run: |
           python -m json.tool evaluation/dataset.json >/dev/null
           python -m json.tool evaluation/online_cases.json >/dev/null
+          python -m json.tool evaluation/career_cases.json >/dev/null
+          python -m json.tool evaluation/core_production_cases.json >/dev/null
+          python -m json.tool evaluation/deep_audit_cases.json >/dev/null
           python -m json.tool backend/data/profile.json >/dev/null
           python -m json.tool backend/data/site/manifest.json >/dev/null
 
@@ -65,33 +68,54 @@ jobs:
         run: |
           test -s LICENSE
           grep -q "Copyright (c) 2026 Aditya Jain" LICENSE
-          test -f NOTICE.md
+          grep -q "Copyright (c) 2026 Youssef Bouzit" LICENSE
+          test -s NOTICE.md
+          test -s SECURITY.md
           test -f .env.example
           test -f .dockerignore
           test -f Dockerfile
           test -f docker-compose.yml
+          test -f app.py
           test -f backend/app.py
           test -f backend/agent.py
           test -f backend/rag.py
           test -f backend/grounding.py
           test -f backend/router.py
+          test -f backend/precision_facts.py
+          test -f backend/structured_facts.py
           test -f backend/observability.py
           test -f backend/feedback.py
+          test -f backend/vercel_agent_patch.py
+          test -f backend/vercel_gemini_failover.py
           test -f backend/retrieval/hybrid.py
           test -f backend/retrieval/structured.py
           test -f backend/data/profile.json
+          test -f backend/data/site/manifest.json
+          test -f backend/data/site/career-status.md
+          test -f backend/data/site/structured-profile.md
           test -f scripts/sync_portfolio.py
           test -f scripts/build_structured_profile.py
+          test -f scripts/enrich_public_contact.py
+          test -f scripts/enrich_career_status.py
           test -f evaluation/run_benchmark.py
           test -f evaluation/run_online_eval.py
           test -f evaluation/online_cases.json
+          test -f evaluation/career_cases.json
+          test -f evaluation/core_production_cases.json
+          test -f evaluation/deep_audit_cases.json
           test -f .github/workflows/online-eval.yml
+          test -f .github/workflows/vercel-production-eval.yml
+          test -f .github/workflows/deep-production-audit.yml
+          test -f .github/workflows/sync-portfolio.yml
           test -f tests/test_runtime_wiring.py
           test -f tests/test_observability.py
           test -f tests/test_online_eval.py
           test -f tests/test_feedback.py
           test -f tests/test_widget_contract.py
+          test -f tests/test_career_status.py
+          test -f tests/test_structured_facts.py
           test -f web/widget.js
+          test -f README.md
           test -f docs/architecture.md
           test -f docs/evaluation.md
           test -f docs/security.md
@@ -111,13 +135,29 @@ jobs:
               "certifications": len(profile.get("certifications", [])),
               "work_experiences": len(profile.get("work_experiences", [])),
               "education_entries": len(profile.get("education", [])),
+              "public_links": len(profile.get("public_links", [])),
           }
           for key, value in checks.items():
               if value < 1:
                   raise SystemExit(f"Structured profile missing {key}")
               if value != int(manifest.get(key, -1)):
                   raise SystemExit(f"Profile/manifest mismatch for {key}: {value} != {manifest.get(key)}")
+
+          career = profile.get("career_status") or {}
+          if career.get("seeking_full_time") is not True:
+              raise SystemExit("Explicit full-time career availability is missing")
+
+          public_emails = [
+              row.get("value")
+              for row in profile.get("public_links", [])
+              if isinstance(row, dict) and row.get("label") == "Email" and row.get("value")
+          ]
+          if not public_emails:
+              raise SystemExit("Public email evidence is missing")
+
           print("Synchronized profile counts validated:", checks)
+          print("Career availability validated:", career.get("summary"))
+          print("Public email evidence validated:", public_emails)
           PY
 
       - name: Guard against stale upstream identity data
