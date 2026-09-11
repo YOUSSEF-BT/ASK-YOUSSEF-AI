@@ -29,9 +29,9 @@ _precision._CURRENT_PATTERNS += (
 )
 
 _WHY_YOUSSEF_PATTERNS = (
-    r"\bpourquoi\s+(?:choisir\s+)?youssef(?:\s+et|\s+plutot que|\s+plutôt que)\s+(?:pas\s+)?(?:un|une|quelqu['’]?un|candidat|profil|autre)\b",
-    r"\bpourquoi\s+(?:choisir|recruter|prendre|embaucher)\s+youssef\b",
-    r"\bpourquoi\s+(?:lui|le choisir|le recruter)\b",
+    r"\b(?:pourquoi|pour\s+quoi)\s+(?:choisir\s+)?youssef(?:\s+et|\s+plutot que|\s+plutôt que)\s+(?:pas\s+)?(?:un|une|quelqu['’]?un|candidat|profil|autre)\b",
+    r"\b(?:pourquoi|pour\s+quoi)\s+(?:choisir|recruter|prendre|embaucher)\s+youssef\b",
+    r"\b(?:pourquoi|pour\s+quoi)\s+(?:lui|le choisir|le recruter)\b",
     r"\bwhy\s+(?:choose|hire|pick|recruit)\s+youssef\b",
     r"\bwhy\s+youssef\s+(?:instead of|over|and not)\b",
     r"لماذا.*يوسف.*(?:وليس|بدل|بدلاً|اختيار)",
@@ -77,6 +77,7 @@ class StructuredFactResolver(_live.StructuredFactResolver):
             "emploi",
             "travail ou nn",
             "pourquoi",
+            "pour quoi",
             "expressions de",
             "experiences de",
         )
@@ -172,7 +173,6 @@ class StructuredFactResolver(_live.StructuredFactResolver):
         )
 
     def _resolve_experience_overview(self, question: str, language: str):
-        normalized = _precision._normalize(question)
         tokens = _precision._tokens(question)
         typo_expression = "expression" in tokens or "expressions" in tokens
         if typo_expression and (tokens & _LITERAL_EXPRESSION_HINTS):
@@ -254,9 +254,7 @@ class StructuredFactResolver(_live.StructuredFactResolver):
 
         if language == "fr":
             period = str(row.get("period_fr") or row.get("period") or "").strip()
-            text = (
-                "En ce moment, Youssef développe et propose des solutions **AI/ML en freelance, en indépendant via Fiverr**"
-            )
+            text = "En ce moment, Youssef développe et propose des solutions **AI/ML en freelance, en indépendant via Fiverr**"
             if period:
                 text += f" ({period})"
             text += (
