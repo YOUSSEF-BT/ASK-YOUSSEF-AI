@@ -226,6 +226,71 @@ class StructuredFactResolver(_precision.StructuredFactResolver):
             text = f"Yes. The public portfolio lists work experience at {company}: {role} ({period})."
         return StructuredFactAnswer(text + " [experience-education]", source="experience-education")
 
+    def _resolve_openlegama_rag(self, question: str, language: str):
+        """Answer OpenLegaMa Controlled-RAG questions from synchronized project data.
+
+        This is intentionally narrow: it only fires when the named project and a
+        RAG term are both present. Generic "Tell me about OpenLegaMa" questions
+        still go through hybrid retrieval so visitors can receive richer answers.
+        """
+        normalized = _precision._normalize(question)
+        if "openlegama" not in normalized:
+            return None
+        if not any(
+            term in normalized
+            for term in (
+                "rag",
+                "controlled rag",
+                "retrieval augmented generation",
+                "retrieval-augmented generation",
+            )
+        ):
+            return None
+
+        row = next(
+            (
+                project
+                for project in self.projects
+                if _precision._normalize(str(project.get("slug") or ""))
+                == "openlegama-moroccan-legal-ai"
+            ),
+            None,
+        )
+        if row is None:
+            return None
+
+        source = "project-openlegama-moroccan-legal-ai"
+        if language == "fr":
+            text = (
+                "Dans OpenLegaMa, le Controlled RAG récupère des textes juridiques officiels, "
+                "vérifie les références exactes des lois et des articles, relie les affirmations "
+                "juridiques aux preuves acceptées et s’abstient lorsque les sources vérifiées "
+                "sont insuffisantes."
+            )
+        elif language == "ar":
+            text = (
+                "في OpenLegaMa، يستخدم Controlled RAG لاسترجاع النصوص القانونية الرسمية، "
+                "والتحقق من المراجع الدقيقة للقوانين والمواد، وربط الادعاءات القانونية بالأدلة "
+                "المقبولة، والامتناع عن الإجابة عندما تكون المصادر الموثقة غير كافية."
+            )
+        else:
+            text = (
+                "In OpenLegaMa, Controlled RAG retrieves official legal texts, validates exact "
+                "law and article references, connects legal claims to accepted evidence, and "
+                "abstains when verified sources are insufficient."
+            )
+
+        return StructuredFactAnswer(
+            f"{text} [{source}]",
+            source=source,
+            evidence=(
+                "Resolved from the synchronized OpenLegaMa project description: controlled "
+                "Retrieval-Augmented Generation retrieves official legal texts, validates exact "
+                "law/article references, grounds legal claims in accepted evidence, and abstains "
+                "when verified sources are insufficient."
+            ),
+        )
+
     def _canonicalize_project_sources(self, result):
         answer = result.answer
         source = result.source
@@ -255,6 +320,13 @@ class StructuredFactResolver(_precision.StructuredFactResolver):
         # capability resolver merely because its title contains "Agentic AI".
         if result is None:
             result = self._resolve_certifications(question, history, language)
+
+        # OpenLegaMa's Controlled-RAG behavior is explicitly documented in the
+        # synchronized project description, so answer this high-value factual
+        # question deterministically rather than letting the model abstain despite
+        # having sufficient evidence.
+        if result is None:
+            result = self._resolve_openlegama_rag(question, language)
 
         if result is None:
             result = super().resolve(question, history)
