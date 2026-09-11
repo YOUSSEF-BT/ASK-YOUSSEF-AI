@@ -36,6 +36,18 @@ A useful report should include, when applicable:
 
 Please redact real secrets and unnecessary personal information. Never send live provider keys, passwords or authentication tokens unless a secure exchange method has first been agreed.
 
+## Automated security controls
+
+The repository continuously applies several automated controls in addition to application-level safeguards:
+
+- exact direct Python dependency pins and a pinned Python 3.12 runtime;
+- weekly Dependabot checks for Python packages and GitHub Actions;
+- `pip-audit` on pushes, pull requests and a weekly schedule to detect known vulnerabilities in the resolved Python dependency graph;
+- GitHub CodeQL v4 static analysis for Python on pushes, pull requests and a weekly schedule;
+- deterministic tests for prompt/secret extraction, unsafe history roles, unsupported literals, citation integrity and public API boundaries.
+
+Automated scans reduce risk but do not prove that the application is vulnerability-free.
+
 ## Security issues in scope
 
 Examples include:
@@ -80,6 +92,6 @@ No bug-bounty program or monetary reward is promised by this repository.
 
 ## Security design summary
 
-The production application currently uses server-side secret storage, bounded requests/history, browser-origin controls, rate limiting, deterministic scope and secret-exfiltration refusals, retrieval-grounded professional facts, citation verification, structured precision facts, provider failover, and privacy-safe aggregate telemetry.
+The production application uses server-side secret storage, bounded requests/history, browser-origin controls, rate limiting, deterministic scope and secret-exfiltration refusals, retrieval-grounded professional facts, citation verification, structured precision facts, provider failover, privacy-safe aggregate telemetry, dependency vulnerability auditing and CodeQL static analysis.
 
 These controls reduce risk but do not make the system immune to vulnerabilities. Responsible reports are appreciated.
