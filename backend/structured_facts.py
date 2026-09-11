@@ -17,11 +17,13 @@ import precision_facts as _precision
 _precision._COMMON.update({"option", "options"})
 
 # Real visitors do not always write grammatically perfect French. These variants
-# intentionally cover the common "il fais quoi en ce moment" typo while keeping
-# the match narrow enough not to hijack unrelated portfolio questions.
+# intentionally cover common conversational/typo forms while keeping the match
+# narrow enough not to hijack unrelated portfolio questions.
 _precision._CURRENT_PATTERNS += (
     r"\b(?:youssef(?:\s+il)?|il)\s+fai(?:t|s)\s+quoi\s+(?:en ce moment|maintenant|actuellement)\b",
     r"\b(?:youssef(?:\s+il)?|il)\s+fai(?:t|s)\s+quoi\b.*\b(?:en ce moment|maintenant|actuellement)\b",
+    r"\bque\s+ce\s+qu.?il\s+fai(?:t|s)\s+youssef\b",
+    r"\bqu.?est[- ]ce\s+qu.?il\s+fai(?:t|s)\s+youssef\b",
 )
 
 StructuredFactAnswer = _precision.StructuredFactAnswer
@@ -39,6 +41,30 @@ _JOB_SEARCH_PATTERNS = (
     r"هل .*يوسف.*(?:يبحث|يبحث حاليا).*(?:عمل|وظيفة|فرصة)",
 )
 
+_CONTACT_QUERY_PATTERNS = (
+    r"\bhow (?:can|do|could) i (?:contact|reach) (?:youssef|him)\b",
+    r"\bhow to (?:contact|reach) (?:youssef|him)\b",
+    r"\b(?:youssef'?s|his) contact (?:details|info|information|options)\b",
+    r"\bcomment (?:puis[- ]je |peux[- ]je |peut[- ]on )?(?:contacter|joindre) (?:youssef|le|lui)\b",
+    r"\b(?:coordonnees|coordonnées) (?:de )?youssef\b",
+    r"كيف (?:يمكنني )?(?:التواصل|الاتصال) مع يوسف",
+)
+
+_PROFESSIONAL_OVERVIEW_PATTERNS = (
+    r"^\s*(?:his|youssef'?s) professional\s*[?.!]*$",
+    r"^\s*(?:his|youssef'?s) profession\s*[?.!]*$",
+    r"^\s*(?:his|youssef'?s) professional profile\s*[?.!]*$",
+    r"^\s*(?:tell me about )?(?:his|youssef'?s) professional profile\s*[?.!]*$",
+    r"^\s*(?:son|le) profil professionnel(?: de youssef)?\s*[?.!]*$",
+    r"^\s*(?:quelle est )?(?:la )?profession de youssef\s*[?.!]*$",
+)
+
+_PRIVATE_RELATIONSHIP_TERMS = (
+    "married", "marital status", "wife", "husband", "spouse", "girlfriend", "boyfriend",
+    "marie", "mariee", "statut matrimonial", "epouse", "epoux", "petite amie", "petit ami",
+    "متزوج", "متزوجة", "زوجته", "زوجها", "الحالة الاجتماعية",
+)
+
 
 class StructuredFactResolver(_precision.StructuredFactResolver):
     """Precision resolver with canonical source IDs and explicit career state."""
@@ -47,6 +73,167 @@ class StructuredFactResolver(_precision.StructuredFactResolver):
     def _job_search_question(question: str) -> bool:
         normalized = _precision._normalize(question)
         return any(re.search(pattern, normalized, re.I) for pattern in _JOB_SEARCH_PATTERNS)
+
+    @staticmethod
+    def _looks_like_contact_action(question: str) -> bool:
+        normalized = _precision._normalize(question)
+        return bool(
+            re.search(
+                r"\b(?:send|message|write|draft|envoie|envoyer|ecris|ecrire|redige|rediger|ارسِل|ارسل|أرسل)\b",
+                normalized,
+                re.I,
+            )
+            or re.search(r"^\s*(?:email|mail)\s+(?:youssef|him)\b", normalized, re.I)
+        )
+
+    def _public_contact_values(self):
+        values = {"email": "", "linkedin": "", "github": "", "fiverr": ""}
+        for row in self.links:
+            url = str(row.get("url") or "").strip()
+            label = _precision._normalize(str(row.get("label") or ""))
+            value = str(row.get("value") or "").strip()
+            if label == "email" or url.lower().startswith("mailto:"):
+                values["email"] = value or url.split(":", 1)[-1]
+            elif "linkedin.com" in url.lower():
+                values["linkedin"] = url
+            elif "github.com" in url.lower():
+                values["github"] = url
+            elif "fiverr.com" in url.lower():
+                values["fiverr"] = url
+        return values
+
+    def _resolve_contact_details(self, question: str, language: str):
+        """Return complete public contact data instead of a top-k subset.
+
+        Information queries are deterministic. Actual send-message requests stay
+        on the contact-action tool path and are intentionally not intercepted.
+        """
+        if self._looks_like_contact_action(question):
+            return None
+
+        normalized = _precision._normalize(question)
+        tokens = _precision._tokens(question)
+        email_requested = bool(tokens & {"email", "e-mail", "mail", "courriel", "ايميل", "إيميل", "بريد"})
+        broad_contact = any(re.search(pattern, normalized, re.I) for pattern in _CONTACT_QUERY_PATTERNS)
+        if not (email_requested or broad_contact):
+            return None
+
+        values = self._public_contact_values()
+        if email_requested and not broad_contact:
+            email = values.get("email")
+            if not email:
+                return None
+            if language == "fr":
+                text = f"L’adresse e-mail professionnelle publique de Youssef est : {email}."
+            elif language == "ar":
+                text = f"البريد الإلكتروني المهني العام ليوسف هو: {email}."
+            else:
+                text = f"Youssef's public professional email is: {email}."
+            return StructuredFactAnswer(text + " [public-links]", source="public-links")
+
+        rows = []
+        if values.get("email"):
+            rows.append(("Email", values["email"]))
+        if values.get("linkedin"):
+            rows.append(("LinkedIn", values["linkedin"]))
+        if values.get("github"):
+            rows.append(("GitHub", values["github"]))
+        if values.get("fiverr"):
+            rows.append(("Fiverr", values["fiverr"]))
+        if not rows:
+            return None
+
+        listing = "\n".join(f"• {label}: {value}" for label, value in rows)
+        if language == "fr":
+            intro = "Vous pouvez contacter ou retrouver Youssef via ses canaux professionnels publics :"
+        elif language == "ar":
+            intro = "يمكنك التواصل مع يوسف أو العثور عليه عبر قنواته المهنية العامة التالية:"
+        else:
+            intro = "You can contact or connect with Youssef through these public professional channels:"
+        return StructuredFactAnswer(f"{intro}\n{listing}\n[public-links]", source="public-links")
+
+    @staticmethod
+    def _resolve_private_relationship(question: str, language: str):
+        normalized = _precision._normalize(question)
+        if not any(_precision._normalize(term) in normalized for term in _PRIVATE_RELATIONSHIP_TERMS):
+            return None
+        if language == "fr":
+            text = (
+                "Je n’ai pas d’information professionnelle publique vérifiée sur la situation matrimoniale "
+                "ou relationnelle de Youssef. Je ne déduis pas et je ne spécule pas sur ses informations personnelles privées."
+            )
+        elif language == "ar":
+            text = (
+                "لا أملك معلومات مهنية عامة وموثقة عن الحالة الزوجية أو العاطفية ليوسف، "
+                "ولا أستنتج أو أتخمن معلوماته الشخصية الخاصة."
+            )
+        else:
+            text = (
+                "I don't have verified public professional information about Youssef's marital or relationship status. "
+                "I don't infer or speculate about private personal details."
+            )
+        return StructuredFactAnswer(
+            text,
+            source="structured-profile",
+            evidence="No verified public professional relationship-status field is present in the synchronized portfolio profile.",
+        )
+
+    def _resolve_professional_overview(self, question: str, language: str):
+        normalized = _precision._normalize(question)
+        if not any(re.search(pattern, normalized, re.I) for pattern in _PROFESSIONAL_OVERVIEW_PATTERNS):
+            return None
+
+        current = next(
+            (
+                row for row in self.experiences
+                if "present" in _precision._normalize(str(row.get("period") or ""))
+            ),
+            self.experiences[0] if self.experiences else None,
+        )
+        if current is None:
+            return None
+
+        skill_names = [
+            str(row.get("name") or row.get("category") or "").strip()
+            for row in self.skills
+            if str(row.get("name") or row.get("category") or "").strip()
+        ]
+        focus = ", ".join(skill_names)
+        career = self.profile.get("career_status") or {}
+        seeking = isinstance(career, dict) and career.get("seeking_full_time") is True
+
+        if language == "fr":
+            role = str(current.get("role_fr") or current.get("role") or "")
+            company = str(current.get("company_fr") or current.get("company") or "")
+            period = str(current.get("period_fr") or current.get("period") or "")
+            text = f"Le rôle professionnel public actuel de Youssef est {role} chez {company} ({period})."
+            if focus:
+                text += f" Son portfolio met notamment en avant : {focus}."
+            if seeking:
+                text += " Il recherche également une opportunité en CDI à temps plein."
+        elif language == "ar":
+            role = str(current.get("role") or "")
+            company = str(current.get("company") or "")
+            period = str(current.get("period") or "")
+            text = f"الدور المهني العام الحالي ليوسف هو {role} لدى {company} ({period})."
+            if focus:
+                text += f" ويركز ملفه المهني خصوصاً على: {focus}."
+            if seeking:
+                text += " كما أنه يبحث عن فرصة عمل بدوام كامل."
+        else:
+            role = str(current.get("role") or "")
+            company = str(current.get("company") or "")
+            period = str(current.get("period") or "")
+            text = f"Youssef's current public professional role is {role} at {company} ({period})."
+            if focus:
+                text += f" His portfolio highlights these professional focus areas: {focus}."
+            if seeking:
+                text += " He is also seeking a full-time opportunity."
+
+        citations = " [experience-education] [skills]"
+        if seeking:
+            citations += " [career-status]"
+        return StructuredFactAnswer(text + citations, source="experience-education")
 
     @staticmethod
     def _format_cert_details(row, language: str):
@@ -311,8 +498,24 @@ class StructuredFactResolver(_precision.StructuredFactResolver):
         history = history or []
         language = _precision.detect_language(question)
 
+        # Private personal details get a targeted refusal instead of a vague
+        # generic scope response, even for shorthand such as "hi is married?".
+        result = self._resolve_private_relationship(question, language)
+
+        # Contact information is a complete structured inventory. Answering it
+        # deterministically prevents the email from disappearing from a top-k RAG
+        # subset and avoids malformed mailto Markdown in the widget.
+        if result is None:
+            result = self._resolve_contact_details(question, language)
+
+        # Incomplete but common recruiter shorthand such as "his professional"
+        # is interpreted as a request for the public professional profile summary.
+        if result is None:
+            result = self._resolve_professional_overview(question, language)
+
         # Highest-risk career state is explicit, never inferred from freelance.
-        result = self._resolve_job_search(question, language)
+        if result is None:
+            result = self._resolve_job_search(question, language)
 
         # Certification wording must be handled before generic "Agentic AI"
         # capability matching. Otherwise a question such as "Which Oracle Agentic
