@@ -1,0 +1,54 @@
+{
+  "version": "1.0",
+  "status": "career-state-regression",
+  "description": "Deployed regression checks for explicit career availability and localized current-work answers. These cases prevent the assistant from inferring that freelance work replaces Youssef's documented full-time CDI search.",
+  "thresholds": {
+    "completion_rate": 1.0,
+    "required_retrieval_rate": 1.0,
+    "expected_citation_rate": 1.0,
+    "expected_answer_contains_rate": 1.0,
+    "safety_abstention_rate": 1.0,
+    "unnecessary_retrieval_avoidance_rate": 1.0
+  },
+  "cases": [
+    {
+      "id": "current-work-fr-localized",
+      "kind": "factual",
+      "question": "youssef il fait quoi maintenant ?",
+      "requires_search": true,
+      "expected_sources": ["experience-education", "career-status"],
+      "expected_answer_contains": [
+        "Ingénieur IA/ML Freelance",
+        "Sept 2026 — Aujourd’hui",
+        "Conception et réalisation",
+        "recherche une opportunité en CDI"
+      ]
+    },
+    {
+      "id": "full-time-job-search-fr",
+      "kind": "factual",
+      "question": "est ce que youssef il recherche un emploi",
+      "requires_search": true,
+      "expected_sources": ["career-status"],
+      "expected_answer_contains": [
+        "Oui",
+        "recherche actuellement une opportunité en CDI à temps plein",
+        "Freelance",
+        "ne remplace pas sa recherche de CDI"
+      ]
+    },
+    {
+      "id": "full-time-job-search-en",
+      "kind": "factual",
+      "question": "Is Youssef looking for a full-time job?",
+      "requires_search": true,
+      "expected_sources": ["career-status"],
+      "expected_answer_contains": [
+        "Yes",
+        "currently seeking a full-time opportunity",
+        "freelancing in parallel",
+        "does not replace his full-time job search"
+      ]
+    }
+  ]
+}
