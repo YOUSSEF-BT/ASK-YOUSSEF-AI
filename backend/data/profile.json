@@ -1330,7 +1330,17 @@
       ],
       "company_url": null,
       "url": "https://youssef-bt.github.io/#experience",
-      "source_file": "src/sections/Experience.jsx"
+      "source_file": "src/sections/Experience.jsx",
+      "period_fr": "Sept 2026 — Aujourd’hui",
+      "role_fr": "Ingénieur IA/ML Freelance",
+      "company_fr": "Fiverr",
+      "context_fr": "Services indépendants en IA/ML",
+      "description_fr": "Conception et réalisation de solutions IA concrètes pour des besoins clients, avec un focus sur la recherche documentaire, les applications LLM, l’automatisation intelligente et le Machine Learning appliqué.",
+      "highlights_fr": [
+        "Systèmes RAG et applications basées sur les LLM",
+        "Agents IA et workflows d’intelligence documentaire",
+        "Solutions de Machine Learning et vision par ordinateur"
+      ]
     },
     {
       "type": "work_experience",
@@ -1353,7 +1363,17 @@
       ],
       "company_url": "https://aba.technology/",
       "url": "https://youssef-bt.github.io/#experience",
-      "source_file": "src/sections/Experience.jsx"
+      "source_file": "src/sections/Experience.jsx",
+      "period_fr": "Fév 2026 — Août 2026",
+      "role_fr": "Stagiaire Ingénieur IA/ML | Vision par ordinateur",
+      "company_fr": "NEXTRONIC — ABA Technology",
+      "context_fr": "Technopark Casablanca",
+      "description_fr": "Conception et développement d’un système de détection en temps réel des accidents de la route combinant Deep Learning, suivi multi-objets et analyse comportementale pour la vidéosurveillance.",
+      "highlights_fr": [
+        "Modèle image YOLOv11s : 86,68 % de précision et 91,56 % de rappel",
+        "Inférence temps réel à environ 31,5 FPS",
+        "Alertes automatiques, sauvegarde des clips vidéo et journalisation CSV"
+      ]
     }
   ],
   "education": [
@@ -1412,5 +1432,23 @@
       "value": "bt.youssef.369@gmail.com",
       "url": "mailto:bt.youssef.369@gmail.com"
     }
-  ]
+  ],
+  "career_status": {
+    "type": "career_status",
+    "seeking_full_time": true,
+    "employment_type": "CDI / full-time",
+    "summary": "Open to full-time AI/ML opportunities, technical collaborations, and selected freelance projects.",
+    "summary_fr": "Ouvert aux opportunités en CDI dans l’IA/ML, aux collaborations techniques et à une sélection de missions freelance.",
+    "details": "My graduation project received an Excellent distinction with a score of 18/20. It combines YOLO, BoT-SORT, and heuristic logic to detect road accidents in real time. I am now seeking a full-time opportunity as an AI Engineer, Computer Vision Engineer, Machine Learning Engineer, or Data Scientist.",
+    "details_fr": "Mon projet de fin d’études, soutenu avec la mention Excellent et une note de 18/20, combine YOLO, BoT-SORT et une logique heuristique pour détecter les accidents routiers en temps réel. Je recherche désormais une opportunité en CDI comme AI Engineer, Computer Vision Engineer, Machine Learning Engineer ou Data Scientist.",
+    "target_roles": [
+      "an AI Engineer",
+      "Computer Vision Engineer",
+      "Machine Learning Engineer",
+      "Data Scientist"
+    ],
+    "freelance_parallel": true,
+    "url": "https://youssef-bt.github.io/#contact",
+    "source_file": "src/context/LanguageContext.jsx"
+  }
 }
