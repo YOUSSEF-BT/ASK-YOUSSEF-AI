@@ -28,11 +28,25 @@ _DANGLING_AFTER_CITATION = (
     ),
 )
 
+# Removing an unknown source token can also leave fragments such as
+# "nor is there any record of a in his projects" when the model placed the
+# citation where a noun phrase should have been. Rewrite only that narrow,
+# clearly broken construction; do not paraphrase valid generated prose.
+_BROKEN_RECORD_FRAGMENT = re.compile(
+    r"\bnor\s+is\s+there\s+any\s+record\s+of\s+(?:a|an|the)?\s*"
+    r"(?P<prep>in|among|within)\b",
+    re.I,
+)
+
 
 def _cleanup_dangling_citation_text(text: str) -> str:
     cleaned = text or ""
     for pattern in _DANGLING_AFTER_CITATION:
         cleaned = pattern.sub(r"\1", cleaned)
+    cleaned = _BROKEN_RECORD_FRAGMENT.sub(
+        lambda match: f"nor is there any corresponding record {match.group('prep')}",
+        cleaned,
+    )
     cleaned = re.sub(r"\(\s*\)", "", cleaned)
     cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
     cleaned = re.sub(r"[ \t]+([.,;:!?])", r"\1", cleaned)
