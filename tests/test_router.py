@@ -20,6 +20,7 @@ class LanguageRouterTests(unittest.TestCase):
             "est ce que il peuve m'aide sur un projet agentic ai ?",
             "combien de rag a construis",
             "est ce que il a deja fait un assistant ai copilot",
+            "Est-ce qu'il a obtenu 99% ?",
         ]
         for sample in samples:
             with self.subTest(sample=sample):
