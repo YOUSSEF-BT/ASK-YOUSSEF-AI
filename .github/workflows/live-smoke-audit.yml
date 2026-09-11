@@ -41,7 +41,7 @@ jobs:
 
       - name: Publish live smoke report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: expanded-live-smoke-report
           path: live-smoke-report.json

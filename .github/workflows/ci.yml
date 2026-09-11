@@ -57,7 +57,7 @@ jobs:
 
       - name: Publish deterministic benchmark report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: deterministic-portfolio-benchmark
           path: portfolio-benchmark.json
