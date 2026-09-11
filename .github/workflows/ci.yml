@@ -72,10 +72,17 @@ jobs:
           test -s NOTICE.md
           test -s SECURITY.md
           test -f .env.example
+          test -f .python-version
+          grep -qx "3.12" .python-version
           test -f .dockerignore
           test -f Dockerfile
           test -f docker-compose.yml
           test -f app.py
+          test -f requirements.txt
+          if grep -Eq '^[A-Za-z0-9_.-]+>=' requirements.txt; then
+            echo "Unpinned production dependency found in requirements.txt"
+            exit 1
+          fi
           test -f backend/app.py
           test -f backend/agent.py
           test -f backend/rag.py
@@ -87,6 +94,7 @@ jobs:
           test -f backend/feedback.py
           test -f backend/vercel_agent_patch.py
           test -f backend/vercel_gemini_failover.py
+          test -f backend/vercel_language_patch.py
           test -f backend/retrieval/hybrid.py
           test -f backend/retrieval/structured.py
           test -f backend/data/profile.json
@@ -103,6 +111,9 @@ jobs:
           test -f evaluation/career_cases.json
           test -f evaluation/core_production_cases.json
           test -f evaluation/deep_audit_cases.json
+          test -f .github/dependabot.yml
+          test -f .github/workflows/ci.yml
+          test -f .github/workflows/security.yml
           test -f .github/workflows/online-eval.yml
           test -f .github/workflows/vercel-production-eval.yml
           test -f .github/workflows/deep-production-audit.yml
@@ -114,6 +125,7 @@ jobs:
           test -f tests/test_widget_contract.py
           test -f tests/test_career_status.py
           test -f tests/test_structured_facts.py
+          test -f tests/test_language_output_policy.py
           test -f web/widget.js
           test -f README.md
           test -f docs/architecture.md
