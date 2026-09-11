@@ -12,6 +12,19 @@ import structured_facts_live_base as _live
 
 StructuredFactAnswer = _live.StructuredFactAnswer
 
+# Conversational qualifiers such as "exactement" should not turn a complete
+# certification-count request into an open-ended retrieval question.
+_precision._COMMON.update({"exactement"})
+
+# Recruiters and visitors often phrase the current-role question as "doing for
+# work right now". Keep that on the deterministic current-work lane so the
+# answer includes both the current freelance role and the explicit full-time
+# search state.
+_precision._CURRENT_PATTERNS += (
+    r"\bwhat is (?:youssef|he) doing for work (?:right now|now|currently)\b",
+    r"\bwhat does (?:youssef|he) do for work (?:right now|now|currently)\b",
+)
+
 
 class StructuredFactResolver(_live.StructuredFactResolver):
     @staticmethod
@@ -39,6 +52,23 @@ class StructuredFactResolver(_live.StructuredFactResolver):
         if any(hint in normalized for hint in french_hints):
             return "fr"
         return _precision.detect_language(raw)
+
+    def _resolve_certifications(self, question, history, language):
+        """Handle shorthand French certification counts deterministically."""
+        normalized = _precision._normalize(question)
+        if language == "fr" and re.search(
+            r"\bcombien\s+de\s+(?:certificats?|certifications?)\b",
+            normalized,
+            re.I,
+        ):
+            tokens = _precision._tokens(question)
+            if "youssef" in normalized or "il" in tokens or "lui" in tokens:
+                count = len(self.certifications)
+                return StructuredFactAnswer(
+                    f"Le profil professionnel public de Youssef répertorie exactement {count} certifications. [certifications]",
+                    source="certifications",
+                )
+        return super()._resolve_certifications(question, history, language)
 
     def _resolve_employer(self, question: str, language: str):
         original = self._extract_employer_target(question)
