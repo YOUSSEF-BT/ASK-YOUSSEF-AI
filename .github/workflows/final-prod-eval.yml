@@ -1,0 +1,62 @@
+name: Final strict production evaluation
+
+on:
+  push:
+    branches: [manual-live-test-20260911]
+    paths:
+      - ".github/workflows/final-prod-eval.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout final main code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify production commit and health
+        run: |
+          python - <<'PY'
+          import json, urllib.request
+          for path in ("deployment", "health"):
+              req = urllib.request.Request(
+                  f"https://ask-youssef-ai.vercel.app/{path}",
+                  headers={"Accept":"application/json", "Origin":"https://youssef-bt.github.io"},
+              )
+              with urllib.request.urlopen(req, timeout=180) as response:
+                  payload = json.loads(response.read().decode())
+              print(path, json.dumps(payload, indent=2))
+          PY
+      - name: Run strict career production regression
+        run: |
+          python evaluation/run_online_eval.py \
+            --api-url "https://ask-youssef-ai.vercel.app" \
+            --origin "https://youssef-bt.github.io" \
+            --dataset evaluation/career_cases.json \
+            --output career-eval-report.json \
+            --strict
+      - name: Cool down
+        run: sleep 30
+      - name: Run strict core production regression
+        run: |
+          python evaluation/run_online_eval.py \
+            --api-url "https://ask-youssef-ai.vercel.app" \
+            --origin "https://youssef-bt.github.io" \
+            --dataset evaluation/core_production_cases.json \
+            --output online-eval-report.json \
+            --strict
+      - name: Print reports
+        if: always()
+        run: |
+          echo '=== career ==='
+          cat career-eval-report.json 2>/dev/null || true
+          echo '=== core ==='
+          cat online-eval-report.json 2>/dev/null || true
