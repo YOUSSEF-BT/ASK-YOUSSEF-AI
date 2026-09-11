@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "FASTEMBED_MODEL=BAAI/bge-small-en-v1.5 FASTEMBED_CACHE_PATH=backend/data/fastembed_cache python backend/prepare_fastembed.py",
+  "buildCommand": "python -m compileall -q backend app.py && EMBEDDER=hash CRAWL_SITES='' python -c \"import app; assert app.app\" && FASTEMBED_MODEL=BAAI/bge-small-en-v1.5 FASTEMBED_CACHE_PATH=backend/data/fastembed_cache python backend/prepare_fastembed.py",
   "functions": {
     "app.py": {
       "maxDuration": 60
