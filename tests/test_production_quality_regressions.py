@@ -43,6 +43,18 @@ class ProductionQualityRegressionTests(unittest.TestCase):
             },
         ]
 
+    @staticmethod
+    def _steps():
+        return [
+            Step(
+                action="search_site",
+                observation=(
+                    "[project-real-time-road-accident-detection · relevance 0.92] "
+                    "Youssef built a road accident detection project."
+                ),
+            )
+        ]
+
     def test_typo_current_work_routes_to_fiverr_structured_answer(self):
         result = self.resolver.resolve("youssef il fais quoi en ce moment ?")
         self.assertIsNotNone(result)
@@ -71,23 +83,24 @@ class ProductionQualityRegressionTests(unittest.TestCase):
         self.assertNotIn("It covers:", result.answer)
 
     def test_unknown_citation_removal_does_not_leave_dangling_grammar(self):
-        steps = [
-            Step(
-                action="search_site",
-                observation=(
-                    "[project-real-time-road-accident-detection · relevance 0.92] "
-                    "Youssef built a road accident detection project."
-                ),
-            )
-        ]
         answer, report = enforce_grounding(
             "I could not verify a production quantum computer or any project associated with [project-fake].",
-            steps,
+            self._steps(),
         )
         self.assertIn("project-fake", report.unknown_citations)
         self.assertNotIn("[project-fake]", answer)
         self.assertNotIn("associated with.", answer)
         self.assertIn("production quantum computer.", answer)
+
+    def test_inline_unknown_citation_does_not_leave_broken_article_fragment(self):
+        answer, report = enforce_grounding(
+            "I could not verify a production quantum computer, nor is there any record of a [project-fake] in his projects.",
+            self._steps(),
+        )
+        self.assertIn("project-fake", report.unknown_citations)
+        self.assertNotIn("[project-fake]", answer)
+        self.assertNotIn("record of a in", answer)
+        self.assertIn("corresponding record in his projects", answer)
 
     def test_fastembed_runtime_reuses_vercel_build_cache_path(self):
         calls = []
