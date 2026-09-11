@@ -138,7 +138,8 @@ class RecruiterReasoningStressTests(unittest.TestCase):
         self.assertIn("AI Engineer junior", answer)
         self.assertIn("NEXTRONIC", answer)
         self.assertIn("OpenLegaMa", answer)
-        self.assertIn("Customer MLOps Pipeline", answer)
+        self.assertIn("Cycle ML/MLOps", answer)
+        self.assertIn("Airflow", answer)
         self.assertIn("certifications", answer.lower())
         self.assertIn("preuve principale", answer)
 
