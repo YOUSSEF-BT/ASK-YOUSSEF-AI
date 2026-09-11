@@ -140,56 +140,42 @@ def _out_of_scope_answer(language: str) -> str:
     )
 
 
-def _sse(event: str, payload: dict) -> str:
-    import json
+def _complete_fast_route(route, answer: str, started: float):
+    """Record privacy-safe telemetry and emit one backend-compatible SSE event."""
+    _backend.TELEMETRY.record_request(route)
+    _backend.TELEMETRY.record_completed(
+        latency_ms=(time.monotonic() - started) * 1000.0,
+        retrieval_used=False,
+        grounding_intervened=False,
+    )
+    yield _backend._sse("final", answer=answer, tools_used=[])
 
-    return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
-
-async def _stream_with_fast_public_routes(request, body):
-    started = time.perf_counter()
-    question = (body.question or "").strip()
-    history = [item.model_dump() for item in body.history]
-    route = _backend.route_intent(question, history)
-    language = route.language
-    normalized = _backend._normalize_text(question)
+def _stream_with_fast_public_routes(question: str, history=None):
+    """Preserve backend._stream(question, history) while adding cheap public routes."""
+    started = time.monotonic()
+    question = (question or "").strip()
+    route = _backend.route_question(question)
 
     # Keep the shorthand relationship question inside the backend's deterministic
     # private-profile guard even when the generic router marks it out of scope.
-    private_relationship = bool(_PRIVATE_RELATIONSHIP_SHORTHAND.search(normalized))
+    private_relationship = bool(_PRIVATE_RELATIONSHIP_SHORTHAND.search(question))
 
-    if _SENSITIVE_REQUEST.search(normalized):
-        answer = _sensitive_answer(language)
-        _backend.TELEMETRY.record_request(
-            latency_ms=(time.perf_counter() - started) * 1000,
-            completed=True,
-            used_retrieval=False,
-        )
-        yield _sse("final", {"answer": answer})
+    if _SENSITIVE_REQUEST.search(question):
+        yield from _complete_fast_route(route, _sensitive_answer(route.language), started)
         return
 
     if route.intent == "greeting":
-        answer = _greeting_answer(language)
-        _backend.TELEMETRY.record_request(
-            latency_ms=(time.perf_counter() - started) * 1000,
-            completed=True,
-            used_retrieval=False,
-        )
-        yield _sse("final", {"answer": answer})
+        yield from _complete_fast_route(route, _greeting_answer(route.language), started)
         return
 
     if not route.portfolio_scope and not private_relationship:
-        answer = _out_of_scope_answer(language)
-        _backend.TELEMETRY.record_request(
-            latency_ms=(time.perf_counter() - started) * 1000,
-            completed=True,
-            used_retrieval=False,
-        )
-        yield _sse("final", {"answer": answer})
+        yield from _complete_fast_route(route, _out_of_scope_answer(route.language), started)
         return
 
-    async for event in _original_stream(request, body):
-        yield event
+    # The backend stream is a synchronous generator with the public contract
+    # _stream(question, history). Do not wrap it as an async iterator.
+    yield from _original_stream(question, history)
 
 
 _backend._stream = _stream_with_fast_public_routes
