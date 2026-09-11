@@ -482,6 +482,35 @@ ASK-YOUSSEF-AI/
 
 ---
 
+## Want a Similar AI System?
+
+Ask Youssef AI was engineered as a production architecture for **evidence-grounded assistants, RAG systems and business knowledge applications**.
+
+If you need a custom AI assistant for your company, documents or internal knowledge base, I can adapt this type of architecture to your use case.
+
+Typical client solutions can include:
+
+- document and knowledge-base RAG;
+- internal company AI assistants;
+- customer-support knowledge agents;
+- multilingual AI assistants;
+- grounded answers with citations;
+- custom business knowledge and workflows;
+- FastAPI APIs and backend integrations;
+- production deployment and tailored interfaces.
+
+<div align="center">
+
+### Have a project in mind?
+
+[![Discuss Your AI Project](https://img.shields.io/badge/DISCUSS_YOUR_AI_PROJECT_ON_FIVERR-1DBF73?style=for-the-badge&logo=fiverr&logoColor=white)](https://www.fiverr.com/youssef_bouzit/build-a-custom-rag-ai-chatbot-for-your-documents)
+
+**Custom RAG & AI assistant development by Youssef Bouzit**
+
+</div>
+
+---
+
 # What This Project Shows About My Engineering
 
 This project demonstrates my ability to work across the full AI application lifecycle:
