@@ -150,7 +150,7 @@ class HumanAuditReasoningTests(unittest.TestCase):
         self.assertIn("Junior/early-career", answer)
         self.assertIn("Agentic AI/LangGraph", answer)
         self.assertIn("Very large enterprise scope", answer)
-        self.assertIn("OpenLegaMa", answer)
+        self.assertIn("RAG/LLM", answer)
 
     def test_simple_identity_positions_ai_ml_not_only_computer_vision(self):
         result = self.resolver.resolve("Who is Youssef in simple words?")
