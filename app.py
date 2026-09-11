@@ -37,11 +37,12 @@ _DEFAULTS = {
 for _key, _value in _DEFAULTS.items():
     os.environ.setdefault(_key, _value)
 
-# Apply Vercel-only reliability/latency optimizations before backend.app
+# Apply Vercel-only reliability/latency/quality optimizations before backend.app
 # imports and builds the shared agent. Core local/Docker behavior is unchanged.
 _BACKEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend")
 if _BACKEND_DIR not in sys.path:
     sys.path.insert(0, _BACKEND_DIR)
+import vercel_quality_patch  # noqa: E402,F401
 import vercel_agent_patch  # noqa: E402,F401
 import vercel_gemini_failover  # noqa: E402,F401
 
