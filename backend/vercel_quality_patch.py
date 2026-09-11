@@ -35,10 +35,6 @@ _DANGLING_AFTER_CITATION = (
     ),
 )
 
-# Removing an unknown source token can leave fragments such as
-# "nor is there any record of a in his projects", "record of.", or
-# "reference to ``.". Rewrite/remove only those narrow malformed constructions;
-# do not paraphrase otherwise valid generated prose.
 _BROKEN_RECORD_FRAGMENT = re.compile(
     r"\bnor\s+is\s+there\s+any\s+record\s+of\s+(?:a|an|the)?\s*"
     r"(?P<prep>in|among|within)\b",
@@ -58,9 +54,6 @@ _DANGLING_ASSOCIATION = re.compile(
     re.I,
 )
 
-# Recruiters and visitors phrase employer checks in several languages and may
-# also embed a false declarative claim inside a prompt injection. Keep those in
-# the exact structured-employer lane instead of asking the model to interpret it.
 _EXTRA_EMPLOYER_PATTERNS = (
     re.compile(
         r"(?:هل\s+)?(?:سبق\s+(?:ان|أن)\s+)?عمل\s+(?:يوسف|هو)\s+(?:في|لدى|مع)\s+([^؟?.!]+)",
@@ -442,9 +435,7 @@ def _patch_precision_quality() -> None:
     if getattr(_precision, "_vercel_precision_quality_patch", False):
         return
 
-    # Extend exact employer extraction before the resolver is used.
     _precision._EMPLOYER_PATTERNS += _EXTRA_EMPLOYER_PATTERNS
-
     original_resolve = _precision.StructuredFactResolver.resolve
 
     def resolve(self, question, history=None):
@@ -465,8 +456,6 @@ def _patch_precision_quality() -> None:
 
 
 def _patch_structured_professional_quality() -> None:
-    # Imported lazily so the Vercel entrypoint can still apply this module before
-    # backend.app builds its shared resolver.
     import structured_facts as _structured
 
     cls = _structured.StructuredFactResolver
@@ -485,8 +474,12 @@ def _patch_structured_professional_quality() -> None:
     def resolve(self, question, history=None):
         normalized = _precision._normalize(question)
         language = self._effective_language(question) if hasattr(self, "_effective_language") else _precision.detect_language(question)
+        project_context = any(
+            token in normalized
+            for token in ("project", "projects", "projet", "projets", "مشروع", "مشاريع")
+        )
 
-        if any(pattern.search(normalized) for pattern in _SKILL_RANKING_PATTERNS):
+        if not project_context and any(pattern.search(normalized) for pattern in _SKILL_RANKING_PATTERNS):
             return _strong_skills_answer(self, language)
 
         if any(pattern.search(normalized) for pattern in _CERT_RANKING_PATTERNS):
