@@ -11,7 +11,7 @@ This page is synchronized from explicit public portfolio positioning.
 
 - **Status:** Open to full-time AI/ML opportunities, technical collaborations, and selected freelance projects.
 - **Details:** My graduation project received an Excellent distinction with a score of 18/20. It combines YOLO, BoT-SORT, and heuristic logic to detect road accidents in real time. I am now seeking a full-time opportunity as an AI Engineer, Computer Vision Engineer, Machine Learning Engineer, or Data Scientist.
-- **Target full-time roles:** an AI Engineer, Computer Vision Engineer, Machine Learning Engineer, Data Scientist
+- **Target full-time roles:** AI Engineer, Computer Vision Engineer, Machine Learning Engineer, Data Scientist
 - **Freelance:** Current freelance work runs in parallel with the full-time opportunity search; it does not replace it.
 
 ## Français
