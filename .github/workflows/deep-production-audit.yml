@@ -28,6 +28,8 @@ jobs:
         with:
           python-version: "3.12"
 
+      # Allow the Git-connected Vercel production deployment for this commit to
+      # become READY before exercising the canonical production alias.
       - name: Wait for Vercel production deployment
         run: sleep 75
 
