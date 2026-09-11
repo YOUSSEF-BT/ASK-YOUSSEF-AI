@@ -66,11 +66,18 @@ jobs:
             --output career-eval-report.json \
             --strict
 
-      - name: Run deployed online regression
+      # The public API intentionally allows six questions/minute per visitor.
+      # Career and core suites use the same runner IP, so give the sliding window
+      # time to clear instead of turning the test harness into its own 429 bug.
+      - name: Cool down between production suites
+        run: sleep 30
+
+      - name: Run strict core production regression
         run: |
           python evaluation/run_online_eval.py \
             --api-url "https://ask-youssef-ai.vercel.app" \
             --origin "https://youssef-bt.github.io" \
+            --dataset evaluation/core_production_cases.json \
             --output online-eval-report.json \
             --strict
 
