@@ -1,0 +1,70 @@
+name: Final two client regressions
+
+on:
+  push:
+    branches: [manual-live-test-20260911]
+    paths:
+      - ".github/workflows/final-two-client.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify final client answers on production
+        env:
+          API_URL: "https://ask-youssef-ai.vercel.app/chat"
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+
+          cases = [
+              (
+                  "What would make Youssef a risky choice for my AI project? Be candid.",
+                  ["Junior/early-career", "Agentic AI/LangGraph", "Very large enterprise scope", "RAG/LLM"],
+                  ["AI Summarizer"],
+              ),
+              (
+                  "Which public project is closest to a client-ready AI product and why?",
+                  ["OpenLegaMa", "143 / 143", "7,708", "closest to a client-ready AI product"],
+                  ["AI Summarizer"],
+              ),
+          ]
+
+          for index, (question, required, forbidden) in enumerate(cases, 1):
+              req = urllib.request.Request(
+                  os.environ["API_URL"],
+                  data=json.dumps({"question": question, "history": []}).encode(),
+                  method="POST",
+                  headers={
+                      "Content-Type": "application/json",
+                      "Accept": "text/event-stream",
+                      "Origin": "https://youssef-bt.github.io",
+                  },
+              )
+              with urllib.request.urlopen(req, timeout=180) as response:
+                  raw = response.read().decode("utf-8", "replace")
+              answer = ""
+              for line in raw.splitlines():
+                  if line.startswith("data: "):
+                      try:
+                          event = json.loads(line[6:])
+                      except Exception:
+                          continue
+                      if event.get("kind") == "final":
+                          answer = event.get("answer", "")
+              print(f"CASE {index}: {question}")
+              print(answer)
+              if not answer:
+                  raise SystemExit(f"case {index}: no final answer")
+              for needle in required:
+                  if needle not in answer:
+                      raise SystemExit(f"case {index}: missing {needle!r}")
+              for needle in forbidden:
+                  if needle in answer:
+                      raise SystemExit(f"case {index}: forbidden {needle!r}")
+          print("FINAL TWO CLIENT REGRESSIONS: 2/2 PASS")
+          PY
