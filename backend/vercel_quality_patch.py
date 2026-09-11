@@ -7,8 +7,8 @@ cache again.
 
 This module also applies narrow production-hardening fixes that are safer to keep
 deterministic than to delegate to a generative model: grammatical cleanup after
-an invalid citation is removed, Arabic employer verification, concise professional
-profile summaries, and unsupported private-profile questions.
+an invalid citation is removed, multilingual employer verification, concise
+professional profile summaries, and unsupported private-profile questions.
 """
 from __future__ import annotations
 
@@ -34,9 +34,9 @@ _DANGLING_AFTER_CITATION = (
 )
 
 # Removing an unknown source token can leave fragments such as
-# "nor is there any record of a in his projects" or simply
-# "nor is there any record of.". Rewrite/remove only those narrow malformed
-# constructions; do not paraphrase otherwise valid generated prose.
+# "nor is there any record of a in his projects", "record of.", or
+# "reference to ``.". Rewrite/remove only those narrow malformed constructions;
+# do not paraphrase otherwise valid generated prose.
 _BROKEN_RECORD_FRAGMENT = re.compile(
     r"\bnor\s+is\s+there\s+any\s+record\s+of\s+(?:a|an|the)?\s*"
     r"(?P<prep>in|among|within)\b",
@@ -46,47 +46,54 @@ _DANGLING_RECORD_CLAUSE = re.compile(
     r",?\s*(?:nor\s+)?(?:is\s+there\s+)?(?:any\s+)?record\s+of\s*([.!?])",
     re.I,
 )
+_DANGLING_REFERENCE_CLAUSE = re.compile(
+    r",?\s*(?:nor\s+)?(?:is\s+there\s+)?(?:any\s+)?reference\s+to\s*"
+    r"(?:``|`\s*`|''|\"\")?\s*([.!?])",
+    re.I,
+)
 _DANGLING_ASSOCIATION = re.compile(
     r",?\s*(?:or\s+)?(?:is\s+)?associated\s+(?:with|to)\s*([.!?])",
     re.I,
 )
 
-# Recruiters and visitors frequently phrase employer questions in Arabic. Keep
-# those in the same exact structured-employer lane used by English/French.
-_ARABIC_EMPLOYER_PATTERNS = (
+# Recruiters and visitors phrase employer checks in several languages and may
+# also embed a false declarative claim inside a prompt injection. Keep those in
+# the exact structured-employer lane instead of asking the model to interpret it.
+_EXTRA_EMPLOYER_PATTERNS = (
     re.compile(
         r"(?:هل\s+)?(?:سبق\s+(?:ان|أن)\s+)?عمل\s+(?:يوسف|هو)\s+(?:في|لدى|مع)\s+([^؟?.!]+)",
         re.I,
     ),
+    re.compile(r"\b(?:youssef|he)\s+works\s+at\s+([^?.!]+)", re.I),
 )
 
 _PROFILE_SUMMARY_PATTERNS = (
     re.compile(r"\b(?:write|give|draft)\b.*\b(?:professional\s+)?(?:summary|bio|profile)\b.*\b(?:youssef|him)\b", re.I),
     re.compile(r"\b(?:short|brief)\s+(?:professional\s+)?(?:summary|bio|profile)\b.*\b(?:youssef|him)\b", re.I),
     re.compile(r"\b(?:tell|talk)\s+(?:me\s+)?about\s+(?:youssef|him)\b", re.I),
-    re.compile(r"\b(?:bio|resume|résumé)\s+professionnelle?\b.*\b(?:youssef|lui)\b", re.I),
+    re.compile(r"\b(?:bio|resume)\s+professionnelle?\b.*\b(?:youssef|lui)\b", re.I),
     re.compile(r"\b(?:parle|parler)\b.*\b(?:de\s+)?(?:youssef|lui)\b", re.I),
 )
 
 _PRIVATE_PROFILE_PATTERNS = {
     "salary": (
         re.compile(r"\b(?:salary|compensation|income|earnings|pay)\b", re.I),
-        re.compile(r"\b(?:salaire|remuneration|rémunération|revenu)\b", re.I),
+        re.compile(r"\b(?:salaire|remuneration|revenu)\b", re.I),
         re.compile(r"(?:راتب|دخل|أجر)", re.I),
     ),
     "address": (
         re.compile(r"\b(?:home|personal|private)\s+address\b", re.I),
-        re.compile(r"\b(?:adresse\s+(?:personnelle|privee|privée)|adresse\s+de\s+domicile)\b", re.I),
+        re.compile(r"\b(?:adresse\s+(?:personnelle|privee)|adresse\s+de\s+domicile)\b", re.I),
         re.compile(r"(?:عنوان\s+(?:المنزل|السكن|الشخصي))", re.I),
     ),
     "phone": (
         re.compile(r"\b(?:phone|telephone|mobile)\s*(?:number)?\b", re.I),
-        re.compile(r"\b(?:telephone|téléphone|numero\s+de\s+telephone|numéro\s+de\s+téléphone)\b", re.I),
+        re.compile(r"\b(?:telephone|numero\s+de\s+telephone)\b", re.I),
         re.compile(r"(?:رقم\s+(?:الهاتف|الجوال)|هاتف)", re.I),
     ),
     "age": (
         re.compile(r"\b(?:how old|age|date of birth|birthday)\b", re.I),
-        re.compile(r"\b(?:age|âge|date\s+de\s+naissance|anniversaire)\b", re.I),
+        re.compile(r"\b(?:age|date\s+de\s+naissance|anniversaire)\b", re.I),
         re.compile(r"(?:العمر|تاريخ\s+الميلاد|كم\s+عمر)", re.I),
     ),
 }
@@ -101,7 +108,9 @@ def _cleanup_dangling_citation_text(text: str) -> str:
         cleaned,
     )
     cleaned = _DANGLING_RECORD_CLAUSE.sub(r"\1", cleaned)
+    cleaned = _DANGLING_REFERENCE_CLAUSE.sub(r"\1", cleaned)
     cleaned = _DANGLING_ASSOCIATION.sub(r"\1", cleaned)
+    cleaned = re.sub(r"`\s*`", "", cleaned)
     cleaned = re.sub(r"\(\s*\)", "", cleaned)
     cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
     cleaned = re.sub(r"[ \t]+([.,;:!?])", r"\1", cleaned)
@@ -254,8 +263,8 @@ def _patch_precision_quality() -> None:
     if getattr(_precision, "_vercel_precision_quality_patch", False):
         return
 
-    # Extend exact employer extraction to Arabic before the resolver is used.
-    _precision._EMPLOYER_PATTERNS += _ARABIC_EMPLOYER_PATTERNS
+    # Extend exact employer extraction before the resolver is used.
+    _precision._EMPLOYER_PATTERNS += _EXTRA_EMPLOYER_PATTERNS
 
     original_resolve = _precision.StructuredFactResolver.resolve
 
