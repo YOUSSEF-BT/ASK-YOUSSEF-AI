@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "status": "expanded-live-smoke-audit",
-  "description": "Fresh production questions covering counts, multilingual phrasing, typos, career status, employers, contact, privacy, project facts, follow-ups, prompt injection, capabilities and scope control.",
+  "description": "Fresh production questions covering counts, multilingual phrasing, typos, career status, employers, contact, privacy, project facts, follow-ups, prompt injection, capabilities and scope control. Final production validation dataset.",
   "thresholds": {
     "completion_rate": 1.0,
     "required_retrieval_rate": 1.0,
