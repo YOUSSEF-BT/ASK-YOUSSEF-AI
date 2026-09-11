@@ -11,6 +11,7 @@ import re
 import precision_facts as _precision
 import structured_facts as _structured
 import recruiter_reasoning as _reasoning
+import human_audit_reasoning as _human_audit
 
 # Capture the original router-backed detector before installing the planner-only
 # override. The fallback below must call this stable reference rather than the
@@ -180,6 +181,9 @@ def apply() -> None:
         fingerprint = _fingerprint(self, question)
         if fingerprint is not None:
             return fingerprint
+        audited = _human_audit.resolve_human_audit(self, question)
+        if audited is not None:
+            return audited
         planned = _reasoning.resolve_recruiter_reasoning(self, question)
         if planned is not None:
             return planned
