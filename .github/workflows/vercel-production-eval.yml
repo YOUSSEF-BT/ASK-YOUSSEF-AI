@@ -54,14 +54,9 @@ jobs:
               raise SystemExit("Production health check failed")
           PY
 
-      - name: Run deployed online regression
-        run: |
-          python evaluation/run_online_eval.py \
-            --api-url "https://ask-youssef-ai.vercel.app" \
-            --origin "https://youssef-bt.github.io" \
-            --output online-eval-report.json \
-            --strict
-
+      # Fail fast on career-state mistakes: current freelance work and the
+      # explicit full-time/CDI search are independent facts and must never be
+      # treated as mutually exclusive.
       - name: Run deployed career-state regression
         run: |
           python evaluation/run_online_eval.py \
@@ -69,6 +64,14 @@ jobs:
             --origin "https://youssef-bt.github.io" \
             --dataset evaluation/career_cases.json \
             --output career-eval-report.json \
+            --strict
+
+      - name: Run deployed online regression
+        run: |
+          python evaluation/run_online_eval.py \
+            --api-url "https://ask-youssef-ai.vercel.app" \
+            --origin "https://youssef-bt.github.io" \
+            --output online-eval-report.json \
             --strict
 
       - name: Publish production evaluation reports
