@@ -35,7 +35,7 @@ jobs:
             --origin "https://youssef-bt.github.io" \
             --dataset evaluation/live_smoke_cases.json \
             --output live-smoke-report.json \
-            --delay 3 \
+            --delay 12 \
             --retries 2 \
             --strict
 
