@@ -10,6 +10,7 @@ on:
       - "scripts/sync_portfolio.py"
       - "scripts/build_structured_profile.py"
       - "scripts/enrich_public_contact.py"
+      - "scripts/enrich_career_status.py"
       - ".github/workflows/sync-portfolio.yml"
 
 permissions:
@@ -50,6 +51,13 @@ jobs:
             --site backend/data/site \
             --profile backend/data/profile.json
 
+      - name: Enrich career availability and localized experience
+        run: |
+          python scripts/enrich_career_status.py \
+            --source /tmp/youssef-portfolio \
+            --site backend/data/site \
+            --profile backend/data/profile.json
+
       - name: Validate synchronized knowledge
         run: |
           python - <<'PY'
@@ -73,8 +81,8 @@ jobs:
                   raise SystemExit(f"Incomplete synchronized corpus: {key}={value}")
 
           markdown = list(root.glob("*.md"))
-          if len(markdown) < 5:
-              raise SystemExit(f"Expected at least 5 knowledge documents, found {len(markdown)}")
+          if len(markdown) < 6:
+              raise SystemExit(f"Expected at least 6 knowledge documents, found {len(markdown)}")
 
           profile_checks = {
               "projects": len(profile.get("projects", [])),
@@ -93,6 +101,22 @@ jobs:
           if profile_checks["public_links"] != manifest["public_links"]:
               raise SystemExit("Structured profile public-link count does not match corpus manifest")
 
+          career = profile.get("career_status") or {}
+          if career.get("seeking_full_time") is not True:
+              raise SystemExit(f"Explicit full-time career availability was not synchronized: {career}")
+          if not career.get("details") or not career.get("details_fr"):
+              raise SystemExit("Bilingual career availability evidence is incomplete")
+          if not (root / "career-status.md").is_file():
+              raise SystemExit("career-status.md was not generated")
+
+          current = next(
+              (row for row in profile.get("work_experiences", [])
+               if "present" in str(row.get("period", "")).lower()),
+              None,
+          )
+          if not current or not current.get("role_fr") or not current.get("description_fr"):
+              raise SystemExit("Localized current work experience was not synchronized")
+
           public_emails = [
               row.get("value")
               for row in profile.get("public_links", [])
@@ -106,6 +130,7 @@ jobs:
 
           print("Validated manifest:", manifest)
           print("Validated structured profile:", profile_checks)
+          print("Career availability:", career.get("summary"))
           print("Public email evidence:", public_emails)
           print("Knowledge documents:", len(markdown))
           PY
