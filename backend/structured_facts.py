@@ -222,7 +222,7 @@ class StructuredFactResolver(_live.StructuredFactResolver):
             lines = ["Youssef's main documented professional experiences are:"]
             for index, row in enumerate(self.experiences, 1):
                 role = str(row.get("role") or "").strip()
-                company = str(row.get("company") or row.get("company") or "").strip()
+                company = str(row.get("company") or "").strip()
                 period = str(row.get("period") or "").strip()
                 description = str(row.get("description") or "").strip()
                 if "fiverr" in _precision._normalize(company) and "freelance" in _precision._normalize(role):
@@ -262,7 +262,7 @@ class StructuredFactResolver(_live.StructuredFactResolver):
             text += "."
             if description:
                 text += f" {description}"
-            text += " [experience-education]"
+            text += " Ses activités documentées comprennent notamment des **Systèmes RAG**, des applications LLM, des agents IA, du Machine Learning et de la vision par ordinateur. [experience-education]"
             if seeking:
                 text += (
                     "\n\nIl **n’a pas choisi le freelance à la place d’un CDI** : il recherche une opportunité en CDI à temps plein comme AI Engineer, Computer Vision Engineer, Machine Learning Engineer ou Data Scientist. Le freelance est une activité parallèle. [career-status]"
@@ -287,7 +287,7 @@ class StructuredFactResolver(_live.StructuredFactResolver):
             text += "."
             if description:
                 text += f" {description}"
-            text += " [experience-education]"
+            text += " His documented work includes RAG systems, LLM applications, AI agents, Machine Learning, and Computer Vision. [experience-education]"
             if seeking:
                 text += (
                     "\n\nHe **has not chosen freelancing instead of a full-time career**: he is actively seeking a **full-time AI/ML role**. Freelancing is a parallel activity. [career-status]"
