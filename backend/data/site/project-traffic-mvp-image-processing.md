@@ -9,7 +9,7 @@ url: https://youssef-bt.github.io/projects/traffic-mvp-image-processing
 
 Real-time vehicle detection and traffic flow analysis using YOLOv8 and OpenCV. Processes video streams, counts vehicles, exports metrics to CSV, and provides a Streamlit dashboard for visualization.
 
-## Project facts
+## Project Facts
 
 **Role:** Computer Vision Engineer
 
@@ -34,7 +34,7 @@ Real-time vehicle detection and traffic flow analysis using YOLOv8 and OpenCV. P
 
 Built a complete traffic analysis pipeline leveraging YOLOv8 for object detection and OpenCV for video processing. The system detects and tracks vehicles in real-time, generates detailed CSV reports, and includes a Streamlit dashboard for interactive data visualization.
 
-## Key achievements
+## Key Achievements
 
 - High accuracy vehicle detection using YOLOv8
 - Real-time processing with visual overlays
@@ -42,7 +42,7 @@ Built a complete traffic analysis pipeline leveraging YOLOv8 for object detectio
 - User-friendly Streamlit dashboard for exploration
 - Easy configuration via YAML
 
-## Technology stack
+## Technology Stack
 
 - Python 3
 - OpenCV
@@ -65,7 +65,7 @@ Built a complete traffic analysis pipeline leveraging YOLOv8 for object detectio
 - False positives may occur with poor video quality or unusual angles
 - Single-video processing; multi-camera not yet implemented
 
-## Future improvements
+## Future Improvements
 
 - Camera calibration for accurate speed measurement
 - Multi-object tracking (DeepSORT/ByteTrack)
@@ -74,7 +74,6 @@ Built a complete traffic analysis pipeline leveraging YOLOv8 for object detectio
 - Multi-camera support
 - Deploy dashboard to Streamlit Cloud
 
-## Source provenance
+## Evidence Provenance
 
 Generated from `src/data/projects/trafficMVP.js` in the public portfolio repository. The portfolio source is authoritative for this generated document.
-

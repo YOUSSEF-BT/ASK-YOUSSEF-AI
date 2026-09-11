@@ -9,7 +9,7 @@ url: https://youssef-bt.github.io/projects/customer-churn-mlops-platform
 
 Complete MLOps platform for customer churn prediction with automated orchestration (Airflow), experiment tracking (MLflow), artifact storage (MinIO), and interactive dashboard (Streamlit). End-to-end machine learning pipeline for production deployment.
 
-## Project facts
+## Project Facts
 
 **Role:** MLOps Engineer & Data Scientist
 
@@ -33,7 +33,7 @@ Complete MLOps platform for customer churn prediction with automated orchestrati
 
 Built comprehensive MLOps platform combining Airflow for orchestration, MLflow for tracking, MinIO for storage, and Streamlit for monitoring.
 
-## Key achievements
+## Key Achievements
 
 - Implemented automated ML pipeline with Airflow orchestration
 - Set up complete experiment tracking with MLflow
@@ -41,7 +41,7 @@ Built comprehensive MLOps platform combining Airflow for orchestration, MLflow f
 - Built interactive monitoring dashboard with Streamlit
 - Automated CI/CD pipeline for model deployment
 
-## Technology stack
+## Technology Stack
 
 - Python
 - Airflow
@@ -61,7 +61,6 @@ Built comprehensive MLOps platform combining Airflow for orchestration, MLflow f
 - **deployment:** Automated
 - **monitoring:** Real-time
 
-## Source provenance
+## Evidence Provenance
 
 Generated from `src/data/projects/mlopsPipeline.js` in the public portfolio repository. The portfolio source is authoritative for this generated document.
-

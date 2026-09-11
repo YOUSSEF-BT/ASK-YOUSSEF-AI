@@ -9,7 +9,7 @@ url: https://youssef-bt.github.io/projects/ai-powered-bank-fraud-detection-machi
 
 Machine-learning credit-card fraud detection system built on the Kaggle Credit Card Fraud Detection dataset (284,807 transactions, including 492 fraud cases). Uses a Random Forest model with an interactive Streamlit dashboard for transaction analysis, fraud-risk probabilities, and feature-importance inspection.
 
-## Project facts
+## Project Facts
 
 **Role:** AI Engineer & Data Scientist
 
@@ -32,7 +32,7 @@ Machine-learning credit-card fraud detection system built on the Kaggle Credit C
 
 Implemented a Random Forest-based fraud detection workflow using the public Kaggle credit-card fraud dataset, together with a Streamlit interface for dataset exploration, transaction testing, prediction probabilities, and feature-importance analysis.
 
-## Key achievements
+## Key Achievements
 
 - Reported 99.96% model accuracy in the original project evaluation
 - Analyzed 284,807 transactions containing 492 fraud cases (0.1727% fraud rate)
@@ -40,7 +40,7 @@ Implemented a Random Forest-based fraud detection workflow using the public Kagg
 - Added transaction-level testing with class predictions and probability scores
 - Created feature-importance visualizations for model interpretation
 
-## Technology stack
+## Technology Stack
 
 - Python
 - Streamlit
@@ -59,7 +59,6 @@ Implemented a Random Forest-based fraud detection workflow using the public Kagg
 - **fraudCases:** 492
 - **fraudRate:** 0.1727%
 
-## Source provenance
+## Evidence Provenance
 
 Generated from `src/data/projects/fraudDetection.js` in the public portfolio repository. The portfolio source is authoritative for this generated document.
-

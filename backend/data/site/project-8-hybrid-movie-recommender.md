@@ -9,7 +9,7 @@ url: https://youssef-bt.github.io/projects/8-hybrid-movie-recommender
 
 Advanced hybrid recommendation system combining collaborative filtering and content-based approaches for personalized movie suggestions. Built comprehensive recommendation engine using multiple algorithms to improve accuracy and user experience.
 
-## Project facts
+## Project Facts
 
 **Role:** Data Scientist & Machine Learning Engineer
 
@@ -35,7 +35,7 @@ Advanced hybrid recommendation system combining collaborative filtering and cont
 
 Built comprehensive hybrid recommendation system combining collaborative filtering, content-based filtering, and matrix factorization for accurate personalized movie recommendations.
 
-## Key achievements
+## Key Achievements
 
 - Implemented hybrid approach with improved accuracy
 - Solved cold-start problem using content-based filtering
@@ -43,7 +43,7 @@ Built comprehensive hybrid recommendation system combining collaborative filteri
 - Created scalable recommendation engine
 - Achieved high recommendation accuracy on test dataset
 
-## Technology stack
+## Technology Stack
 
 - Python
 - TypeScript
@@ -66,7 +66,6 @@ Built comprehensive hybrid recommendation system combining collaborative filteri
 - **diversity:** High
 - **scalability:** Good
 
-## Source provenance
+## Evidence Provenance
 
 Generated from `src/data/projects/hybridMovieRecommender.js` in the public portfolio repository. The portfolio source is authoritative for this generated document.
-

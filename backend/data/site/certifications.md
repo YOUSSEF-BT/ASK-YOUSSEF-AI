@@ -482,4 +482,3 @@ Foundational certification in Oracle AI Database, covering core concepts for AI-
 - **Verification / certificate:** https://catalog-education.oracle.com/pls/certview/sharebadge?id=7465F31933EE411B1EB7C5C55C45F6DAD74F72D873EE0DA369F50F835F7F78D6
 
 Associate-level certification validating cloud architecture skills across Oracle Cloud Infrastructure, including core compute, networking, storage, identity, security, availability, and resilient solution design.
-

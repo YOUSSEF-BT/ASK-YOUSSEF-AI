@@ -7,7 +7,7 @@ url: https://youssef-bt.github.io/#/projects
 
 This document exposes aggregate facts derived deterministically from the synchronized public portfolio profile so exact collection counts can be cited like the other portfolio sources.
 
-## Current synchronized aggregates
+## Current Synchronized Aggregates
 
 - Projects: 10
 - Skill categories: 6

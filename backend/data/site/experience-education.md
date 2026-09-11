@@ -58,4 +58,3 @@ Engineering curriculum covering Data Science, Machine Learning, Artificial Intel
 Intensive foundation in mathematics, physics, computer science, algorithms, and engineering fundamentals before entering the engineering cycle.
 
 **Focus:** Mathematics, Physics, Computer Science, Algorithms
-

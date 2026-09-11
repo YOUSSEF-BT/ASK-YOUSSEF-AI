@@ -9,7 +9,7 @@ url: https://youssef-bt.github.io/projects/pulsestream-real-time-social-media-in
 
 A containerized Big Data platform for real-time social media analytics. PulseStream ingests live Reddit posts and comments through Apache Kafka, processes streaming data with Apache Spark Structured Streaming, persists raw and enriched records in MongoDB, and supports downstream NLP, sentiment analysis, and topic modeling.
 
-## Project facts
+## Project Facts
 
 **Role:** Data Engineer — Streaming ETL & Storage
 
@@ -36,7 +36,7 @@ A containerized Big Data platform for real-time social media analytics. PulseStr
 
 Built a containerized streaming architecture in which Reddit data flows through Kafka into Spark Structured Streaming for ETL and enrichment, then into MongoDB for durable storage and downstream NLP analytics.
 
-## Key achievements
+## Key Achievements
 
 - Delivered a working Kafka-to-Spark-to-MongoDB streaming pipeline
 - Implemented real-time ETL for cleaning, normalization, and enrichment
@@ -44,7 +44,7 @@ Built a containerized streaming architecture in which Reddit data flows through 
 - Containerized the processing environment to improve reproducibility and compatibility
 - Validated the streaming and storage layers end to end
 
-## Technology stack
+## Technology Stack
 
 - Apache Kafka
 - Apache Spark Structured Streaming
@@ -62,7 +62,6 @@ Built a containerized streaming architecture in which Reddit data flows through 
 - **storage:** MongoDB
 - **deployment:** Dockerized
 
-## Source provenance
+## Evidence Provenance
 
 Generated from `src/data/projects/tweetsSentiment.js` in the public portfolio repository. The portfolio source is authoritative for this generated document.
-

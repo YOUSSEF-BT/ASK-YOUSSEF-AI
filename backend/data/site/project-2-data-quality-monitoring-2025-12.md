@@ -9,7 +9,7 @@ url: https://youssef-bt.github.io/projects/2-data-quality-monitoring-2025-12
 
 Professional full-stack data quality monitoring platform with React 18 frontend, Flask backend, and MySQL database. Features interactive Chart.js dashboard, Swagger REST API, and automated PDF/Excel export. Built for real-time quality metrics, anomaly detection, and professional reporting.
 
-## Project facts
+## Project Facts
 
 **Role:** Full-Stack Developer & Data Engineer
 
@@ -36,7 +36,7 @@ Professional full-stack data quality monitoring platform with React 18 frontend,
 
 Built comprehensive data quality monitoring platform with interactive dashboard, REST API, and automated reporting for complete data quality management.
 
-## Key achievements
+## Key Achievements
 
 - Created professional monitoring platform with real-time alerts
 - Built interactive dashboard for quality metrics visualization
@@ -44,7 +44,7 @@ Built comprehensive data quality monitoring platform with interactive dashboard,
 - Developed automated PDF/Excel export functionality
 - Set up comprehensive monitoring and alerting system
 
-## Technology stack
+## Technology Stack
 
 - React 18
 - Material-UI
@@ -64,7 +64,6 @@ Built comprehensive data quality monitoring platform with interactive dashboard,
 - **reporting:** Automated
 - **scalability:** High
 
-## Source provenance
+## Evidence Provenance
 
 Generated from `src/data/projects/dataQuality.js` in the public portfolio repository. The portfolio source is authoritative for this generated document.
-

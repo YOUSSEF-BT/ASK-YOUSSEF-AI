@@ -9,7 +9,7 @@ url: https://youssef-bt.github.io/projects/5-ai-summarizer-2026-03
 
 AI-powered summarizer for articles, PDFs, and Word documents with translation, key points, and audio playback. Built comprehensive NLP application leveraging advanced AI models for intelligent document summarization and content analysis.
 
-## Project facts
+## Project Facts
 
 **Role:** AI Engineer & Full-Stack Developer
 
@@ -32,7 +32,7 @@ AI-powered summarizer for articles, PDFs, and Word documents with translation, k
 
 Built comprehensive AI summarizer combining advanced NLP models, multi-format processing, translation, and audio playback for intelligent document analysis.
 
-## Key achievements
+## Key Achievements
 
 - Created AI-powered summarizer for multiple document formats
 - Implemented advanced NLP models for accurate summarization
@@ -40,7 +40,7 @@ Built comprehensive AI summarizer combining advanced NLP models, multi-format pr
 - Developed key points extraction and highlighting
 - Added audio playback for summarized content
 
-## Technology stack
+## Technology Stack
 
 - TypeScript
 - AI
@@ -58,7 +58,6 @@ Built comprehensive AI summarizer combining advanced NLP models, multi-format pr
 - **languages:** Multiple
 - **features:** Comprehensive
 
-## Source provenance
+## Evidence Provenance
 
 Generated from `src/data/projects/aiSummarizer.js` in the public portfolio repository. The portfolio source is authoritative for this generated document.
-

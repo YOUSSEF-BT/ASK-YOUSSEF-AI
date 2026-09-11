@@ -9,7 +9,7 @@ url: https://youssef-bt.github.io/projects/openlegama-moroccan-legal-ai
 
 A Moroccan legal AI assistant available in French, Modern Standard Arabic, and English. OpenLegaMa uses controlled Retrieval-Augmented Generation to retrieve official legal texts, validate exact law and article references, connect legal claims to accepted evidence, and abstain when verified sources are insufficient.
 
-## Project facts
+## Project Facts
 
 **Role:** AI Engineer • RAG & Full-Stack Developer
 
@@ -35,7 +35,7 @@ A Moroccan legal AI assistant available in French, Modern Standard Arabic, and E
 
 OpenLegaMa uses controlled RAG rather than a direct question-to-LLM pipeline. A semantic router classifies the request, checks whether clarification is required, validates explicit legal references, and decides whether retrieval is permitted. Relevant articles are then ranked and filtered before grounded generation. A final claim-to-citation validation layer connects sourced legal claims to accepted official evidence, while CORPUS_GAP and controlled abstention prevent unsupported answers.
 
-## Key achievements
+## Key Achievements
 
 - Released OpenLegaMa v1.0.1 as a stable, publicly accessible MVP
 - 143 of 143 automated tests passing
@@ -46,7 +46,7 @@ OpenLegaMa uses controlled RAG rather than a direct question-to-LLM pipeline. A 
 - French, Modern Standard Arabic, and English interaction with Arabic RTL support
 - Production build, TypeScript checks, ESLint, corpus validation, and benchmark thresholds passing
 
-## Technology stack
+## Technology Stack
 
 - Next.js 16
 - React 18
@@ -70,7 +70,7 @@ OpenLegaMa uses controlled RAG rather than a direct question-to-LLM pipeline. A 
 - **documentRecallAt5:** 100% curated
 - **exactArticleRecall:** 100% measured
 
-## Results note
+## Results Context
 
 Benchmark figures describe the current evaluation datasets and pipeline behavior. They are not a claim of universal legal accuracy, complete Moroccan-law coverage, or professional legal validation.
 
@@ -78,7 +78,6 @@ Benchmark figures describe the current evaluation datasets and pipeline behavior
 
 OpenLegaMa provides structured and sourced legal information, but it does not replace a lawyer or another qualified legal professional. Its legal corpus is curated and partial, and systematic temporal validation of all active texts is not yet complete.
 
-## Source provenance
+## Evidence Provenance
 
 Generated from `src/data/projects/chatbot.js` in the public portfolio repository. The portfolio source is authoritative for this generated document.
-
