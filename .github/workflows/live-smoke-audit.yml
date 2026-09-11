@@ -1,0 +1,49 @@
+name: Expanded live smoke audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "evaluation/live_smoke_cases.json"
+      - ".github/workflows/live-smoke-audit.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: expanded-live-smoke-audit
+  cancel-in-progress: true
+
+jobs:
+  smoke-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run 25 fresh questions against live production
+        run: |
+          python evaluation/run_online_eval.py \
+            --api-url "https://ask-youssef-ai.vercel.app" \
+            --origin "https://youssef-bt.github.io" \
+            --dataset evaluation/live_smoke_cases.json \
+            --output live-smoke-report.json \
+            --delay 3 \
+            --retries 2 \
+            --strict
+
+      - name: Publish live smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: expanded-live-smoke-report
+          path: live-smoke-report.json
+          if-no-files-found: warn
+          retention-days: 14
