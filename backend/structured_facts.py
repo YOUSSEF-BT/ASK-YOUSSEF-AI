@@ -16,6 +16,14 @@ import precision_facts as _precision
 # not turn a complete-set request into a filtered query.
 _precision._COMMON.update({"option", "options"})
 
+# Real visitors do not always write grammatically perfect French. These variants
+# intentionally cover the common "il fais quoi en ce moment" typo while keeping
+# the match narrow enough not to hijack unrelated portfolio questions.
+_precision._CURRENT_PATTERNS += (
+    r"\b(?:youssef(?:\s+il)?|il)\s+fai(?:t|s)\s+quoi\s+(?:en ce moment|maintenant|actuellement)\b",
+    r"\b(?:youssef(?:\s+il)?|il)\s+fai(?:t|s)\s+quoi\b.*\b(?:en ce moment|maintenant|actuellement)\b",
+)
+
 StructuredFactAnswer = _precision.StructuredFactAnswer
 
 
@@ -39,6 +47,51 @@ class StructuredFactResolver(_precision.StructuredFactResolver):
     def _job_search_question(question: str) -> bool:
         normalized = _precision._normalize(question)
         return any(re.search(pattern, normalized, re.I) for pattern in _JOB_SEARCH_PATTERNS)
+
+    @staticmethod
+    def _format_cert_details(row, language: str):
+        """Return certification details without accidental mixed-language prose.
+
+        Certification descriptions synchronized from the portfolio are currently
+        authored in English. For French/Arabic questions we therefore only emit a
+        localized description when an explicit localized field exists; otherwise
+        we keep the verified title, issuer, date and verification URL and avoid
+        silently mixing an English paragraph into an otherwise localized answer.
+        """
+        title = str(row.get("title") or "Certification")
+        issuer = str(row.get("issuer") or "")
+        date = str(row.get("date") or "").strip()
+        verification = str(row.get("verification_url") or "").strip()
+
+        if language == "fr":
+            description = str(row.get("description_fr") or "").strip()
+            parts = [f"{title} est une certification délivrée par {issuer}."]
+            if date:
+                parts.append(f"Date : {date}.")
+            if description:
+                parts.append(f"Elle couvre : {description}")
+            if verification:
+                parts.append(f"Vérification : {verification}")
+        elif language == "ar":
+            description = str(row.get("description_ar") or "").strip()
+            parts = [f"{title} هي شهادة صادرة عن {issuer}."]
+            if date:
+                parts.append(f"التاريخ: {date}.")
+            if description:
+                parts.append(f"المحتوى: {description}")
+            if verification:
+                parts.append(f"رابط التحقق: {verification}")
+        else:
+            description = str(row.get("description") or "").strip()
+            parts = [f"{title} is a certification issued by {issuer}."]
+            if date:
+                parts.append(f"Date: {date}.")
+            if description:
+                parts.append(f"It covers: {description}")
+            if verification:
+                parts.append(f"Verification: {verification}")
+
+        return StructuredFactAnswer(" ".join(parts) + " [certifications]", source="certifications")
 
     def _resolve_job_search(self, question: str, language: str):
         if not self._job_search_question(question):
@@ -140,6 +193,38 @@ class StructuredFactResolver(_precision.StructuredFactResolver):
         if isinstance(career, dict) and career.get("seeking_full_time") is True:
             citations += " [career-status]"
         return StructuredFactAnswer(text + citations, source="experience-education")
+
+    def _resolve_employer(self, question: str, language: str):
+        """Confirm known employers using localized structured experience fields."""
+        target = self._extract_employer_target(question)
+        if not target:
+            return None
+        target_norm = _precision._normalize(target)
+        matches = [
+            row for row in self.experiences
+            if target_norm in _precision._normalize(str(row.get("company") or ""))
+            or _precision._normalize(str(row.get("company") or "")) in target_norm
+        ]
+        if not matches:
+            return super()._resolve_employer(question, language)
+
+        row = matches[0]
+        if language == "fr":
+            company = str(row.get("company_fr") or row.get("company") or target)
+            role = str(row.get("role_fr") or row.get("role") or "")
+            period = str(row.get("period_fr") or row.get("period") or "")
+            text = f"Oui. Le portfolio public répertorie une expérience chez {company} : {role} ({period})."
+        elif language == "ar":
+            company = str(row.get("company") or target)
+            role = str(row.get("role") or "")
+            period = str(row.get("period") or "")
+            text = f"نعم. يعرض الملف المهني العام خبرة لدى {company}: {role} ({period})."
+        else:
+            company = str(row.get("company") or target)
+            role = str(row.get("role") or "")
+            period = str(row.get("period") or "")
+            text = f"Yes. The public portfolio lists work experience at {company}: {role} ({period})."
+        return StructuredFactAnswer(text + " [experience-education]", source="experience-education")
 
     def _canonicalize_project_sources(self, result):
         answer = result.answer
