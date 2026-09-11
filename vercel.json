@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "ignoreCommand": "if [ -z \"$VERCEL_GIT_PREVIOUS_SHA\" ]; then exit 1; fi; git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD -- app.py backend requirements.txt vercel.json .python-version",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- app.py backend requirements.txt vercel.json .python-version",
   "buildCommand": "python -m compileall -q backend app.py && EMBEDDER=hash CRAWL_SITES='' python -c \"import app; assert app.app\" && FASTEMBED_MODEL=BAAI/bge-small-en-v1.5 FASTEMBED_CACHE_PATH=backend/data/fastembed_cache python backend/prepare_fastembed.py",
   "functions": {
     "app.py": {
