@@ -12,6 +12,7 @@ on:
       - "scripts/enrich_public_contact.py"
       - "scripts/enrich_career_status.py"
       - "scripts/enrich_structured_profile_source.py"
+      - "scripts/polish_generated_markdown.py"
       - ".github/workflows/sync-portfolio.yml"
 
 permissions:
@@ -64,6 +65,9 @@ jobs:
             --source /tmp/youssef-portfolio \
             --site backend/data/site \
             --profile backend/data/profile.json
+
+      - name: Polish generated Markdown evidence
+        run: python scripts/polish_generated_markdown.py --site backend/data/site
 
       - name: Validate synchronized knowledge
         run: |
