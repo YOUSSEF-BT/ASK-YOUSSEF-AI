@@ -1,0 +1,51 @@
+name: Manual live public endpoint checks
+
+on:
+  push:
+    branches: [manual-live-test-20260911]
+    paths:
+      - ".github/workflows/manual-live-public.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  public-live-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Ask six critical recruiter questions on public API
+        env:
+          API_URL: "https://ask-youssef-ai.vercel.app"
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          qs = [
+            "What are Youssef's strongest technical skills?",
+            "What are his most valuable certifications for an AI Engineer position?",
+            "What is Youssef doing professionally right now?",
+            "Why should a company hire Youssef instead of another junior AI Engineer?",
+            "Show evidence of his RAG and LLM skills.",
+            "Did Youssef work at Oracle, IBM or Anthropic?",
+          ]
+          api = os.environ['API_URL'].rstrip('/') + '/chat'
+          ok=0
+          for i,q in enumerate(qs,1):
+              req=urllib.request.Request(api,data=json.dumps({'question':q,'history':[]}).encode(),method='POST',headers={'Content-Type':'application/json','Accept':'text/event-stream','Origin':'https://youssef-bt.github.io'})
+              status=None; answer=''; err=''
+              try:
+                  with urllib.request.urlopen(req,timeout=180) as r:
+                      status=r.status; raw=r.read().decode('utf-8','replace')
+                  for line in raw.splitlines():
+                      if line.startswith('data: '):
+                          try: ev=json.loads(line[6:])
+                          except Exception: continue
+                          if ev.get('kind')=='final': answer=ev.get('answer','')
+                          elif ev.get('kind')=='error': err=ev.get('message','')
+              except Exception as e:
+                  err=f'{type(e).__name__}: {e}'
+              print('\n'+'='*90); print(f'Q{i}: {q}'); print('HTTP:',status); print('A:',answer or '[NO FINAL] '+err)
+              if status==200 and answer.strip(): ok += 1
+          print(f'\nRESULT {ok}/{len(qs)} responded')
+          if ok != len(qs): raise SystemExit(1)
+          PY
