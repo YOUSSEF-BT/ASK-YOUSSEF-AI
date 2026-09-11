@@ -5,7 +5,13 @@ on:
   push:
     branches: [main]
     paths:
+      - "app.py"
+      - "backend/**"
+      - "scripts/enrich_public_contact.py"
+      - "scripts/enrich_career_status.py"
       - "evaluation/deep_audit_cases.json"
+      - "vercel.json"
+      - "requirements.txt"
       - ".github/workflows/deep-production-audit.yml"
 
 permissions:
