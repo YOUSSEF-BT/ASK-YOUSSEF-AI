@@ -52,7 +52,8 @@ FRENCH_HINTS = {
 INTENT_TERMS = {
     "projects": {
         "project", "projects", "projet", "projets", "github", "demo", "demos",
-        "repository", "repo", "repositories", "مشروع", "مشاريع", "المشاريع",
+        "repository", "repo", "repositories", "openlegama", "pulsestream",
+        "ai-summarizer", "ask-youssef-ai", "مشروع", "مشاريع", "المشاريع",
     },
     "skills": {
         "skill", "skills", "competence", "competences", "stack", "technology",
