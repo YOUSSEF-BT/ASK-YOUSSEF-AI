@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Ask six critical recruiter questions on public API
+      - name: Ask six critical recruiter questions on corrected public API
         env:
           API_URL: "https://ask-youssef-ai.vercel.app"
         run: |
