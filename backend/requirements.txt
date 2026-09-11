@@ -1,6 +1,6 @@
 # Web layer
 fastapi>=0.110
-uvicorn[standard]>=0.29
+uvicorn[standard]>=0.52.4
 pydantic>=2.0
 
 # Pipeline (from-scratch RAG): NumPy only for the store/chunking
@@ -17,7 +17,7 @@ google-genai>=2.0
 fastembed>=0.3
 
 # MCP servers — retrieval + contact tool transport.
-fastmcp>=2.0
+fastmcp>=4.0.3
 
 # NOTE: intentionally NO torch / sentence-transformers / transformers in the
 # production dependency set; contact.py uses only the stdlib (urllib).
