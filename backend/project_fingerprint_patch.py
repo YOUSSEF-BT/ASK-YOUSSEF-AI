@@ -11,7 +11,7 @@ import re
 import precision_facts as _precision
 import structured_facts as _structured
 import recruiter_reasoning as _reasoning
-import human_audit_reasoning as _human_audit
+import human_audit_guardrails as _human_audit
 
 # Capture the original router-backed detector before installing the planner-only
 # override. The fallback below must call this stable reference rather than the
