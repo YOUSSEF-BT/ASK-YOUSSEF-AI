@@ -58,3 +58,5 @@ jobs:
           path: deep-audit-report.json
           if-no-files-found: warn
           retention-days: 14
+
+# Final production validation trigger; no thresholds or test logic changed.
