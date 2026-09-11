@@ -6,7 +6,7 @@
 
 **Hybrid Retrieval • Grounded Generation • Multilingual AI • Evaluation • Deployment**
 
-A production AI system built by **Youssef Bouzit** that turns a professional portfolio into an interactive, evidence-grounded assistant for recruiters, clients, engineers and collaborators.
+A production AI system built by **Youssef Bouzit** to make a professional engineering portfolio directly queryable through natural language while keeping answers connected to verifiable evidence.
 
 <br />
 
@@ -27,144 +27,113 @@ A production AI system built by **Youssef Bouzit** that turns a professional por
 
 ---
 
-## Project at a Glance
+## What This Project Demonstrates
+
+Ask Youssef AI is an end-to-end AI engineering project that connects **data synchronization, hybrid retrieval, deterministic reasoning, LLM generation, grounding, evaluation, security and production delivery** in one system.
+
+It is designed for real portfolio visitors:
+
+- **Recruiters** can inspect professional experience, projects and technical strengths.
+- **Clients** can evaluate RAG, Computer Vision, Machine Learning and delivery evidence.
+- **Engineers** can explore architecture, retrieval design and production decisions.
+- **Collaborators** can quickly understand the scope of Youssef's work.
+
+The goal is not to generate promotional text. The goal is to produce **useful professional answers grounded in synchronized evidence**.
+
+---
+
+## Engineering Snapshot
 
 | Area | Implementation |
 |---|---|
-| **Purpose** | Make a professional engineering portfolio queryable through natural language |
-| **Retrieval** | Structured profile + BM25 + FastEmbed semantic search + Reciprocal Rank Fusion |
+| **Knowledge source** | Synchronized professional portfolio |
+| **Retrieval** | Structured profile + BM25 + FastEmbed semantic search |
+| **Fusion** | Reciprocal Rank Fusion with deterministic evidence boosts |
+| **Exact facts** | Structured precision-fact resolver |
 | **Generation** | Gemini 3.7 Flash with Gemini 3.5 Flash-Lite failover |
-| **Grounding** | Citation validation, unsupported-claim checks and safe abstention |
-| **Backend** | FastAPI, Python 3.12, Server-Sent Events |
+| **Grounding** | Citation validation, unsupported-claim checks, safe abstention |
+| **Backend** | FastAPI + Python 3.12 + Server-Sent Events |
 | **Languages** | English, French and Arabic |
 | **Production** | Vercel + GitHub Actions |
-| **Quality** | Unit, regression, adversarial, security and live production evaluation |
+| **Security** | CodeQL, pip-audit, exact dependency pins, runtime safeguards |
+| **Evaluation** | Unit, regression, production, adversarial and human QA |
 
 ---
 
-## Why I Built It
-
-A strong engineering portfolio can contain projects, metrics, technologies, certifications, professional experience and technical documentation spread across many pages.
-
-**Ask Youssef AI makes that information directly accessible through conversation.** A recruiter can ask for the strongest Computer Vision evidence, a client can inspect RAG experience, and an engineer can explore technical work without manually browsing the entire portfolio.
-
-The important part is not only generating an answer. The system is designed to answer **from synchronized professional evidence**, distinguish exact facts from open-ended questions, validate important claims and abstain when the evidence is insufficient.
-
----
-
-## System Architecture
+## Architecture
 
 ```mermaid
 flowchart LR
-    A[Professional Portfolio] --> B[Knowledge Sync]
-    B --> C[Markdown Evidence]
-    B --> D[Structured Profile]
+    P[Professional Portfolio] --> S[Knowledge Synchronization]
+    S --> M[Markdown Evidence]
+    S --> J[Structured Profile]
 
-    U[Visitor] --> W[Portfolio Widget]
+    U[Visitor] --> W[Ask Youssef AI Widget]
     W --> API[FastAPI /chat]
     API --> R[Language + Intent Router]
 
     R -->|Exact fact| F[Precision Fact Resolver]
     R -->|Open factual question| H[Hybrid Retrieval]
 
-    H --> S[Structured Search]
-    H --> L[BM25]
-    H --> V[FastEmbed]
+    H --> ST[Structured Search]
+    H --> B[BM25]
+    H --> E[FastEmbed]
 
-    S --> RRF[RRF Fusion]
-    L --> RRF
-    V --> RRF
+    ST --> RRF[RRF Fusion]
+    B --> RRF
+    E --> RRF
 
-    RRF --> E[Ranked Evidence]
-    E --> G[Gemini 3.7 Flash]
-    G -->|Failover| GF[Gemini 3.5 Flash-Lite]
+    RRF --> C[Ranked Evidence]
+    C --> G[Gemini 3.7 Flash]
+    G -->|Transient failure| GF[Gemini 3.5 Flash-Lite]
 
     F --> Q[Grounding + Citation Gate]
     G --> Q
     GF --> Q
 
-    Q -->|Supported| O[Grounded Answer]
+    Q -->|Supported| A[Grounded Answer]
     Q -->|Insufficient evidence| X[Safe Abstention]
 ```
 
-The architecture intentionally separates **deterministic logic** from **generative reasoning**. Exact professional facts are resolved structurally; LLM generation is reserved for questions where interpretation and synthesis add value.
+The design deliberately separates **deterministic logic** from **generative reasoning**. Exact counts, inventories and employer checks do not depend on probabilistic generation; open-ended questions use retrieval plus generation.
 
 ---
 
-## Core Engineering Decisions
+## Key Engineering Decisions
 
-| Decision | Why it matters |
-|---|---|
-| **Hybrid retrieval instead of vector-only search** | Professional portfolios contain semantic concepts, exact names, technologies and identifiers; no single retrieval method handles all of them equally well. |
-| **Deterministic precision facts** | Counts, employer checks, certification inventories and current-status questions should not depend on partial top-k context. |
-| **Evidence before generation** | Factual portfolio questions require retrieved support before an answer is accepted. |
-| **Grounding after generation** | Citations and important literals are checked against the evidence available for the turn. |
-| **Safe abstention** | Missing evidence produces a limitation instead of an invented professional claim. |
-| **Provider failover** | Transient model failures do not immediately break the visitor experience. |
-| **Hard language contract** | The current question controls English/French/Arabic response language, including follow-up conversations. |
-| **Privacy-aware observability** | Operational metrics are aggregate and do not intentionally retain visitor conversations. |
+### Hybrid retrieval instead of vector-only search
 
----
-
-## Hybrid Retrieval
-
-The retrieval layer combines three complementary signals:
+Professional portfolios contain exact names, technologies, companies, certification issuers and semantic concepts. A single retrieval method is not equally strong across all of them.
 
 ```text
-Structured Professional Profile
-            +
-           BM25
-            +
-   FastEmbed Semantic Search
-            ↓
-   Reciprocal Rank Fusion
-            ↓
-      Ranked Evidence
+Structured Search + BM25 + FastEmbed
+                ↓
+       Reciprocal Rank Fusion
+                ↓
+          Ranked Evidence
 ```
 
-**Structured retrieval** is useful for entities and exact professional fields. **BM25** is strong for project names, companies and technical identifiers such as `YOLOv11s` or `BoT-SORT`. **FastEmbed** handles conceptual similarity when the visitor uses different wording from the portfolio.
+### Deterministic precision facts
 
-RRF combines these rankings into one evidence set before generation.
+Questions such as certification totals, employer checks, project counts and current professional status are resolved against the complete structured profile rather than a partial top-k retrieval result.
 
----
+### Evidence before claims
 
-## Grounded Professional Answers
+Factual portfolio turns require professional evidence. The system validates citations and important literals, and it prefers abstention over unsupported claims.
 
-The system is designed around one rule:
+### Language as a hard contract
 
-> **Professional claims should be connected to evidence.**
+The current visitor question controls the final response language in **English, French or Arabic**, including history-aware follow-ups.
 
-The response pipeline can validate or constrain:
+### Reliability beyond a single provider call
 
-- portfolio source identifiers;
-- citations;
-- important numeric claims;
-- public URLs and contact information;
-- employer and experience claims;
-- project-specific technical facts;
-- unsupported high-impact assertions.
-
-Retrieved portfolio content is treated as **data, not instructions**, which also helps contain prompt-injection pressure from the knowledge source.
-
----
-
-## Multilingual Experience
-
-Ask Youssef AI supports:
-
-<div align="center">
-
-### English • Français • العربية
-
-</div>
-
-Language routing happens before generation, and the current visitor question determines the final response language. Technical names remain canonical where appropriate.
+The production path includes bounded retries, timeouts, model failover and evidence-based fallback behavior.
 
 ---
 
 ## Knowledge Base
 
-The live portfolio is the professional source of truth. Synchronization generates both retrieval evidence and a structured profile for exact facts.
+The public portfolio is the professional source of truth. Synchronization generates both retrieval evidence and a structured representation for exact facts.
 
 | Synchronized Entity | Current Snapshot |
 |---|---:|
@@ -180,9 +149,9 @@ The live portfolio is the professional source of truth. Synchronization generate
 
 ---
 
-## Evaluation & Quality
+## Verified Quality
 
-The project is validated through multiple independent layers rather than one vague accuracy number.
+Ask Youssef AI is evaluated through multiple independent layers rather than one vague accuracy score.
 
 | Validation Layer | Verified Result |
 |---|---:|
@@ -199,49 +168,32 @@ The project is validated through multiple independent layers rather than one vag
 | Human recruiter/client/visitor audit | **21 / 21** |
 | Targeted client regressions | **2 / 2** |
 
-These results correspond to defined regression suites and deterministic evaluation contracts. They are **not** presented as a claim of universal 100% LLM accuracy.
+These figures describe defined regression suites and evaluation contracts. They are not presented as universal 100% LLM accuracy.
 
-See [`docs/evaluation.md`](docs/evaluation.md) for the full methodology.
-
----
-
-## Production & Reliability
-
-The public service runs on **Vercel** with a **FastAPI** backend and SSE streaming.
-
-Production safeguards include:
-
-- Gemini primary/fallback generation;
-- bounded provider timeouts and retries;
-- deterministic routes for questions that do not require generation;
-- request and history size limits;
-- public-origin controls;
-- per-IP and global usage limits;
-- synchronized bundled evidence;
-- health and operational endpoints;
-- automated CI and production regression workflows.
-
-**Live health:** https://ask-youssef-ai.vercel.app/health
+See [`docs/evaluation.md`](docs/evaluation.md) for scope and methodology.
 
 ---
 
-## Security Engineering
+## Security & Reliability
 
-The project includes security controls at both application and software-supply-chain levels:
+The public system includes:
 
-- server-side secret management;
-- prompt and history boundaries;
+- server-side secret storage;
+- browser-origin restrictions;
+- bounded request and history sizes;
 - strict conversation roles;
-- secret-exfiltration refusal;
-- unsupported-claim protection;
+- prompt/secret-exfiltration refusal;
 - citation integrity checks;
-- exact Python dependency pins;
+- unsupported-claim protection;
+- per-IP and global usage limits;
+- Python 3.12 runtime pinning;
+- exact direct dependency versions;
 - Dependabot;
 - `pip-audit`;
 - GitHub CodeQL;
-- automated security regression tests.
+- automated security regressions.
 
-More detail: [`SECURITY.md`](SECURITY.md) and [`docs/security.md`](docs/security.md).
+See [`SECURITY.md`](SECURITY.md) and [`docs/security.md`](docs/security.md).
 
 ---
 
@@ -262,52 +214,26 @@ More detail: [`SECURITY.md`](SECURITY.md) and [`docs/security.md`](docs/security
 
 ---
 
+## Production
+
+- **Live portfolio:** https://youssef-bt.github.io/
+- **Production API:** https://ask-youssef-ai.vercel.app/
+- **Health endpoint:** https://ask-youssef-ai.vercel.app/health
+- **API documentation:** https://ask-youssef-ai.vercel.app/docs
+
+The production service currently reports a healthy synchronized index with **16 evidence pages, 161 chunks and 81 structured documents**.
+
+---
+
 ## Documentation
 
 | Document | Purpose |
 |---|---|
 | [`docs/architecture.md`](docs/architecture.md) | System design and retrieval architecture |
 | [`docs/evaluation.md`](docs/evaluation.md) | Evaluation methodology and quality gates |
-| [`docs/security.md`](docs/security.md) | Security and privacy design |
-| [`docs/deployment.md`](docs/deployment.md) | Production deployment architecture |
-| [`SECURITY.md`](SECURITY.md) | Vulnerability reporting policy |
-
----
-
-## Repository Structure
-
-<details>
-<summary><strong>View project structure</strong></summary>
-
-<br />
-
-```text
-ASK-YOUSSEF-AI/
-├── app.py
-├── backend/
-│   ├── app.py
-│   ├── agent.py
-│   ├── rag.py
-│   ├── router.py
-│   ├── grounding.py
-│   ├── precision_facts.py
-│   ├── structured_facts.py
-│   ├── observability.py
-│   ├── retrieval/
-│   └── data/
-├── evaluation/
-├── tests/
-├── scripts/
-├── web/
-├── docs/
-├── .github/
-├── requirements.txt
-├── vercel.json
-├── SECURITY.md
-└── LICENSE
-```
-
-</details>
+| [`docs/security.md`](docs/security.md) | Security and privacy architecture |
+| [`docs/deployment.md`](docs/deployment.md) | Production deployment and operations |
+| [`SECURITY.md`](SECURITY.md) | Responsible vulnerability reporting |
 
 ---
 
@@ -337,6 +263,6 @@ I build AI systems that connect **models, data, retrieval, backend engineering, 
 
 ### Ask Youssef AI
 
-**Evidence-grounded AI, engineered for a real production portfolio.**
+**Evidence-grounded AI engineered for a real production portfolio.**
 
 </div>
