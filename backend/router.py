@@ -41,11 +41,12 @@ FRENCH_HINTS = {
     "competence", "competences", "technologie", "technologies", "certificat",
     "certificats", "formation", "etudes", "travail", "emploi", "contacter",
     "bonjour", "salut", "bonsoir", "merci", "avec", "dans", "sont", "ses",
-    "meilleur", "meilleurs", "montre", "parle", "soutiennent", "profil",
+    "meilleur", "meilleurs", "montre", "parle", "parler", "soutiennent", "profil",
     "etudie", "diplome", "joindre", "ecris", "ecrire", "envoie", "envoyer",
-    "je", "pense", "quoi", "maintenant", "actuellement", "donne", "moi",
-    "objectif", "objectifs", "but", "buts", "butes", "peut", "peuve", "aider",
-    "aide", "deja", "chez", "combien", "fait", "construit", "construis",
+    "je", "tu", "peux", "pouvez", "lui", "pense", "quoi", "maintenant",
+    "actuellement", "donne", "moi", "objectif", "objectifs", "but", "buts",
+    "butes", "peut", "peuve", "aider", "aide", "deja", "chez", "combien",
+    "fait", "fais", "construit", "construis", "cherche", "recherche", "cdi",
 }
 
 INTENT_TERMS = {
@@ -63,7 +64,8 @@ INTENT_TERMS = {
     },
     "experience": {
         "experience", "experiences", "work", "job", "jobs", "internship", "intern",
-        "stage", "emploi", "travail", "fiverr", "nextronic", "aba", "خبرة", "عمل",
+        "stage", "emploi", "travail", "fiverr", "nextronic", "aba", "cdi",
+        "cherche", "recherche", "خبرة", "عمل", "وظيفة", "فرصة",
     },
     "education": {
         "education", "degree", "school", "university", "diploma", "diplome",
@@ -80,9 +82,15 @@ GREETING_TERMS = {
     "شكرا", "thanks", "thank", "merci",
 }
 
+# A contact *action* must contain an actual communication noun/verb plus the
+# recipient. Do not classify generic writing requests such as "write a bio about
+# Youssef" or "écris un résumé de Youssef" as send-message actions.
 CONTACT_ACTION_PATTERNS = (
-    r"\b(send|email|message|write)\b.*\b(youssef|him)\b",
-    r"\b(envoie|envoyer|ecris|ecrire|message)\b.*\b(youssef|lui)\b",
+    r"\b(?:send|email|message)\b.*\b(?:youssef|him)\b",
+    r"\b(?:message|email)\s+(?:to\s+)?(?:youssef|him)\b",
+    r"\b(?:write|draft)\b.*\b(?:message|email|note)\b.*\b(?:to\s+)?(?:youssef|him)\b",
+    r"\b(?:envoie|envoyer|message|mail|email|courriel)\b.*\b(?:youssef|lui)\b",
+    r"\b(?:ecris|ecrire|redige|rediger)\b.*\b(?:message|mail|email|courriel)\b.*\b(?:a\s+)?(?:youssef|lui)\b",
     r"(?:ارسل|أرسل|ابعث|أبعث).*(?:يوسف|له)",
 )
 
