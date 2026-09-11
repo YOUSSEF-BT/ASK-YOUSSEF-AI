@@ -1,26 +1,24 @@
 # Security Policy
 
-Ask Youssef AI is a public AI portfolio system designed to expose only verified professional information while protecting provider credentials, internal configuration and visitor privacy.
+Ask Youssef AI is a public AI portfolio system. Its security policy focuses on protecting provider credentials, preserving trust in professional answers and limiting misuse of the public service.
 
-Security reports are welcome for issues that could materially compromise confidentiality, integrity, availability, trust boundaries or the public service.
-
-For the implementation-level security design, see [`docs/security.md`](docs/security.md).
+Implementation details are documented in [`docs/security.md`](docs/security.md).
 
 ## Supported Scope
 
 Security fixes target:
 
 - the current `main` branch;
-- the production API at `https://ask-youssef-ai.vercel.app`;
+- the production API at `https://ask-youssef-ai.vercel.app/`;
 - the live portfolio integration at `https://youssef-bt.github.io/`.
 
-Older commits, abandoned deployments, third-party forks and modified copies are not maintained as supported releases.
+Older commits, abandoned deployments and modified copies are not maintained as supported releases.
 
 ## Reporting a Vulnerability
 
-Please **do not open a public GitHub issue** when a report includes exploit details, credentials, personal data or information that could put users or infrastructure at risk.
+Please do not publish exploit details, secrets or personal data in a public issue.
 
-Send private reports to:
+Send private security reports to:
 
 **bt.youssef.369@gmail.com**
 
@@ -32,96 +30,80 @@ Suggested subject:
 
 A useful report should include, when applicable:
 
-- affected endpoint, URL, file or component;
+- affected endpoint, file or component;
 - concise description of the issue;
-- expected security impact;
+- expected impact;
 - reproducible steps or a minimal proof of concept;
 - conditions required to reproduce it;
-- suggested remediation, if known;
-- whether credentials, private data or destructive actions were involved.
+- suggested remediation, if known.
 
-Please redact real secrets and unnecessary personal information. Do not send live API keys, passwords or access tokens unless a secure exchange method has first been agreed.
+Please redact real credentials and unnecessary personal information.
 
-## Automated Security Controls
+## Security Controls
 
-The repository applies several independent security controls:
+The project combines application-level and software-supply-chain controls:
 
-- Python `3.12` runtime pinning;
+- server-side provider secrets;
+- browser-origin restrictions;
+- bounded question and history sizes;
+- strict conversation roles;
+- per-IP and global usage limits;
+- prompt and secret-exfiltration refusal;
+- retrieval-grounded professional facts;
+- deterministic precision facts;
+- citation validation;
+- unsupported-claim protection;
+- Python 3.12 runtime pinning;
 - exact direct dependency versions;
-- weekly Dependabot checks for Python packages and GitHub Actions;
-- `pip-audit` on pushes, pull requests and schedule;
-- GitHub CodeQL v4 static analysis for Python;
-- deterministic tests for prompt and secret extraction;
-- strict conversation-role validation;
-- public API boundary tests;
-- citation and unsupported-claim regressions;
-- synchronized profile and corpus integrity checks.
+- Dependabot;
+- `pip-audit`;
+- GitHub CodeQL;
+- automated security and regression tests.
 
-Automated scanning reduces risk but does not prove that the application is vulnerability-free.
+Automated controls reduce risk but do not prove that the application is vulnerability-free.
 
-## Security Issues in Scope
+## In Scope
 
 Examples include:
 
 - exposure of `GEMINI_API_KEY` or another server-side credential;
-- a meaningful CORS/origin-boundary bypass;
-- unauthorized use of protected backend actions;
-- prompt or retrieval injection that causes secret disclosure or unauthorized behavior;
+- meaningful CORS/origin-boundary bypasses;
+- unauthorized backend actions;
+- prompt or retrieval injection that leads to secret disclosure or unauthorized behavior;
 - arbitrary code execution, injection, path traversal or server-side request abuse;
-- leakage of visitor prompts, conversation history, email addresses, IP addresses or other data the application is designed not to retain;
-- dependency vulnerabilities that are demonstrably exploitable in the deployed system;
-- a grounding or citation bypass that creates a material security or trust impact.
+- leakage of visitor prompts, conversation history or other data the service is designed not to retain;
+- exploitable dependency vulnerabilities;
+- grounding or citation bypasses with a material trust or security impact.
 
 ## Generally Out of Scope
 
-The following are normally product-quality or availability issues rather than security vulnerabilities unless they create a concrete security impact:
+Unless they create a concrete security impact, the following are normally product-quality or availability issues:
 
-- ordinary factual mistakes without secret disclosure or unauthorized action;
-- wording, translation, formatting or citation-style issues;
-- provider or free-tier quota exhaustion;
-- temporary third-party outages;
-- denial-of-service reports requiring high-volume traffic against the public demo;
-- social engineering or phishing against unrelated third-party accounts;
-- issues that exist only in unsupported forks or modified deployments.
-
-Quality defects that do not contain sensitive information can be reported through a normal GitHub issue.
+- ordinary factual mistakes;
+- wording or translation issues;
+- temporary provider outages;
+- free-tier quota exhaustion;
+- high-volume denial-of-service testing against the public demo;
+- issues limited to unsupported forks or modified deployments.
 
 ## Safe Testing Expectations
 
 Please keep testing non-destructive and proportionate to a public portfolio system:
 
 - do not attempt to access another person's accounts or data;
-- do not intentionally exfiltrate real secrets or personal information;
-- do not send high-volume traffic or deliberately exhaust public quotas;
-- do not modify, delete or corrupt data;
-- stop testing if sensitive information is unexpectedly exposed and report it privately.
+- do not intentionally exfiltrate real secrets;
+- do not exhaust public quotas;
+- do not modify or destroy data;
+- stop and report privately if sensitive information is unexpectedly exposed.
 
 ## Disclosure Process
 
 Reports will be reviewed and reproduced when possible. Confirmed issues will be prioritized according to impact and exploitability.
 
-Public disclosure should wait until a fix is available or a disclosure plan has been mutually agreed.
+Public disclosure should wait until a fix is available or a disclosure plan has been agreed.
 
 No bug-bounty program or monetary reward is promised by this repository.
 
-## Security Design Summary
+## Security Positioning
 
-The production application combines:
-
-- server-side secret storage;
-- bounded request and conversation sizes;
-- browser-origin controls;
-- process-level abuse limits;
-- strict history roles;
-- deterministic prompt/secret-exfiltration refusal;
-- retrieval-grounded professional facts;
-- structured precision facts;
-- citation verification;
-- unsupported-claim protection;
-- provider failover;
-- privacy-safe aggregate telemetry;
-- dependency auditing;
-- static security analysis;
-- automated regression testing.
-
-These controls are appropriate for the project's public portfolio scope and are deliberately documented without claiming enterprise-scale guarantees.
+The implemented controls are appropriate for a public production portfolio system. The project deliberately does not claim enterprise-scale security, multi-tenant authorization, distributed rate limiting or formal SLA guarantees.
