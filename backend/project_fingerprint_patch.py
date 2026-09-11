@@ -47,7 +47,8 @@ def _openlegama_fingerprint(normalized: str) -> bool:
 
 
 def _accident_fingerprint(normalized: str) -> bool:
-    return "yolov11s" in normalized and "bot sort" in normalized
+    tracker = any(token in normalized for token in ("bot-sort", "bot sort", "botsort"))
+    return "yolov11s" in normalized and tracker
 
 
 def _answer_openlegama(resolver, language: str):
