@@ -56,7 +56,13 @@ def _target_roles(statement: str) -> list[str]:
     if not match:
         return []
     value = re.sub(r"\s+or\s+", ", ", match.group(1), flags=re.I)
-    return [part.strip(" ,") for part in value.split(",") if part.strip(" ,")]
+    roles: list[str] = []
+    for part in value.split(","):
+        role = part.strip(" ,")
+        role = re.sub(r"^(?:a|an)\s+", "", role, flags=re.I)
+        if role:
+            roles.append(role)
+    return roles
 
 
 def _career_status(source_root: Path) -> dict:
