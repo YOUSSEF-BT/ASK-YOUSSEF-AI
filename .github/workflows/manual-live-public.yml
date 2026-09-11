@@ -1,5 +1,5 @@
 name: Manual recruiter client visitor audit
-# Re-run against the current production deployment after human-audit fixes.
+# Final production re-run after the completed main deployment.
 
 on:
   push:
