@@ -55,7 +55,7 @@ Built a complete traffic analysis pipeline leveraging YOLOv8 for object detectio
 ## Results
 
 - **detection:** Real-time YOLOv8
-- **fps:** 30+ on CPU
+- **fps:** 30+ FPS on CPU
 - **export:** CSV with metrics
 - **dashboard:** Streamlit
 
