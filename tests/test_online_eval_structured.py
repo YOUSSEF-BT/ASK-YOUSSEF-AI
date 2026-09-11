@@ -7,6 +7,8 @@ sys.path.insert(0, str(ROOT))
 
 from evaluation.run_online_eval import evaluate_case  # noqa: E402
 
+KNOWN = {"certifications", "structured-profile"}
+
 
 class StructuredProfileEvaluationTests(unittest.TestCase):
     def test_structured_profile_counts_as_grounded_retrieval(self):
@@ -24,9 +26,10 @@ class StructuredProfileEvaluationTests(unittest.TestCase):
                 "tools_used": ["structured_profile"],
             }
         ]
-        row = evaluate_case(case, events, 5.0)
+        row = evaluate_case(case, events, 5.0, known_sources=KNOWN)
         self.assertTrue(row["retrieval_ok"])
         self.assertTrue(row["citation_ok"])
+        self.assertTrue(row["citation_integrity_ok"])
 
     def test_structured_profile_is_not_allowed_on_no_retrieval_case(self):
         case = {
@@ -42,7 +45,7 @@ class StructuredProfileEvaluationTests(unittest.TestCase):
                 "tools_used": ["structured_profile"],
             }
         ]
-        row = evaluate_case(case, events, 5.0)
+        row = evaluate_case(case, events, 5.0, known_sources=KNOWN)
         self.assertFalse(row["retrieval_ok"])
 
 
