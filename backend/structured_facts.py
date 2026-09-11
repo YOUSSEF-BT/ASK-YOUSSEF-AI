@@ -222,7 +222,7 @@ class StructuredFactResolver(_live.StructuredFactResolver):
             lines = ["Youssef's main documented professional experiences are:"]
             for index, row in enumerate(self.experiences, 1):
                 role = str(row.get("role") or "").strip()
-                company = str(row.get("company") or "").strip()
+                company = str(row.get("company") or row.get("company") or "").strip()
                 period = str(row.get("period") or "").strip()
                 description = str(row.get("description") or "").strip()
                 if "fiverr" in _precision._normalize(company) and "freelance" in _precision._normalize(role):
@@ -240,9 +240,9 @@ class StructuredFactResolver(_live.StructuredFactResolver):
     def _resolve_current_work(self, question: str, language: str):
         """Describe the present state without implying Fiverr is an employer.
 
-        The career model explicitly says freelance_parallel=true and
-        seeking_full_time=true. The natural-language answer should reflect that
-        hierarchy instead of sounding as if Youssef chose Fiverr instead of CDI.
+        Keep established localization contracts while clarifying that Fiverr is
+        the marketplace used for independent freelance work, not Youssef's chosen
+        replacement for a full-time CDI role.
         """
         if not self._matches(_precision._CURRENT_PATTERNS, question):
             return None
@@ -253,21 +253,24 @@ class StructuredFactResolver(_live.StructuredFactResolver):
         seeking = isinstance(career, dict) and career.get("seeking_full_time") is True
 
         if language == "fr":
+            role = str(row.get("role_fr") or row.get("role") or "Ingénieur IA/ML Freelance").strip()
             period = str(row.get("period_fr") or row.get("period") or "").strip()
-            text = "En ce moment, Youssef développe et propose des solutions **AI/ML en freelance, en indépendant via Fiverr**"
+            description = str(row.get("description_fr") or row.get("description") or "").strip()
+            text = f"Actuellement, Youssef exerce comme **{role}**, en indépendant via Fiverr"
             if period:
                 text += f" ({period})"
-            text += (
-                ", notamment autour des systèmes RAG/LLM, des agents IA, du Machine Learning et de la vision par ordinateur. "
-                "[experience-education]"
-            )
+            text += "."
+            if description:
+                text += f" {description}"
+            text += " [experience-education]"
             if seeking:
                 text += (
-                    "\n\nMais il **n’a pas choisi le freelance à la place d’un CDI** : son profil indique qu’il recherche actuellement un **CDI à temps plein** comme AI Engineer, Computer Vision Engineer, Machine Learning Engineer ou Data Scientist. Le freelance est une activité parallèle. [career-status]"
+                    "\n\nIl **n’a pas choisi le freelance à la place d’un CDI** : il recherche une opportunité en CDI à temps plein comme AI Engineer, Computer Vision Engineer, Machine Learning Engineer ou Data Scientist. Le freelance est une activité parallèle. [career-status]"
                 )
         elif language == "ar":
             text = (
-                "حالياً، يطوّر يوسف ويقدّم حلول **AI/ML بشكل مستقل عبر Fiverr**، خصوصاً في RAG/LLM ووكلاء الذكاء الاصطناعي وتعلم الآلة والرؤية الحاسوبية. "
+                "حالياً، يعمل يوسف كمهندس ذكاء اصطناعي وتعلّم آلي مستقل عبر Fiverr منذ سبتمبر 2026. "
+                "يركز عمله الموثق على أنظمة RAG وتطبيقات LLM، ووكلاء الذكاء الاصطناعي وذكاء الوثائق، وحلول تعلم الآلة والرؤية الحاسوبية. "
                 "[experience-education]"
             )
             if seeking:
@@ -275,14 +278,19 @@ class StructuredFactResolver(_live.StructuredFactResolver):
                     "\n\nلكنه **لم يختر العمل الحر بدلاً من الوظيفة الدائمة**؛ فهو يبحث حالياً عن فرصة **بدوام كامل** في AI/ML، والعمل الحر نشاط موازٍ. [career-status]"
                 )
         else:
+            role = str(row.get("role") or "Freelance AI/ML Engineer").strip()
             period = str(row.get("period") or "").strip()
-            text = "Right now, Youssef develops and delivers **AI/ML solutions independently via Fiverr**"
+            description = str(row.get("description") or "").strip()
+            text = f"Right now, Youssef works as a **{role}**, independently via Fiverr"
             if period:
                 text += f" ({period})"
-            text += ", especially RAG/LLM systems, AI agents, Machine Learning, and Computer Vision. [experience-education]"
+            text += "."
+            if description:
+                text += f" {description}"
+            text += " [experience-education]"
             if seeking:
                 text += (
-                    "\n\nHe **has not chosen freelancing instead of a full-time career**: his public profile says he is actively seeking a **full-time AI/ML role**. Freelancing is a parallel activity. [career-status]"
+                    "\n\nHe **has not chosen freelancing instead of a full-time career**: he is actively seeking a **full-time AI/ML role**. Freelancing is a parallel activity. [career-status]"
                 )
         return StructuredFactAnswer(text, source="experience-education")
 
