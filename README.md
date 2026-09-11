@@ -1,16 +1,16 @@
 <div align="center">
 
-# Ask Youssef AI
+# ASK-YOUSSEF-AI
 
-### Production AI Portfolio Copilot
+### Evidence-Grounded AI Portfolio Intelligence System
 
-**Hybrid Retrieval • Grounded Generation • Multilingual AI • Evaluation • Deployment**
+**Hybrid RAG • Structured Retrieval • Deterministic Reasoning • Multilingual AI • Production Evaluation • Security Engineering**
 
-A production AI system built by **Youssef Bouzit** to make a professional engineering portfolio directly queryable through natural language while keeping answers connected to verifiable evidence.
+A live AI system engineered by **Youssef Bouzit** to turn a professional portfolio into an interactive, evidence-grounded interface for recruiters, clients, engineers and collaborators.
 
 <br />
 
-[![Live Demo](https://img.shields.io/badge/LIVE_DEMO-14B8A6?style=for-the-badge&logo=googlechrome&logoColor=white)](https://youssef-bt.github.io/)
+[![Live Demo](https://img.shields.io/badge/TRY_LIVE_DEMO-14B8A6?style=for-the-badge&logo=googlechrome&logoColor=white)](https://youssef-bt.github.io/)
 [![Production API](https://img.shields.io/badge/PRODUCTION_API-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://ask-youssef-ai.vercel.app/)
 [![Portfolio](https://img.shields.io/badge/PORTFOLIO-2563EB?style=for-the-badge&logo=googlechrome&logoColor=white)](https://youssef-bt.github.io/)
 [![LinkedIn](https://img.shields.io/badge/LINKEDIN-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/youssef-bouzit-74863239b/)
@@ -21,121 +21,283 @@ A production AI system built by **Youssef Bouzit** to make a professional engine
 ![Security](https://github.com/YOUSSEF-BT/ASK-YOUSSEF-AI/actions/workflows/security.yml/badge.svg)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Production-009688?logo=fastapi&logoColor=white)
-![Vercel](https://img.shields.io/badge/Vercel-Live-000000?logo=vercel)
+![Vercel](https://img.shields.io/badge/Vercel-Live-000000?logo=vercel&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-22C55E)
 
 </div>
 
 ---
 
-## What This Project Demonstrates
+## Why This Project Matters
 
-Ask Youssef AI is an end-to-end AI engineering project that connects **data synchronization, hybrid retrieval, deterministic reasoning, LLM generation, grounding, evaluation, security and production delivery** in one system.
+A portfolio normally forces a recruiter or client to manually inspect projects, experience, skills, certifications and technical pages.
 
-It is designed for real portfolio visitors:
+**Ask Youssef AI turns that static portfolio into a queryable professional intelligence layer.**
 
-- **Recruiters** can inspect professional experience, projects and technical strengths.
-- **Clients** can evaluate RAG, Computer Vision, Machine Learning and delivery evidence.
-- **Engineers** can explore architecture, retrieval design and production decisions.
-- **Collaborators** can quickly understand the scope of Youssef's work.
+Visitors can ask questions such as:
 
-The goal is not to generate promotional text. The goal is to produce **useful professional answers grounded in synchronized evidence**.
+> What is Youssef's strongest Computer Vision project?
+
+> What evidence supports his RAG experience?
+
+> Has he worked professionally with AI?
+
+> Which projects demonstrate production engineering?
+
+> What technologies has he used with FastAPI, PostgreSQL or MLOps?
+
+> Is he currently open to a full-time AI/ML role?
+
+The system does not rely on generic model memory. It retrieves synchronized portfolio evidence, resolves exact facts deterministically when possible, generates a response, validates grounding and returns citations or a safe abstention.
 
 ---
 
-## Engineering Snapshot
+## Engineering Impact — At a Glance
 
-| Area | Implementation |
+<table>
+<tr>
+<td align="center"><strong>218 / 218</strong><br/>Unit & regression tests</td>
+<td align="center"><strong>25 / 25</strong><br/>Core production regression</td>
+<td align="center"><strong>20 / 20</strong><br/>Adversarial production audit</td>
+<td align="center"><strong>21 / 21</strong><br/>Human professional audit</td>
+</tr>
+<tr>
+<td align="center"><strong>3 languages</strong><br/>EN • FR • AR</td>
+<td align="center"><strong>161 chunks</strong><br/>Retrieval corpus</td>
+<td align="center"><strong>81 docs</strong><br/>Structured retrieval documents</td>
+<td align="center"><strong>56 certs</strong><br/>Deterministically queryable</td>
+</tr>
+</table>
+
+Additional deterministic benchmark results:
+
+| Metric | Verified Result |
+|---|---:|
+| Routing accuracy | **1.000** |
+| Retrieval Hit@1 | **1.000** |
+| Retrieval Hit@3 | **1.000** |
+| Retrieval MRR | **1.000** |
+| Grounding safety | **1.000** |
+| Profile integrity | **1.000** |
+
+> These scores describe fixed evaluation suites and regression contracts, not universal LLM accuracy.
+
+---
+
+## What Makes It More Than a Chatbot
+
+Ask Youssef AI combines several engineering layers that are usually treated separately:
+
+| Layer | Engineering Capability |
 |---|---|
-| **Knowledge source** | Synchronized professional portfolio |
-| **Retrieval** | Structured profile + BM25 + FastEmbed semantic search |
-| **Fusion** | Reciprocal Rank Fusion with deterministic evidence boosts |
-| **Exact facts** | Structured precision-fact resolver |
-| **Generation** | Gemini 3.7 Flash with Gemini 3.5 Flash-Lite failover |
-| **Grounding** | Citation validation, unsupported-claim checks, safe abstention |
-| **Backend** | FastAPI + Python 3.12 + Server-Sent Events |
-| **Languages** | English, French and Arabic |
-| **Production** | Vercel + GitHub Actions |
-| **Security** | CodeQL, pip-audit, exact dependency pins, runtime safeguards |
-| **Evaluation** | Unit, regression, production, adversarial and human QA |
+| **Knowledge Engineering** | Automatic portfolio synchronization into Markdown evidence + structured JSON |
+| **Hybrid Retrieval** | Structured search + BM25 + FastEmbed semantic retrieval |
+| **Rank Fusion** | Reciprocal Rank Fusion with deterministic evidence boosts |
+| **Precision Reasoning** | Exact facts resolved from the full structured profile instead of partial top-k context |
+| **LLM Orchestration** | Gemini primary model with bounded retries, timeout handling and fallback model |
+| **Grounding** | Citation validation, literal checks, unsupported-claim protection and safe abstention |
+| **Multilingual AI** | Hard EN / FR / AR output-language contract, including follow-up turns |
+| **Backend Engineering** | FastAPI, SSE streaming, validation, rate limits and production health endpoints |
+| **Quality Engineering** | Offline benchmarks, unit tests, production regressions, adversarial audits and human QA |
+| **Security Engineering** | Server-side secrets, origin controls, dependency auditing and CodeQL |
+| **Production Delivery** | GitHub Actions + Vercel + live portfolio widget integration |
 
 ---
 
-## Architecture
+# System Architecture
 
 ```mermaid
-flowchart LR
-    P[Professional Portfolio] --> S[Knowledge Synchronization]
-    S --> M[Markdown Evidence]
-    S --> J[Structured Profile]
+flowchart TD
+    PORTFOLIO[Professional Portfolio] --> SYNC[Knowledge Synchronization]
 
-    U[Visitor] --> W[Ask Youssef AI Widget]
-    W --> API[FastAPI /chat]
-    API --> R[Language + Intent Router]
+    SYNC --> MD[Markdown Evidence Corpus]
+    SYNC --> PROFILE[Structured Professional Profile]
 
-    R -->|Exact fact| F[Precision Fact Resolver]
-    R -->|Open factual question| H[Hybrid Retrieval]
+    VISITOR[Recruiter / Client / Engineer] --> WIDGET[Ask Youssef AI Widget]
+    WIDGET --> API[FastAPI + SSE]
 
-    H --> ST[Structured Search]
-    H --> B[BM25]
-    H --> E[FastEmbed]
+    API --> ROUTER[Language + Intent Router]
 
-    ST --> RRF[RRF Fusion]
-    B --> RRF
-    E --> RRF
+    ROUTER -->|Exact fact| FACTS[Precision Fact Engine]
+    ROUTER -->|Open factual question| RETRIEVAL[Hybrid Retrieval Engine]
 
-    RRF --> C[Ranked Evidence]
-    C --> G[Gemini 3.7 Flash]
-    G -->|Transient failure| GF[Gemini 3.5 Flash-Lite]
+    RETRIEVAL --> STRUCTURED[Structured Search]
+    RETRIEVAL --> BM25[BM25 Lexical Search]
+    RETRIEVAL --> SEMANTIC[FastEmbed Semantic Search]
 
-    F --> Q[Grounding + Citation Gate]
-    G --> Q
-    GF --> Q
+    STRUCTURED --> RRF[Reciprocal Rank Fusion]
+    BM25 --> RRF
+    SEMANTIC --> RRF
 
-    Q -->|Supported| A[Grounded Answer]
-    Q -->|Insufficient evidence| X[Safe Abstention]
+    RRF --> EVIDENCE[Ranked Evidence]
+
+    EVIDENCE --> PRIMARY[Gemini 3.7 Flash]
+    PRIMARY -->|Transient failure| FALLBACK[Gemini 3.5 Flash-Lite]
+
+    FACTS --> GROUND[Grounding + Citation Gate]
+    PRIMARY --> GROUND
+    FALLBACK --> GROUND
+
+    GROUND -->|Supported| ANSWER[Grounded Answer]
+    GROUND -->|Insufficient evidence| ABSTAIN[Safe Abstention]
+
+    ANSWER --> WIDGET
+    ABSTAIN --> WIDGET
 ```
 
-The design deliberately separates **deterministic logic** from **generative reasoning**. Exact counts, inventories and employer checks do not depend on probabilistic generation; open-ended questions use retrieval plus generation.
+### Core design principle
+
+**Use deterministic logic where precision matters, retrieval where evidence matters, and generation where language reasoning adds value.**
 
 ---
 
-## Key Engineering Decisions
+## 1. Hybrid Retrieval Engine
 
-### Hybrid retrieval instead of vector-only search
-
-Professional portfolios contain exact names, technologies, companies, certification issuers and semantic concepts. A single retrieval method is not equally strong across all of them.
+The system deliberately avoids vector-only retrieval.
 
 ```text
-Structured Search + BM25 + FastEmbed
-                ↓
-       Reciprocal Rank Fusion
-                ↓
-          Ranked Evidence
+Structured Professional Search
+            +
+           BM25
+            +
+   FastEmbed Semantic Search
+            ↓
+   Reciprocal Rank Fusion
+            ↓
+ Deterministic Evidence Boosts
+            ↓
+       Ranked Context
 ```
 
-### Deterministic precision facts
+Why this matters:
 
-Questions such as certification totals, employer checks, project counts and current professional status are resolved against the complete structured profile rather than a partial top-k retrieval result.
-
-### Evidence before claims
-
-Factual portfolio turns require professional evidence. The system validates citations and important literals, and it prefers abstention over unsupported claims.
-
-### Language as a hard contract
-
-The current visitor question controls the final response language in **English, French or Arabic**, including history-aware follow-ups.
-
-### Reliability beyond a single provider call
-
-The production path includes bounded retries, timeouts, model failover and evidence-based fallback behavior.
+- **Structured search** is strong for projects, employers, skills, certifications and exact profile entities.
+- **BM25** is strong for identifiers such as `YOLOv11`, `BoT-SORT`, `FastAPI`, company names and certification titles.
+- **Semantic retrieval** handles conceptual questions even when the visitor uses different wording from the portfolio.
+- **RRF** combines the strengths of all retrieval channels without trusting a single ranking source.
 
 ---
 
-## Knowledge Base
+## 2. Precision Fact Engine
 
-The public portfolio is the professional source of truth. Synchronization generates both retrieval evidence and a structured representation for exact facts.
+Some professional questions should never depend on an LLM interpreting a small retrieval window.
 
-| Synchronized Entity | Current Snapshot |
+Examples:
+
+```text
+How many certifications does Youssef have?
+Which Oracle certifications has he earned?
+Where did he work?
+How many projects are in the portfolio?
+What is his current professional status?
+Is he currently seeking a full-time role?
+```
+
+These questions are resolved against the **complete synchronized structured profile**.
+
+This prevents common RAG failure modes such as:
+
+- counting only retrieved top-k results;
+- confusing certification issuers with employers;
+- inventing missing professional facts;
+- treating partial evidence as the complete profile.
+
+---
+
+## 3. Evidence-Grounded Generation
+
+Professional answers should be defensible.
+
+The grounding layer validates or constrains:
+
+- source IDs;
+- citations;
+- important numeric claims;
+- URLs and published contact information;
+- unsupported employers;
+- unsupported professional claims;
+- invented private information.
+
+When evidence is insufficient, the expected behavior is:
+
+**abstain instead of fabricate.**
+
+Retrieved portfolio content is treated as untrusted data, not as privileged instructions.
+
+---
+
+## 4. Multilingual AI Contract
+
+Ask Youssef AI supports:
+
+<div align="center">
+
+### 🇬🇧 English &nbsp;&nbsp; • &nbsp;&nbsp; 🇫🇷 Français &nbsp;&nbsp; • &nbsp;&nbsp; 🇲🇦 العربية
+
+</div>
+
+The current visitor question determines the response language, including history-aware follow-ups.
+
+Technical identifiers remain canonical when appropriate:
+
+`YOLOv11` • `BoT-SORT` • `FastAPI` • `RAG` • `BM25` • `FastEmbed` • `MLOps`
+
+This behavior is protected by regression tests rather than left as a soft prompt preference.
+
+---
+
+## 5. Reliability & Failover
+
+```text
+Gemini 3.7 Flash
+       │
+       ├── success ─────────────────┐
+       │                            │
+       └── transient provider issue │
+                    ↓               │
+         Gemini 3.5 Flash-Lite      │
+                    │               │
+                    └───────────────┘
+                            ↓
+                   Grounding Gate
+                            ↓
+                    Final Response
+```
+
+The runtime also includes:
+
+- bounded provider timeouts;
+- bounded retries;
+- provider failure detection;
+- deterministic paths that bypass the LLM when generation is unnecessary;
+- evidence-based fallback behavior;
+- request-size limits;
+- bounded conversation history;
+- process-level rate limiting;
+- health monitoring.
+
+---
+
+## 6. Knowledge Synchronization
+
+The public portfolio remains the professional **source of truth**.
+
+The synchronization pipeline generates two complementary representations:
+
+```text
+Professional Portfolio
+        │
+        ▼
+Knowledge Synchronization
+        │
+        ├── Markdown Evidence Corpus
+        │
+        └── Structured Professional Profile
+```
+
+Current synchronized snapshot:
+
+| Entity | Count |
 |---|---:|
 | Projects | **10** |
 | Skill categories | **6** |
@@ -147,107 +309,209 @@ The public portfolio is the professional source of truth. Synchronization genera
 | Retrieval chunks | **161** |
 | Structured documents | **81** |
 
----
-
-## Verified Quality
-
-Ask Youssef AI is evaluated through multiple independent layers rather than one vague accuracy score.
-
-| Validation Layer | Verified Result |
-|---|---:|
-| Python unit & regression suite | **218 / 218** |
-| Routing accuracy | **1.000** |
-| Retrieval Hit@1 | **1.000** |
-| Retrieval Hit@3 | **1.000** |
-| Retrieval MRR | **1.000** |
-| Grounding safety | **1.000** |
-| Profile integrity | **1.000** |
-| Career-state production regression | **3 / 3** |
-| Core production regression | **25 / 25** |
-| Deep adversarial production audit | **20 / 20** |
-| Human recruiter/client/visitor audit | **21 / 21** |
-| Targeted client regressions | **2 / 2** |
-
-These figures describe defined regression suites and evaluation contracts. They are not presented as universal 100% LLM accuracy.
-
-See [`docs/evaluation.md`](docs/evaluation.md) for scope and methodology.
+The synchronization workflow validates data integrity before committing generated knowledge updates.
 
 ---
 
-## Security & Reliability
+# Evaluation Strategy
 
-The public system includes:
+The project uses layered validation instead of a single self-reported AI score.
 
-- server-side secret storage;
-- browser-origin restrictions;
-- bounded request and history sizes;
+### Deterministic evaluation
+
+- routing accuracy;
+- retrieval Hit@1 / Hit@3;
+- MRR;
+- grounding safety;
+- structured-profile integrity.
+
+### Production regression
+
+- career-state behavior;
+- multilingual responses;
+- professional facts;
+- project ranking;
+- certification inventories;
+- unsupported-employer handling;
+- citations;
+- conversational follow-ups.
+
+### Adversarial evaluation
+
+- prompt injection;
+- secret extraction attempts;
+- false citation pressure;
+- unsupported salary/address/private details;
+- multilingual ambiguity;
+- hallucinated employers;
+- scope abuse.
+
+### Human professional audit
+
+The final system was also tested from the perspective of:
+
+- recruiters;
+- clients;
+- normal portfolio visitors.
+
+See [`docs/evaluation.md`](docs/evaluation.md) for methodology and scope.
+
+---
+
+# Security Engineering
+
+Security is part of the architecture, not an afterthought.
+
+The project includes:
+
+- provider secrets stored server-side only;
+- production origin restrictions;
+- bounded user input and history;
 - strict conversation roles;
 - prompt/secret-exfiltration refusal;
-- citation integrity checks;
 - unsupported-claim protection;
-- per-IP and global usage limits;
+- citation integrity checks;
+- exact direct dependency pins;
 - Python 3.12 runtime pinning;
-- exact direct dependency versions;
 - Dependabot;
 - `pip-audit`;
 - GitHub CodeQL;
 - automated security regressions.
 
+The system deliberately does **not** claim enterprise-scale security guarantees that have not been implemented.
+
 See [`SECURITY.md`](SECURITY.md) and [`docs/security.md`](docs/security.md).
 
 ---
 
-## Technology Stack
+# Production Stack
 
 <div align="center">
 
-![Python](https://img.shields.io/badge/Python_3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
-![Gemini](https://img.shields.io/badge/Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white)
-![FastEmbed](https://img.shields.io/badge/FastEmbed-Semantic_Search-F4B400?style=for-the-badge)
+### AI & Retrieval
+
+![Gemini](https://img.shields.io/badge/Gemini-LLM-4285F4?style=for-the-badge&logo=google&logoColor=white)
+![FastEmbed](https://img.shields.io/badge/FastEmbed-Semantic_Retrieval-F4B400?style=for-the-badge)
 ![BM25](https://img.shields.io/badge/BM25-Lexical_Retrieval-7C3AED?style=for-the-badge)
 ![RRF](https://img.shields.io/badge/RRF-Rank_Fusion-2563EB?style=for-the-badge)
-![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
-![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)
+
+### Backend
+
+![Python](https://img.shields.io/badge/Python_3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![Pydantic](https://img.shields.io/badge/Pydantic-E92063?style=for-the-badge&logo=pydantic&logoColor=white)
+![SSE](https://img.shields.io/badge/SSE-Streaming-111827?style=for-the-badge)
+
+### Delivery & Quality
+
+![Vercel](https://img.shields.io/badge/Vercel-Production-000000?style=for-the-badge&logo=vercel&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-CI%2FCD-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)
+![CodeQL](https://img.shields.io/badge/CodeQL-Security-181717?style=for-the-badge&logo=github&logoColor=white)
 
 </div>
 
 ---
 
-## Production
+## Production Status
 
-- **Live portfolio:** https://youssef-bt.github.io/
+```yaml
+project: Ask Youssef AI
+status: live
+engineer: Youssef Bouzit
+runtime: Python 3.12
+backend: FastAPI
+streaming: Server-Sent Events
+hosting: Vercel
+retrieval: Structured + BM25 + FastEmbed + RRF
+primary_model: Gemini 3.7 Flash
+fallback_model: Gemini 3.5 Flash-Lite
+languages:
+  - English
+  - French
+  - Arabic
+```
+
+### Live endpoints
+
+- **Portfolio experience:** https://youssef-bt.github.io/
 - **Production API:** https://ask-youssef-ai.vercel.app/
-- **Health endpoint:** https://ask-youssef-ai.vercel.app/health
-- **API documentation:** https://ask-youssef-ai.vercel.app/docs
+- **Health:** https://ask-youssef-ai.vercel.app/health
+- **API docs:** https://ask-youssef-ai.vercel.app/docs
 
-The production service currently reports a healthy synchronized index with **16 evidence pages, 161 chunks and 81 structured documents**.
+---
+
+## Repository Structure
+
+```text
+ASK-YOUSSEF-AI/
+├── app.py
+├── backend/
+│   ├── app.py
+│   ├── agent.py
+│   ├── rag.py
+│   ├── router.py
+│   ├── grounding.py
+│   ├── precision_facts.py
+│   ├── structured_facts.py
+│   ├── observability.py
+│   ├── retrieval/
+│   └── data/
+├── evaluation/
+├── tests/
+├── scripts/
+├── web/
+├── docs/
+├── .github/
+├── requirements.txt
+├── vercel.json
+├── SECURITY.md
+└── LICENSE
+```
 
 ---
 
 ## Documentation
 
-| Document | Purpose |
+| Document | Scope |
 |---|---|
-| [`docs/architecture.md`](docs/architecture.md) | System design and retrieval architecture |
-| [`docs/evaluation.md`](docs/evaluation.md) | Evaluation methodology and quality gates |
-| [`docs/security.md`](docs/security.md) | Security and privacy architecture |
-| [`docs/deployment.md`](docs/deployment.md) | Production deployment and operations |
+| [`docs/architecture.md`](docs/architecture.md) | System design, routing, retrieval, generation and grounding |
+| [`docs/evaluation.md`](docs/evaluation.md) | Quality gates, benchmarks, production regression and adversarial QA |
+| [`docs/security.md`](docs/security.md) | Security boundaries, privacy and supply-chain controls |
+| [`docs/deployment.md`](docs/deployment.md) | Production runtime, Vercel topology and operations |
 | [`SECURITY.md`](SECURITY.md) | Responsible vulnerability reporting |
 
 ---
 
-## About the Engineer
+# What This Project Shows About My Engineering
+
+This project demonstrates my ability to work across the full AI application lifecycle:
+
+**Data & Knowledge Engineering**  
+Portfolio synchronization, structured schemas, deterministic extraction and evidence management.
+
+**AI / RAG Engineering**  
+Hybrid retrieval, rank fusion, model orchestration, grounding and hallucination control.
+
+**Backend Engineering**  
+FastAPI, validation, SSE streaming, error handling, health endpoints and rate controls.
+
+**AI Quality Engineering**  
+Unit tests, offline benchmarks, production regressions, adversarial evaluation and human QA.
+
+**MLOps / Production Delivery**  
+CI/CD, dependency security, Vercel deployment, runtime monitoring and reproducible configuration.
+
+---
 
 <div align="center">
 
-### Youssef Bouzit
+## Youssef Bouzit
 
-**State Engineer in Data Science**
+### State Engineer in Data Science
 
-AI / Machine Learning • Computer Vision • RAG / LLM Systems • MLOps
+**AI / Machine Learning • Computer Vision • RAG / LLM Systems • MLOps**
 
-I build AI systems that connect **models, data, retrieval, backend engineering, evaluation and production delivery**.
+I build practical AI systems that connect **models, data, software architecture, evaluation and production delivery**.
 
 <br />
 
@@ -255,14 +519,14 @@ I build AI systems that connect **models, data, retrieval, backend engineering, 
 [![LinkedIn](https://img.shields.io/badge/CONNECT_ON_LINKEDIN-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/youssef-bouzit-74863239b/)
 [![GitHub](https://img.shields.io/badge/GITHUB-YOUSSEF--BT-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/YOUSSEF-BT)
 
+<br />
+
+### Evidence before claims. Evaluation before confidence. Engineering before hype.
+
 </div>
 
 ---
 
-<div align="center">
+## License
 
-### Ask Youssef AI
-
-**Evidence-grounded AI engineered for a real production portfolio.**
-
-</div>
+MIT License — see [`LICENSE`](LICENSE).
