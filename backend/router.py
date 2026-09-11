@@ -47,6 +47,7 @@ FRENCH_HINTS = {
     "actuellement", "donne", "moi", "objectif", "objectifs", "but", "buts",
     "butes", "peut", "peuve", "aider", "aide", "deja", "chez", "combien",
     "fait", "fais", "construit", "construis", "cherche", "recherche", "cdi",
+    "est-ce", "obtenu", "obtenir",
 }
 
 INTENT_TERMS = {
