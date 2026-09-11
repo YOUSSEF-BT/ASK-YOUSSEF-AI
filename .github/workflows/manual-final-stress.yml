@@ -1,0 +1,46 @@
+name: Manual final production stress test
+
+on:
+  push:
+    branches: [manual-live-test-20260911]
+    paths:
+      - ".github/workflows/manual-final-stress.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  final-stress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Clear public API sliding rate window
+        run: sleep 65
+
+      - name: Run 25 fresh questions against corrected production
+        run: |
+          python evaluation/run_online_eval.py \
+            --api-url "https://ask-youssef-ai.vercel.app" \
+            --origin "https://youssef-bt.github.io" \
+            --dataset evaluation/live_smoke_cases.json \
+            --output final-live-stress-report.json \
+            --delay 12 \
+            --retries 2 \
+            --strict
+
+      - name: Publish final stress report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-live-stress-report
+          path: final-live-stress-report.json
+          if-no-files-found: warn
+          retention-days: 14
