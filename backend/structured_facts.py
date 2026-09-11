@@ -1,7 +1,10 @@
 """Final compatibility shim over the live-audit hardening resolver.
 
 Keeps the fresh multilingual fixes while preserving legacy certification and
-employer wording relied on by deterministic regression tests.
+employer wording relied on by deterministic regression tests. This layer also
+owns a few high-value conversational answers where a generic top-k RAG response
+would be technically grounded but professionally weak (for example recruiter
+value-proposition questions and natural current-status wording).
 """
 from __future__ import annotations
 
@@ -18,12 +21,37 @@ _precision._COMMON.update({"exactement"})
 
 # Recruiters and visitors often phrase the current-role question as "doing for
 # work right now". Keep that on the deterministic current-work lane so the
-# answer includes both the current freelance role and the explicit full-time
+# answer includes both the parallel freelance activity and the explicit full-time
 # search state.
 _precision._CURRENT_PATTERNS += (
     r"\bwhat is (?:youssef|he) doing for work (?:right now|now|currently)\b",
     r"\bwhat does (?:youssef|he) do for work (?:right now|now|currently)\b",
 )
+
+_WHY_YOUSSEF_PATTERNS = (
+    r"\bpourquoi\s+(?:choisir\s+)?youssef(?:\s+et|\s+plutot que|\s+plutôt que)\s+(?:pas\s+)?(?:un|une|quelqu['’]?un|candidat|profil|autre)\b",
+    r"\bpourquoi\s+(?:choisir|recruter|prendre|embaucher)\s+youssef\b",
+    r"\bpourquoi\s+(?:lui|le choisir|le recruter)\b",
+    r"\bwhy\s+(?:choose|hire|pick|recruit)\s+youssef\b",
+    r"\bwhy\s+youssef\s+(?:instead of|over|and not)\b",
+    r"لماذا.*يوسف.*(?:وليس|بدل|بدلاً|اختيار)",
+)
+
+_EXPERIENCE_OVERVIEW_PATTERNS = (
+    r"\b(?:donne(?:\s+moi)?|montre(?:\s+moi)?|liste|quelles?\s+sont)\b.*\b(?:experiences?|expériences?)\b.*\byoussef\b",
+    r"\b(?:experiences?|expériences?)\s+(?:professionnelles?\s+)?(?:de|d['’])\s*youssef\b",
+    # Common mobile typo observed in production: "expressions" for "expériences".
+    r"\b(?:donne(?:\s+moi)?|montre(?:\s+moi)?|liste)\b.*\bexpressions?\b.*\byoussef\b",
+    r"\bexpressions?\s+(?:de|d['’])\s*youssef\b",
+    r"\b(?:tell me|show me|list)\b.*\b(?:experience|experiences)\b.*\byoussef\b",
+    r"\b(?:youssef['’]?s|his)\s+(?:work\s+)?experiences?\b",
+    r"خبرات.*يوسف|تجارب.*يوسف",
+)
+
+_LITERAL_EXPRESSION_HINTS = {
+    "citation", "citations", "phrase", "phrases", "dicton", "dictons",
+    "quote", "quotes", "saying", "sayings", "mots", "favori", "favorite",
+}
 
 
 class StructuredFactResolver(_live.StructuredFactResolver):
@@ -48,10 +76,217 @@ class StructuredFactResolver(_live.StructuredFactResolver):
             "combien",
             "emploi",
             "travail ou nn",
+            "pourquoi",
+            "expressions de",
+            "experiences de",
         )
         if any(hint in normalized for hint in french_hints):
             return "fr"
         return _precision.detect_language(raw)
+
+    @staticmethod
+    def _matches_any(patterns, question: str) -> bool:
+        normalized = _precision._normalize(question)
+        return any(re.search(pattern, normalized, re.I) for pattern in patterns)
+
+    def _resolve_why_youssef(self, question: str, language: str):
+        """Answer recruiter/client differentiation questions from strongest evidence.
+
+        A generic similarity search can accidentally cite a secondary project for
+        "why Youssef?". This answer instead synthesizes the strongest verified
+        proof points without pretending we can rank him against unknown people.
+        """
+        if not self._matches_any(_WHY_YOUSSEF_PATTERNS, question):
+            return None
+
+        accident = next(
+            (
+                row for row in self.projects
+                if _precision._normalize(str(row.get("slug") or ""))
+                == "real-time-road-accident-detection"
+            ),
+            None,
+        )
+        legal = next(
+            (
+                row for row in self.projects
+                if _precision._normalize(str(row.get("slug") or ""))
+                == "openlegama-moroccan-legal-ai"
+            ),
+            None,
+        )
+        career = self.profile.get("career_status") or {}
+
+        accident_results = (accident or {}).get("results") or {}
+        legal_results = (legal or {}).get("results") or {}
+        precision = str(accident_results.get("precision") or "86.68%")
+        recall = str(accident_results.get("recall") or "91.56%")
+        fps = str(accident_results.get("inferenceSpeed") or "31.5 FPS")
+        tests = str(legal_results.get("automatedTests") or "143 / 143 passing")
+        articles = str(legal_results.get("indexedArticles") or "7,708")
+        seeking = isinstance(career, dict) and career.get("seeking_full_time") is True
+
+        if language == "fr":
+            text = (
+                "Je ne peux pas affirmer que Youssef est ‘meilleur que tous les autres’ sans comparer les candidats. "
+                "En revanche, son profil donne plusieurs raisons concrètes de le choisir :\n\n"
+                f"• **Des résultats mesurés, pas seulement des mots** : son PFE de détection d’accidents atteint {precision} de précision, {recall} de rappel et environ {fps}. "
+                "[project-real-time-road-accident-detection]\n"
+                f"• **Une vraie polyvalence AI Engineering** : Computer Vision, Machine Learning, RAG/LLM et développement de systèmes complets. OpenLegaMa, par exemple, est évalué avec {tests} et {articles} articles juridiques indexés. "
+                "[project-openlegama-moroccan-legal-ai]\n"
+                "• **Une capacité end-to-end** : il ne se limite pas à entraîner un modèle ; ses projets couvrent aussi API, intégration, évaluation, guardrails et déploiement.\n"
+                "• **Un profil immédiatement disponible pour une équipe** : son diplôme d’ingénieur d’État en Data Science est terminé et il recherche actuellement un CDI à temps plein ; le freelance reste une activité parallèle. "
+                "[experience-education] [career-status]\n\n"
+                "En bref : sa valeur vient surtout de la combinaison **AI/ML + Computer Vision + RAG/LLM + capacité à construire un produit complet et mesurable**."
+            )
+        elif language == "ar":
+            text = (
+                "لا يمكنني القول إن يوسف «أفضل من الجميع» من دون مقارنة فعلية مع مرشحين آخرين. "
+                "لكن ملفه المهني يقدم أسباباً عملية لاختياره:\n\n"
+                f"• **نتائج قابلة للقياس**: مشروع التخرج الخاص باكتشاف حوادث الطرق حقق دقة {precision} واسترجاعاً {recall} وبسرعة تقارب {fps}. "
+                "[project-real-time-road-accident-detection]\n"
+                f"• **تعدد قوي في هندسة الذكاء الاصطناعي**: رؤية حاسوبية، تعلم آلي، RAG/LLM وبناء أنظمة كاملة. مشروع OpenLegaMa موثق بـ {tests} و{articles} مادة قانونية مفهرسة. "
+                "[project-openlegama-moroccan-legal-ai]\n"
+                "• **قدرة end-to-end**: من النموذج والاسترجاع إلى API والتقييم والحواجز الأمنية والنشر.\n"
+                "• **جاهزية مهنية**: أنهى دبلوم مهندس دولة في Data Science ويبحث حالياً عن فرصة بدوام كامل، مع نشاط freelance بشكل موازٍ. "
+                "[experience-education] [career-status]\n\n"
+                "الخلاصة: نقطة قوته هي الجمع بين **AI/ML + Computer Vision + RAG/LLM + القدرة على تحويل الفكرة إلى نظام متكامل قابل للقياس**."
+            )
+        else:
+            text = (
+                "I cannot honestly claim Youssef is ‘better than everyone else’ without comparing candidates. "
+                "What his portfolio does provide is concrete evidence for choosing him:\n\n"
+                f"• **Measured results**: his real-time accident-detection PFE reports {precision} precision, {recall} recall, and about {fps}. "
+                "[project-real-time-road-accident-detection]\n"
+                f"• **Broad AI engineering range**: Computer Vision, Machine Learning, RAG/LLM, and complete AI systems. OpenLegaMa is documented with {tests} and {articles} indexed legal articles. "
+                "[project-openlegama-moroccan-legal-ai]\n"
+                "• **End-to-end delivery**: his work goes beyond model training into APIs, integration, evaluation, guardrails, and deployment.\n"
+                "• **Available for a team**: he has completed his State Engineering degree in Data Science and is actively seeking a full-time role, while freelancing in parallel. "
+                "[experience-education] [career-status]\n\n"
+                "In short, the differentiator is the combination of **AI/ML + Computer Vision + RAG/LLM + evidence of building measurable end-to-end systems**."
+            )
+        return StructuredFactAnswer(
+            text,
+            source="career-status",
+            evidence="Synthesized from synchronized career, education, accident-detection, and OpenLegaMa records.",
+        )
+
+    def _resolve_experience_overview(self, question: str, language: str):
+        normalized = _precision._normalize(question)
+        tokens = _precision._tokens(question)
+        typo_expression = "expression" in tokens or "expressions" in tokens
+        if typo_expression and (tokens & _LITERAL_EXPRESSION_HINTS):
+            return None
+        if not self._matches_any(_EXPERIENCE_OVERVIEW_PATTERNS, question):
+            return None
+        if not self.experiences:
+            return None
+
+        if language == "fr":
+            intro = (
+                "Si par « expressions » tu voulais dire **expériences professionnelles**, voici les principales :"
+                if typo_expression
+                else "Voici les principales expériences professionnelles de Youssef :"
+            )
+            lines = [intro]
+            for index, row in enumerate(self.experiences, 1):
+                role = str(row.get("role_fr") or row.get("role") or "").strip()
+                company = str(row.get("company_fr") or row.get("company") or "").strip()
+                period = str(row.get("period_fr") or row.get("period") or "").strip()
+                description = str(row.get("description_fr") or row.get("description") or "").strip()
+                # Fiverr is a marketplace/platform, not an employer. Keep the
+                # wording professionally accurate.
+                if "fiverr" in _precision._normalize(company) and "freelance" in _precision._normalize(role):
+                    lines.append(f"{index}. **{role} en indépendant, via {company}** — {period}. {description}")
+                else:
+                    lines.append(f"{index}. **{role} — {company}** — {period}. {description}")
+            career = self.profile.get("career_status") or {}
+            if isinstance(career, dict) and career.get("seeking_full_time") is True:
+                lines.append("\nAujourd’hui, le freelance est mené en parallèle : Youssef recherche toujours activement un **CDI à temps plein en AI/ML**. [career-status]")
+            lines.append("[experience-education]")
+            text = "\n".join(lines)
+        elif language == "ar":
+            lines = ["أهم الخبرات المهنية الموثقة ليوسف هي:"]
+            for index, row in enumerate(self.experiences, 1):
+                role = str(row.get("role") or "").strip()
+                company = str(row.get("company") or "").strip()
+                period = str(row.get("period") or "").strip()
+                description = str(row.get("description") or "").strip()
+                lines.append(f"{index}. **{role} — {company}** — {period}. {description}")
+            career = self.profile.get("career_status") or {}
+            if isinstance(career, dict) and career.get("seeking_full_time") is True:
+                lines.append("\nالعمل الحر نشاط موازٍ؛ يوسف ما زال يبحث عن **فرصة عمل بدوام كامل في AI/ML**. [career-status]")
+            lines.append("[experience-education]")
+            text = "\n".join(lines)
+        else:
+            lines = ["Youssef's main documented professional experiences are:"]
+            for index, row in enumerate(self.experiences, 1):
+                role = str(row.get("role") or "").strip()
+                company = str(row.get("company") or "").strip()
+                period = str(row.get("period") or "").strip()
+                description = str(row.get("description") or "").strip()
+                if "fiverr" in _precision._normalize(company) and "freelance" in _precision._normalize(role):
+                    lines.append(f"{index}. **{role}, independently via {company}** — {period}. {description}")
+                else:
+                    lines.append(f"{index}. **{role} — {company}** — {period}. {description}")
+            career = self.profile.get("career_status") or {}
+            if isinstance(career, dict) and career.get("seeking_full_time") is True:
+                lines.append("\nFreelancing is a parallel activity; Youssef is still actively seeking a **full-time AI/ML role**. [career-status]")
+            lines.append("[experience-education]")
+            text = "\n".join(lines)
+
+        return StructuredFactAnswer(text, source="experience-education")
+
+    def _resolve_current_work(self, question: str, language: str):
+        """Describe the present state without implying Fiverr is an employer.
+
+        The career model explicitly says freelance_parallel=true and
+        seeking_full_time=true. The natural-language answer should reflect that
+        hierarchy instead of sounding as if Youssef chose Fiverr instead of CDI.
+        """
+        if not self._matches(_precision._CURRENT_PATTERNS, question):
+            return None
+        row = self._current_row()
+        if row is None:
+            return None
+        career = self.profile.get("career_status") or {}
+        seeking = isinstance(career, dict) and career.get("seeking_full_time") is True
+
+        if language == "fr":
+            period = str(row.get("period_fr") or row.get("period") or "").strip()
+            text = (
+                "En ce moment, Youssef développe et propose des solutions **AI/ML en freelance, en indépendant via Fiverr**"
+            )
+            if period:
+                text += f" ({period})"
+            text += (
+                ", notamment autour des systèmes RAG/LLM, des agents IA, du Machine Learning et de la vision par ordinateur. "
+                "[experience-education]"
+            )
+            if seeking:
+                text += (
+                    "\n\nMais il **n’a pas choisi le freelance à la place d’un CDI** : son profil indique qu’il recherche actuellement un **CDI à temps plein** comme AI Engineer, Computer Vision Engineer, Machine Learning Engineer ou Data Scientist. Le freelance est une activité parallèle. [career-status]"
+                )
+        elif language == "ar":
+            text = (
+                "حالياً، يطوّر يوسف ويقدّم حلول **AI/ML بشكل مستقل عبر Fiverr**، خصوصاً في RAG/LLM ووكلاء الذكاء الاصطناعي وتعلم الآلة والرؤية الحاسوبية. "
+                "[experience-education]"
+            )
+            if seeking:
+                text += (
+                    "\n\nلكنه **لم يختر العمل الحر بدلاً من الوظيفة الدائمة**؛ فهو يبحث حالياً عن فرصة **بدوام كامل** في AI/ML، والعمل الحر نشاط موازٍ. [career-status]"
+                )
+        else:
+            period = str(row.get("period") or "").strip()
+            text = "Right now, Youssef develops and delivers **AI/ML solutions independently via Fiverr**"
+            if period:
+                text += f" ({period})"
+            text += ", especially RAG/LLM systems, AI agents, Machine Learning, and Computer Vision. [experience-education]"
+            if seeking:
+                text += (
+                    "\n\nHe **has not chosen freelancing instead of a full-time career**: his public profile says he is actively seeking a **full-time AI/ML role**. Freelancing is a parallel activity. [career-status]"
+                )
+        return StructuredFactAnswer(text, source="experience-education")
 
     def _resolve_certifications(self, question, history, language):
         """Handle shorthand French certification counts deterministically."""
@@ -71,9 +306,17 @@ class StructuredFactResolver(_live.StructuredFactResolver):
         return super()._resolve_certifications(question, history, language)
 
     def resolve(self, question, history=None):
-        """Keep the public-phone abstention explicit and evaluator-stable."""
+        """Prioritize high-value conversational facts before generic dispatch."""
         language = self._effective_language(question)
         normalized = _precision._normalize(question)
+
+        result = self._resolve_why_youssef(question, language)
+        if result is None:
+            result = self._resolve_experience_overview(question, language)
+        if result is not None:
+            return result
+
+        # Keep the public-phone abstention explicit and evaluator-stable.
         if language == "en" and re.search(
             r"\b(?:phone|telephone|mobile)\s*(?:number)?\b",
             normalized,
