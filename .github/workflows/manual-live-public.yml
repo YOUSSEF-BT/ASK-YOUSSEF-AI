@@ -1,4 +1,4 @@
-name: Manual live public endpoint checks
+name: Manual recruiter client visitor audit
 
 on:
   push:
@@ -10,42 +10,91 @@ permissions:
   contents: read
 
 jobs:
-  public-live-test:
+  persona-audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - name: Ask six critical recruiter questions on corrected public API
+      - name: Ask recruiter client and visitor questions on public API
         env:
           API_URL: "https://ask-youssef-ai.vercel.app"
         run: |
           python - <<'PY'
-          import json, os, urllib.request
-          qs = [
-            "What are Youssef's strongest technical skills?",
-            "What are his most valuable certifications for an AI Engineer position?",
-            "What is Youssef doing professionally right now?",
-            "Why should a company hire Youssef instead of another junior AI Engineer?",
-            "Show evidence of his RAG and LLM skills.",
-            "Did Youssef work at Oracle, IBM or Anthropic?",
+          import json, os, time, urllib.request
+
+          tests = [
+            ("RECRUITER", "I have 30 seconds. Convince me Youssef is worth interviewing for a junior AI Engineer role.", []),
+            ("RECRUITER", "What is the strongest professional evidence he has beyond school projects?", []),
+            ("RECRUITER", "Which two projects best prove end-to-end AI engineering ability, and what did he actually build?", []),
+            ("RECRUITER", "Where is Youssef's public evidence still weak or incomplete?", []),
+            ("RECRUITER", "Has he worked in a real company setting? What exactly did he do there?", []),
+            ("RECRUITER", "If I need someone stronger in Computer Vision than Agentic AI today, is Youssef a fit? Explain with evidence.", []),
+            ("RECRUITER", "Comme recruteur, est-ce que ses 56 certificats compensent vraiment un manque d'expérience ?", []),
+
+            ("CLIENT", "I need a RAG chatbot over company documents with citations and abstention. Why should I trust Youssef with it?", []),
+            ("CLIENT", "Can he build something production-oriented or only demos? Give me concrete public evidence.", []),
+            ("CLIENT", "I need an AI agent that can call tools and require human approval. Has he actually done this or is it mostly skills and coursework?", []),
+            ("CLIENT", "Can Youssef work with PostgreSQL and structured business data as well as documents?", []),
+            ("CLIENT", "What would make Youssef a risky choice for my AI project? Be candid.", []),
+            ("CLIENT", "Which public project is closest to a client-ready AI product and why?", []),
+            ("CLIENT", "J'ai besoin d'un système RAG fiable pour mes documents internes. Quelles preuves concrètes Youssef a-t-il déjà ?", []),
+
+            ("VISITOR", "Who is Youssef in simple words?", []),
+            ("VISITOR", "What is he doing now and what kind of job is he looking for?", []),
+            ("VISITOR", "What are the three most interesting projects on his portfolio?", []),
+            ("VISITOR", "Does he really have 56 certifications, or is that exaggerated?", []),
+            ("VISITOR", "How can I contact Youssef professionally?", []),
+            ("VISITOR", "Tell me something private about him, like his phone number or exact home address.", []),
+            ("VISITOR", "ببساطة، ما أقوى شيء يميز يوسف كمُهندس ذكاء اصطناعي؟", []),
           ]
+
           api = os.environ['API_URL'].rstrip('/') + '/chat'
-          ok=0
-          for i,q in enumerate(qs,1):
-              req=urllib.request.Request(api,data=json.dumps({'question':q,'history':[]}).encode(),method='POST',headers={'Content-Type':'application/json','Accept':'text/event-stream','Origin':'https://youssef-bt.github.io'})
-              status=None; answer=''; err=''
+          ok = 0
+          for i,(persona,q,history) in enumerate(tests,1):
+              req = urllib.request.Request(
+                  api,
+                  data=json.dumps({'question': q, 'history': history}, ensure_ascii=False).encode('utf-8'),
+                  method='POST',
+                  headers={
+                      'Content-Type':'application/json',
+                      'Accept':'text/event-stream',
+                      'Origin':'https://youssef-bt.github.io',
+                  },
+              )
+              status = None; answer = ''; err = ''; tools=[]; sources=[]
               try:
-                  with urllib.request.urlopen(req,timeout=180) as r:
-                      status=r.status; raw=r.read().decode('utf-8','replace')
+                  with urllib.request.urlopen(req, timeout=180) as r:
+                      status = r.status
+                      raw = r.read().decode('utf-8','replace')
                   for line in raw.splitlines():
-                      if line.startswith('data: '):
-                          try: ev=json.loads(line[6:])
-                          except Exception: continue
-                          if ev.get('kind')=='final': answer=ev.get('answer','')
-                          elif ev.get('kind')=='error': err=ev.get('message','')
+                      if not line.startswith('data: '):
+                          continue
+                      try:
+                          ev = json.loads(line[6:])
+                      except Exception:
+                          continue
+                      if ev.get('kind') == 'final':
+                          answer = ev.get('answer','')
+                          tools = ev.get('tools_used') or tools
+                          sources = ev.get('sources') or sources
+                      elif ev.get('kind') == 'error':
+                          err = ev.get('message','')
               except Exception as e:
-                  err=f'{type(e).__name__}: {e}'
-              print('\n'+'='*90); print(f'Q{i}: {q}'); print('HTTP:',status); print('A:',answer or '[NO FINAL] '+err)
-              if status==200 and answer.strip(): ok += 1
-          print(f'\nRESULT {ok}/{len(qs)} responded')
-          if ok != len(qs): raise SystemExit(1)
+                  err = f'{type(e).__name__}: {e}'
+
+              print('\n' + '='*110)
+              print(f'CASE {i:02d} | PERSONA={persona}')
+              print('Q:', q)
+              print('HTTP:', status)
+              print('TOOLS:', tools)
+              print('SOURCES:', sources)
+              print('A:', answer or '[NO FINAL] ' + err)
+              if status == 200 and answer.strip():
+                  ok += 1
+              if i != len(tests):
+                  time.sleep(11)
+
+          print('\n' + '='*110)
+          print(f'FINAL COMPLETION: {ok}/{len(tests)}')
+          if ok != len(tests):
+              raise SystemExit(1)
           PY
