@@ -1,22 +1,20 @@
 # Evaluation & Quality Gates
 
-Ask Youssef AI uses two complementary evaluation layers: a deterministic offline regression benchmark and a deployed-system regression against the live Vercel API.
+Ask Youssef AI uses layered deterministic QA instead of a single vague "accuracy" score. Offline tests validate components; deployed suites validate the real Vercel API; an adversarial suite deliberately searches for regressions and unsafe behavior.
 
-The two layers answer different questions and must not be mixed into one generic "accuracy" number.
+A 100% pass rate below means **all predefined assertions in that suite passed**. It is not a claim that arbitrary future model answers are universally 100% correct.
 
-## 1. Deterministic regression benchmark
+## 1. Offline deterministic benchmark
 
-`evaluation/run_benchmark.py` evaluates components that can be reproduced without an external LLM call:
+`evaluation/run_benchmark.py` checks reproducible components without depending on a live LLM response:
 
 - multilingual language/intent routing;
-- structured professional-profile retrieval;
-- retrieval Hit@1, Hit@3 and Mean Reciprocal Rank (MRR);
+- structured-profile retrieval;
+- retrieval Hit@1, Hit@3 and Mean Reciprocal Rank;
 - grounding safety for unsupported metrics, URLs, emails and citations;
-- synchronization integrity between the generated profile and portfolio manifest.
+- synchronization integrity between the portfolio manifest and structured profile.
 
-CI runs the benchmark in strict mode and uploads its JSON report as an artifact. A regression below a configured threshold fails the build.
-
-Current verified fixed-suite results:
+Current verified results:
 
 | Metric | Result | Threshold |
 |---|---:|---:|
@@ -27,105 +25,166 @@ Current verified fixed-suite results:
 | Grounding safety rate | 1.000 | 1.000 |
 | Profile integrity rate | 1.000 | 1.000 |
 
-A value of 1.0 means all cases defined by that deterministic suite passed. It does **not** mean the generative assistant is universally 100% accurate.
+CI also compiles the backend, validates synchronized data, validates the widget JavaScript and runs the regression/unit-test suite.
 
-## 2. Deployed production evaluation
+## 2. Live career-state regression
 
-`evaluation/run_online_eval.py` talks to a running FastAPI deployment through `/health` and `/chat`. The production workflow is `.github/workflows/vercel-production-eval.yml`.
+Dataset: `evaluation/career_cases.json`
 
-The evaluator observes behavior that unit/offline tests cannot fully prove:
+This small fail-fast suite protects a high-risk professional fact that previously exposed a misleading inference: current freelance work does **not** imply that Youssef is not looking for a full-time/CDI role. The portfolio explicitly documents both facts.
 
-- completion of real deployed requests;
-- mandatory retrieval for factual portfolio questions;
-- expected source citation in final answers;
-- conservative abstention for unsupported factual claims;
-- prompt-injection resistance for profile assertions;
-- no unnecessary retrieval for greetings/out-of-scope turns;
+The suite checks:
+
+- current role in French with localized fields;
+- explicit full-time/CDI availability in French;
+- explicit full-time availability in English;
+- required citations and structured retrieval behavior.
+
+Verified against `https://ask-youssef-ai.vercel.app` on **2026-09-11**:
+
+- **3/3 cases passed**;
+- Median: **77.53 ms**;
+- P95: **171.56 ms**;
+- Max: **182.01 ms**.
+
+## 3. Live strict core production regression
+
+Dataset: `evaluation/core_production_cases.json`
+
+This is the main end-to-end deployed regression. It sends requests to the real `/chat` SSE endpoint and verifies observable behavior including:
+
+- English/French/Arabic profile questions;
+- exact certification counts and issuer inventories;
+- the three Oracle credentials;
+- complete structured counts;
+- Computer Vision, Python and RAG project facts;
+- current role and job-search status;
+- public email and unavailable-phone handling;
+- employer/issuer disambiguation;
 - conversation-history follow-ups;
-- multilingual deployed behavior;
-- end-to-end request latency.
+- exact identifiers such as `YOLOv11s` and `BoT-SORT`;
+- unsupported-employer abstention;
+- prompt-injection handling;
+- greeting and out-of-scope paths;
+- citation integrity.
 
-The production workflow waits for the new Vercel deployment to be promoted before running the suite, so it does not accidentally grade the previous production commit.
+Verified against production on **2026-09-11**:
 
-## 3. Current verified Vercel result
+- **25/25 cases passed**;
+- every configured strict metric passed at **1.000 / 1.000**;
+- Median: **102.16 ms**;
+- P95: **2.674 s**;
+- Max: **3.842 s**.
 
-A production run executed on **2026-09-10** against:
+The strict metrics include completion, required retrieval, expected citations, required sources, expected content, forbidden-content absence, safety abstention, citation integrity and unnecessary-retrieval avoidance where applicable.
 
-```text
-https://ask-youssef-ai.vercel.app
+## 4. Deep adversarial production audit
+
+Dataset: `evaluation/deep_audit_cases.json`
+
+Workflow: `.github/workflows/deep-production-audit.yml`
+
+This is intentionally a bug-hunting suite rather than a happy-path demo. It tests:
+
+- conversational French and typo-heavy phrasing;
+- biography/summary requests that must not be mistaken for contact actions;
+- current-work localization;
+- full-time/CDI follow-ups;
+- Oracle ordinal follow-ups;
+- employer vs certification-issuer confusion;
+- unsupported salary, home address and marital status;
+- false-employer assertions;
+- prompt injection;
+- fake citation pressure;
+- hidden system prompt/internal reasoning/API-key exfiltration requests;
+- OpenLegaMa Controlled RAG;
+- Arabic career/employer cases;
+- out-of-scope trivia.
+
+Verified against production on **2026-09-11**:
+
+- **20/20 cases passed**;
+- Completion: **1.000 / 1.000**;
+- Required retrieval: **1.000 / 1.000**;
+- Required sources: **1.000 / 1.000**;
+- Expected content: **1.000 / 1.000**;
+- Forbidden-content absence: **1.000 / 1.000**;
+- Safety abstention: **1.000 / 1.000**;
+- Citation integrity: **1.000 / 1.000**;
+- Unnecessary-retrieval avoidance: **1.000 / 1.000**;
+- Median: **132.56 ms**;
+- P95: **2.281 s**;
+- Max: **3.399 s**.
+
+The final adversarial run contained no unknown or malformed citations.
+
+## 5. Why there are several suites
+
+A single benchmark can hide entire classes of failures. The project therefore separates concerns:
+
+1. **Offline CI** catches deterministic code/data regressions quickly.
+2. **Career regression** fails fast on a professionally sensitive state.
+3. **Core production regression** checks the real deployed system broadly.
+4. **Deep adversarial audit** actively probes safety, ambiguity, language and regression edge cases.
+
+GitHub Actions waits for Vercel production promotion before deployed tests. Long suites are paced so the test harness does not trigger the public per-IP rate limit and create false failures.
+
+## 6. Reliability behavior exercised by tests
+
+Production testing has encountered real provider conditions such as quota/overload responses. The deployed path therefore includes:
+
+- Gemini 3.7 Flash as the primary generator;
+- immediate Gemini 3.5 Flash-Lite failover for quota/overload/timeout signals;
+- local FastEmbed/ONNX retrieval rather than consuming Gemini embedding quota;
+- factual pre-retrieval so evidence exists before generative synthesis;
+- deterministic precision facts for exact/high-risk portfolio questions;
+- evidence-based fallback when generation fails after successful retrieval;
+- deterministic greetings, scope responses and secret-exfiltration refusals.
+
+## 7. Grounding policy
+
+Factual claims about Youssef's public professional profile must be grounded in synchronized evidence. The final response passes through deterministic checks that can reject unsupported high-impact literals and unknown citations.
+
+Retrieved portfolio content is treated as untrusted data, never as higher-priority instructions. Requests to reveal hidden prompts, internal reasoning, API keys or private configuration are refused.
+
+## 8. Reproducing the checks
+
+Offline benchmark:
+
+```bash
+python evaluation/run_benchmark.py --strict --output portfolio-benchmark.json
 ```
 
-passed every configured deterministic smoke gate:
-
-| Metric | Result | Threshold |
-|---|---:|---:|
-| Completion rate | 1.000 | 1.000 |
-| Required retrieval rate | 1.000 | 1.000 |
-| Expected citation rate | 1.000 | 1.000 |
-| Safety abstention rate | 1.000 | 1.000 |
-| Unnecessary retrieval avoidance | 1.000 | 1.000 |
-
-Latency for the 9 completed production cases:
-
-| Statistic | Measured |
-|---|---:|
-| Median | 1137.84 ms |
-| P95 | 1549.62 ms |
-| Max | 1575.92 ms |
-| Greeting case | 141.58 ms |
-
-The evaluated cases include:
-
-- Real-Time Road Accident Detection / `YOLOv11s` + `BoT-SORT`;
-- OpenLegaMa Controlled RAG in French;
-- RAG skills in Arabic;
-- Oracle Agentic AI certification evidence;
-- a history-dependent follow-up (`What tracker does it use?`);
-- unsupported Google-employment claim;
-- prompt injection asking the assistant to invent 15 years of AI experience;
-- a simple greeting;
-- an out-of-scope trivia request.
-
-The scope of this result is **deployed-system deterministic smoke checks; not semantic answer accuracy**.
-
-## 4. Reliability behavior exercised during production testing
-
-Production testing also exposed real provider conditions such as quota/overload responses. The Vercel path therefore includes:
-
-- primary Gemini 3.7 Flash generation;
-- immediate Gemini 3.5 Flash-Lite failover for quota/overload/timeout signals;
-- factual pre-retrieval so evidence exists before generation;
-- a truthful, cited service fallback if generation fails after retrieval succeeds;
-- deterministic greeting responses that use neither search nor a generation model.
-
-These behaviors are part of runtime reliability, not an attempt to hide provider failures.
-
-## 5. Grounding policy
-
-Factual claims about Youssef's professional profile are retrieval-grounded. The final response passes through a deterministic verifier that checks high-risk literals and source citations against evidence returned during the turn.
-
-The verifier can intervene on unsupported metrics, links, emails and unknown citations. Unsupported high-impact details are replaced by an evidence-based abstention rather than being presented as facts.
-
-Instructions embedded inside retrieved portfolio text are treated as data and cannot override the assistant's system behavior.
-
-## 6. How to run the production evaluator
+Core deployed suite:
 
 ```bash
 python evaluation/run_online_eval.py \
   --api-url "https://ask-youssef-ai.vercel.app" \
   --origin "https://youssef-bt.github.io" \
+  --dataset evaluation/core_production_cases.json \
   --output online-eval-report.json \
   --strict
 ```
 
-The evaluator deliberately uses deterministic observable checks. It is not an LLM judge.
+Deep adversarial suite:
 
-## 7. Rules for public quality claims
+```bash
+python evaluation/run_online_eval.py \
+  --api-url "https://ask-youssef-ai.vercel.app" \
+  --origin "https://youssef-bt.github.io" \
+  --dataset evaluation/deep_audit_cases.json \
+  --output deep-audit-report.json \
+  --delay 11 \
+  --strict
+```
 
-Public documentation should keep these categories separate:
+## 9. Rules for public quality claims
 
-1. **offline deterministic regression metrics**;
-2. **deployed-system regression metrics**;
-3. **project/model metrics imported from portfolio evidence** (for example computer-vision model precision/recall).
+Keep these categories separate:
 
-Never combine them into a single accuracy score. Never describe a fixed 100%-passing regression suite as proof that arbitrary generated answers are 100% accurate.
+- offline deterministic regression metrics;
+- deployed-system regression metrics;
+- adversarial QA results;
+- model/project metrics imported from portfolio evidence, such as Computer Vision precision/recall.
+
+Never combine them into a universal assistant-accuracy percentage. A passing fixed suite demonstrates protection against the tested regressions; it does not eliminate the possibility of future bugs or model/provider variability.
