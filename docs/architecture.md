@@ -1,217 +1,264 @@
 # Architecture
 
-## Production architecture
+Ask Youssef AI is designed as a production portfolio intelligence system rather than a prompt-only chatbot.
 
-```text
-YOUSSEF-BT.github.io (source of truth)
-        |
-        | scheduled + on-change synchronization
-        v
-Markdown evidence corpus + structured profile.json
-        |
-        +--> public-contact enrichment
-        +--> career-status enrichment + localization
-        +--> citable structured-profile aggregates
-        |
-        +---------------------------+
-        |                           |
-        v                           v
-Portfolio visitor             CI / deployed QA
-        |                           |
-        v                           +--> deterministic offline benchmark
-Ask Youssef AI widget              +--> career-state regression
-        |                           +--> strict core regression
-        | HTTPS / SSE               +--> deep adversarial audit
-        v
-Vercel FastAPI /chat
-        |
-        v
-Deterministic EN / FR / AR router
-        |
-        +--> greeting / out-of-scope / secret request
-        |          -> deterministic response
-        |
-        +--> exact/high-risk structured fact
-        |          -> complete profile.json
-        |          -> deterministic answer + source IDs
-        |
-        +--> open factual portfolio turn
-                    |
-             retrieval required
-                    |
-       +------------+-------------+
-       |            |             |
-       v            v             v
-   Structured      BM25       FastEmbed semantic
-    Profile                    vectors / ONNX
-       |            |             |
-       +------------+-------------+
-                    |
-                    v
-        Reciprocal Rank Fusion (RRF)
-        + bounded evidence boosts
-                    |
-                    v
-               search_site
-                    |
-                    v
-          Gemini 3.7 Flash
-             |          |
-       transient        success
-        failure         |
-             v          |
-     Gemini 3.5 Flash-Lite
-             |          |
-             +-----+----+
-                   |
-                   v
-        deterministic grounding gate
-              /                 \
-             v                   v
-      grounded answer      safe abstention /
-      + real citations     evidence fallback
-                   |
-                   v
-                SSE client
-                   |
-                   v
-        privacy-safe aggregate telemetry
+The architecture separates **knowledge synchronization, deterministic routing, hybrid retrieval, generative reasoning, grounding, observability and delivery** into explicit layers.
+
+## Production Architecture
+
+```mermaid
+flowchart TD
+
+    Portfolio[Professional Portfolio]
+    Portfolio --> Sync[Knowledge Synchronization]
+
+    Sync --> Corpus[Markdown Evidence Corpus]
+    Sync --> Profile[Structured Professional Profile]
+
+    Visitor[Recruiter / Client / Engineer]
+    Visitor --> Widget[Portfolio Widget]
+
+    Widget --> API[FastAPI /chat SSE]
+    API --> Router[Language + Intent Router]
+
+    Router -->|Exact / High-Risk Fact| Facts[Precision Fact Resolver]
+    Router -->|Open Professional Question| Hybrid[Hybrid Retrieval]
+
+    Hybrid --> Structured[Structured Search]
+    Hybrid --> Lexical[BM25]
+    Hybrid --> Semantic[FastEmbed Semantic Search]
+
+    Structured --> Fusion[RRF + Evidence Boosts]
+    Lexical --> Fusion
+    Semantic --> Fusion
+
+    Fusion --> Evidence[Ranked Evidence]
+    Evidence --> Primary[Gemini 3.7 Flash]
+    Primary -->|Transient Failure| Fallback[Gemini 3.5 Flash-Lite]
+
+    Facts --> Grounding[Grounding + Citation Boundary]
+    Primary --> Grounding
+    Fallback --> Grounding
+
+    Grounding -->|Supported| Answer[Grounded Answer]
+    Grounding -->|Insufficient Evidence| Abstain[Safe Abstention]
+
+    Answer --> Widget
+    Abstain --> Widget
+
+    API --> Metrics[Privacy-Safe Aggregate Telemetry]
 ```
 
-## Source-of-truth synchronization
+## Architectural Goals
 
-The public portfolio repository is authoritative for public professional facts. The synchronization pipeline extracts projects, skills, certifications, experience, education and professional contact information without executing portfolio JavaScript.
+The system was designed around six engineering goals:
 
-It creates complementary evidence views:
+1. **Evidence before claims** — factual portfolio answers should be tied to synchronized professional evidence.
+2. **Deterministic precision where possible** — exact counts, inventories and employment checks should not depend on probabilistic generation.
+3. **Hybrid retrieval** — exact identifiers, semantic concepts and structured entities require different retrieval strengths.
+4. **Safe failure behavior** — missing evidence or provider failure should not become fabricated professional claims.
+5. **Production observability** — runtime behavior should be measurable without storing visitor conversations.
+6. **Clear separation of concerns** — retrieval, generation, grounding, delivery and synchronization remain independently testable.
 
-- `backend/data/site/` — Markdown pages used by semantic/lexical retrieval and citation cards;
-- `backend/data/profile.json` — structured entities used by exact-fact and field-aware retrieval;
-- `career-status.md` — explicit public full-time/CDI availability evidence;
-- `structured-profile.md` — citable synchronized aggregate counts.
+## Source of Truth
 
-Dedicated enrichment scripts preserve information that the generic parser should not infer:
+The public professional portfolio is the authoritative source for public profile facts.
 
-- `scripts/enrich_public_contact.py` synchronizes published contact evidence such as `mailto:` email;
-- `scripts/enrich_career_status.py` extracts explicit career availability and localized work-experience fields from the portfolio.
+Synchronization produces complementary representations:
 
-`.github/workflows/sync-portfolio.yml` refreshes generated assets periodically and when synchronization logic changes. It validates entity counts, email evidence, career availability and generated documents before committing changes.
+- `backend/data/site/` — Markdown evidence used by lexical and semantic retrieval;
+- `backend/data/profile.json` — structured entities used for exact facts and field-aware retrieval;
+- `career-status.md` — explicit public availability and current-status evidence;
+- `structured-profile.md` — citable aggregate profile facts;
+- `manifest.json` — integrity metadata for synchronized content.
 
-Current production health reports **16 evidence pages, 161 chunks and 81 structured documents**.
+Current synchronized production snapshot:
 
-## Deterministic routing
+| Entity | Count |
+|---|---:|
+| Projects | 10 |
+| Skill categories | 6 |
+| Certifications | 56 |
+| Professional experiences | 2 |
+| Education entries | 2 |
+| Public professional links | 4 |
+| Evidence pages | 16 |
+| Retrieval chunks | 161 |
+| Structured documents | 81 |
 
-`backend/router.py` detects English, French and Arabic and assigns intent before any generation call.
+## Deterministic Routing
 
-Important properties:
+`backend/router.py` classifies language, intent and portfolio scope before generation.
 
-- portfolio facts require evidence retrieval;
-- colloquial/typo-heavy French variants are recognized;
-- short ordinal/history follow-ups are returned to grounded handling;
-- greetings avoid retrieval and generation;
-- unrelated trivia stays outside portfolio scope;
-- hidden prompt/internal reasoning/API-key extraction requests are refused deterministically.
+The router protects several behaviors:
 
-The router is deliberately conservative: forcing a factual turn through evidence is preferable to allowing an unsupported profile answer.
+- English, French and Arabic routing;
+- factual profile questions requiring evidence;
+- greeting and out-of-scope fast paths;
+- private/prompt/secret requests;
+- history-aware follow-ups;
+- conservative handling of ambiguous profile questions.
 
-## Precision structured-fact lane
+The current visitor question controls response language, even when earlier conversation context is in another language.
 
-`backend/precision_facts.py` and `backend/structured_facts.py` handle questions where a top-k retrieval result must **never** be treated as the complete portfolio.
+## Precision Fact Layer
+
+`backend/precision_facts.py` and `backend/structured_facts.py` resolve questions that should never depend on a partial retrieval window.
 
 Examples include:
 
-- total certification count and issuer breakdown;
-- Oracle certification inventory and ordinal follow-ups;
-- project/skill/experience/education/contact counts;
-- complete Python/Computer Vision/RAG project facts supported by structured metadata;
-- employer checks and issuer/employer disambiguation;
+- certification totals;
+- Oracle certification inventory;
+- project, skill, experience and education counts;
+- employer checks;
+- issuer/employer disambiguation;
 - current professional role;
-- explicit CDI/full-time availability;
-- selected high-value project facts such as OpenLegaMa Controlled RAG.
+- full-time/CDI availability;
+- exact structured project facts.
 
-This lane reads the complete synchronized `profile.json`, emits observable `structured_profile` tool usage and returns canonical source IDs. It removes an entire class of errors where a model could mistake the first few retrieved results for the full inventory.
+This layer reads the complete synchronized profile and returns deterministic evidence-backed responses.
 
-## Hybrid retrieval layer
+## Hybrid Retrieval
 
-Open-ended factual questions use three independent signals over the same source of truth:
+Open factual questions use three signals:
 
-1. **FastEmbed semantic retrieval** for conceptual similarity;
-2. **BM25 lexical retrieval** for names, technologies, issuers and exact identifiers;
-3. **structured profile retrieval** for field-aware matching.
+### 1. Structured profile retrieval
 
-Candidate lists are fused with **Reciprocal Rank Fusion (RRF)** plus bounded deterministic evidence boosts.
+Best for entities and fields such as employers, project metadata, technologies, certifications and contact links.
 
-### Vercel production path
+### 2. BM25 lexical retrieval
 
-Vercel uses `MCP_TRANSPORT=inprocess`. `HybridRetriever` uses the bundled corpus and profile. The `BAAI/bge-small-en-v1.5` FastEmbed/ONNX model is prepared during the Vercel build and reused at runtime, avoiding Gemini embedding quota and avoiding a model download during a visitor request.
+Best for exact identifiers, names and technical vocabulary such as `YOLOv11s`, `BoT-SORT`, company names and certification issuers.
 
-### Alternative runtime path
+### 3. FastEmbed semantic retrieval
 
-The subprocess MCP path uses the same structured-aware hybrid retrieval design. Docker/Render configuration remains available as an alternative/local path but is not the active public production host.
+Best for conceptual similarity when the visitor's language differs from the exact wording used in the portfolio.
 
-## Provider reliability
+The candidate sets are fused with **Reciprocal Rank Fusion (RRF)** and bounded deterministic evidence boosts.
 
-The primary generation model is **Gemini 3.7 Flash**. On quota, overload, timeout or related transient failures, the runtime switches quickly to **Gemini 3.5 Flash-Lite**.
+```text
+Structured Search + BM25 + FastEmbed
+                ↓
+       Reciprocal Rank Fusion
+                ↓
+      Evidence-aware reranking
+                ↓
+          Ranked context
+```
 
-Generation retry/timeout budgets are bounded for the serverless request window. If generation still fails after evidence retrieval succeeds, the assistant returns a truthful evidence-based service fallback rather than inventing a requested fact or ending with an empty error.
+## Generation and Provider Failover
 
-Exact precision-fact answers do not depend on a generative model at all.
+The primary model is **Gemini 3.7 Flash**.
 
-## Grounding and citation integrity
+Transient quota, timeout or overload failures can switch generation to **Gemini 3.5 Flash-Lite**.
 
-`backend/grounding.py` is a model-independent output boundary. It can:
+Generation is intentionally not used for every request. Deterministic greetings, scope responses and exact structured facts bypass the model when possible.
 
-- validate bracketed source IDs against evidence available for the turn;
-- remove unknown/hallucinated citations;
-- normalize canonical source IDs;
-- block unsupported high-risk numbers, URLs and email literals where applicable;
-- replace unsupported high-impact claims with an evidence-based abstention;
-- preserve the visitor language for safety/fallback responses.
+If retrieval succeeds but generation fails, the system prefers an evidence-based fallback over an unsupported answer.
 
-Retrieved portfolio text is treated as untrusted data, not executable instructions.
+## Grounding and Citation Boundary
 
-This boundary is not presented as universal semantic entailment. Broader quality is covered by production regression and adversarial QA.
+`backend/grounding.py` acts as a model-independent trust boundary.
 
-## Evaluation architecture
+It can:
 
-### Offline deterministic CI
+- validate returned source IDs;
+- remove unknown citations;
+- normalize canonical citations;
+- block unsupported numeric, URL and email claims where applicable;
+- detect unsupported high-impact professional assertions;
+- replace unsupported claims with evidence-based abstention.
 
-`evaluation/run_benchmark.py` measures multilingual routing, retrieval Hit@1/Hit@3/MRR, grounding safety and profile-integrity checks without an LLM judge.
+This is a deterministic safety boundary, not a claim of universal semantic theorem proving.
 
-### Career-state production regression
+## API and Streaming
 
-`evaluation/career_cases.json` verifies the current freelance role, localized French response and explicit full-time/CDI availability. The verified production run on **2026-09-11** passed **3/3** cases.
+The production API is implemented with FastAPI and Server-Sent Events.
 
-### Strict core production regression
+Important endpoints:
 
-`evaluation/core_production_cases.json` exercises the actual deployed `/chat` SSE endpoint. The verified production run on **2026-09-11** passed **25/25** cases with every configured strict metric at `1.0`. Median latency was **102.16 ms**, P95 **2.674 s**, max **3.842 s**.
+```text
+GET  /health
+GET  /capabilities
+GET  /pages
+GET  /metrics
+POST /chat
+POST /feedback
+```
 
-### Deep adversarial production audit
+The visitor-facing widget consumes `/chat` as an SSE stream.
 
-`evaluation/deep_audit_cases.json` deliberately probes ambiguous language, typos, false employers, unsupported personal details, fake citations, prompt injection, secret extraction, localization, Controlled RAG and out-of-scope behavior.
+## Observability
 
-The verified production audit on **2026-09-11** passed **20/20** cases. Every configured strict metric passed at `1.0`; no unknown or malformed citations were observed. Median latency was **132.56 ms**, P95 **2.281 s**, max **3.399 s**.
+`backend/observability.py` records privacy-safe aggregate metrics such as:
 
-These are fixed deterministic QA suites, not a universal claim of perfect semantic accuracy.
+- request counts;
+- language and intent distribution;
+- retrieval usage;
+- grounding interventions;
+- runtime errors;
+- bounded latency statistics;
+- aggregate feedback categories.
 
-## Observability and privacy
+The system is not designed to retain visitor prompts, answers, IP addresses, email addresses or conversation history.
 
-`backend/observability.py` keeps process-lifetime aggregate operational counters and a bounded latency window. `/metrics` exposes only aggregates.
+## Production Runtime
 
-The telemetry layer does not retain prompts, answers, IP addresses, email addresses, tool inputs or conversation history. Metrics reset when a process restarts.
+The active production path is:
 
-## Security boundaries
+```text
+Portfolio Widget
+      ↓
+Vercel FastAPI
+      ↓
+Python 3.12
+      ↓
+In-process Hybrid Retrieval
+      ↓
+Gemini Generation + Grounding
+```
 
-- Portfolio evidence is the source of truth for Youssef's public professional facts.
-- Provider secrets remain server-side.
-- Browser Origin/Referer restrictions reduce unauthorized embedding.
-- Request/history sizes and history roles are validated.
-- Per-IP/global limits bound public abuse and provider usage.
-- Internal prompts and private reasoning are not emitted through SSE.
-- Fake-source and prompt-injection pressure cannot authorize unsupported profile claims.
-- Unsupported professional/personal claims are refused rather than guessed.
-- Contact actions require explicit visitor intent and visitor-provided contact data.
-- The frontend contains only the public Vercel API URL, never `GEMINI_API_KEY`.
+The FastEmbed model is prepared during build so production requests do not need to download the embedding model at runtime.
 
-## Deliberate non-claims
+## Quality Architecture
 
-The system does not claim universal semantic entailment verification, arbitrary-question 100% accuracy, persistent distributed observability or enterprise SLA/load guarantees. Such claims should only be added after the corresponding capabilities are implemented and measured.
+The repository validates the architecture at multiple layers:
+
+- unit and regression tests;
+- deterministic routing/retrieval benchmark;
+- deployed career-state checks;
+- core production regression;
+- adversarial production audit;
+- human recruiter/client/visitor evaluation;
+- dependency vulnerability auditing;
+- CodeQL static analysis.
+
+See [`evaluation.md`](evaluation.md) for the evaluation contract.
+
+## Security Boundaries
+
+Key boundaries include:
+
+- secrets remain server-side;
+- frontend code contains only the public API URL;
+- retrieved content is treated as data, not instructions;
+- request and history sizes are bounded;
+- history roles are validated;
+- browser origins are restricted;
+- unsupported professional claims are refused rather than guessed;
+- hidden-prompt and secret-exfiltration requests are rejected.
+
+See [`security.md`](security.md) for the full security model.
+
+## Deliberate Limits
+
+The project does not claim:
+
+- universal semantic entailment verification;
+- arbitrary-question 100% accuracy;
+- persistent distributed observability;
+- enterprise-scale load guarantees;
+- enterprise SLA availability;
+- multi-tenant identity or RBAC.
+
+Those would require additional infrastructure and should only be claimed after implementation and measurement.
