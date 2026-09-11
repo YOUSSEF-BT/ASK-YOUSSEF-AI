@@ -1,183 +1,236 @@
 # Production Deployment
 
-Ask Youssef AI is live on Vercel and embedded in the GitHub Pages portfolio.
+Ask Youssef AI is deployed as a production portfolio service on Vercel and integrated directly into Youssef Bouzit's public portfolio.
 
-## Current production topology
+## Production Topology
 
-```text
-Portfolio — https://youssef-bt.github.io
-        |
-        | HTTPS / SSE
-        v
-Vercel FastAPI — https://ask-youssef-ai.vercel.app
-        |
-        +--> deterministic EN / FR / AR router
-        +--> precision structured-fact resolver
-        +--> bundled synchronized portfolio snapshot
-        +--> Structured + BM25 + FastEmbed semantic retrieval
-        +--> Gemini 3.7 Flash
-                |
-                +--> Gemini 3.5 Flash-Lite failover
-        +--> deterministic grounding / citation boundary
+```mermaid
+flowchart TD
+
+    Visitor[Portfolio Visitor]
+    Visitor --> Portfolio[GitHub Pages Portfolio]
+    Portfolio --> Widget[Ask Youssef AI Widget]
+    Widget --> API[Vercel FastAPI API]
+
+    API --> Router[Language + Intent Router]
+    Router --> Facts[Precision Fact Resolver]
+    Router --> Retrieval[Hybrid Retrieval]
+
+    Retrieval --> Structured[Structured Search]
+    Retrieval --> BM25[BM25]
+    Retrieval --> Semantic[FastEmbed]
+
+    Structured --> RRF[RRF Fusion]
+    BM25 --> RRF
+    Semantic --> RRF
+
+    RRF --> Primary[Gemini 3.7 Flash]
+    Primary -->|Transient Failure| Fallback[Gemini 3.5 Flash-Lite]
+
+    Facts --> Grounding[Grounding + Citation Gate]
+    Primary --> Grounding
+    Fallback --> Grounding
+
+    Grounding --> Widget
 ```
 
-The frontend and AI backend are deliberately separated so provider credentials never reach the browser.
+The frontend and backend are deliberately separated so provider credentials never reach the browser.
 
-## Vercel configuration
+## Active Production Service
 
-The root `app.py` is the Vercel production entrypoint. `vercel.json` configures the Python function and prepares the local FastEmbed model during the build so cold starts do not consume Gemini embedding quota.
+- Portfolio: `https://youssef-bt.github.io/`
+- API: `https://ask-youssef-ai.vercel.app/`
+- Health: `https://ask-youssef-ai.vercel.app/health`
+- Capabilities: `https://ask-youssef-ai.vercel.app/capabilities`
+- API docs: `https://ask-youssef-ai.vercel.app/docs`
 
-Production defaults include:
+The production deployment is currently healthy and reports:
 
 ```text
-CRAWL_SITES=
+ok=true
+pages=16
+chunks=161
+structured_docs=81
+retrieval=semantic+bm25+structured-rrf
+transport=inprocess
+brain=Gemini gemini-3.7-flash
+```
+
+## Runtime Configuration
+
+The root `app.py` is the Vercel production entrypoint.
+
+Production uses:
+
+```text
+Python 3.12
+FastAPI
+Server-Sent Events
 MCP_TRANSPORT=inprocess
-ALLOWED_ORIGINS=https://youssef-bt.github.io
 EMBEDDER=fastembed
 FASTEMBED_MODEL=BAAI/bge-small-en-v1.5
 GEMINI_MODEL=gemini-3.7-flash
 GEMINI_FALLBACK_MODEL=gemini-3.5-flash-lite
+ALLOWED_ORIGINS=https://youssef-bt.github.io
 ```
 
-The production orchestration pre-runs retrieval for generative factual questions, resolves exact structured facts directly when possible, performs fast provider failover and returns a truthful evidence-based fallback if generation fails after retrieval has already succeeded.
+`requirements.txt` uses exact direct dependency pins so rebuilds do not silently absorb incompatible future releases.
 
-## Required secret
+## Secret Management
 
-The production generation path requires:
+Generation requires a server-side provider key:
 
 ```text
-GEMINI_API_KEY=<server-side secret>
+GEMINI_API_KEY
 ```
 
-The secret belongs only in Vercel project environment variables. Never commit it, expose it through a `VITE_*` variable, place it in the widget, or send it through the public API.
+The secret belongs only in the Vercel environment-variable store.
 
-## Knowledge source and synchronization
+It must never be:
 
-Production uses the synchronized snapshot committed under:
+- committed to Git;
+- placed in frontend source;
+- exposed through a `VITE_*` variable;
+- returned through SSE;
+- written into public logs or telemetry.
+
+## Knowledge Assets
+
+Production uses committed synchronized knowledge assets:
 
 ```text
 backend/data/site/
 backend/data/profile.json
 ```
 
-The portfolio repository remains the source of truth. The synchronization workflow periodically rebuilds the corpus and structured profile, then enriches them with:
+The portfolio repository remains the public source of truth.
 
-- public contact evidence, including the published email;
-- explicit career availability from the public About/Contact copy;
-- localized experience fields;
-- citable structured aggregate facts.
+The synchronization pipeline updates:
 
-The current health snapshot exposes **16 evidence pages, 161 chunks and 81 structured documents**.
+- evidence pages;
+- project metadata;
+- skills;
+- certifications;
+- experience;
+- education;
+- career status;
+- public professional links;
+- structured aggregates.
 
-## Production endpoints
+## Build Strategy
 
-```text
-GET  /                 service descriptor
-GET  /health           health + indexed corpus summary
-GET  /capabilities     public assistant metadata
-GET  /pages            synchronized evidence pages
-GET  /metrics          aggregate privacy-safe metrics
-POST /chat             SSE assistant response
-POST /feedback         fixed-category feedback
-```
+The Vercel build prepares the FastEmbed model before runtime so visitor requests do not need to download it on cold start.
 
-Production health URL:
+The production function therefore starts with:
 
-```text
-https://ask-youssef-ai.vercel.app/health
-```
+- synchronized portfolio data;
+- local semantic model assets;
+- exact Python runtime;
+- pinned direct dependencies;
+- FastAPI application entrypoint already validated.
 
-## Production quality gates
-
-Runtime-affecting changes are not considered known-good until the relevant automated layers pass:
-
-1. **CI** — compilation, unit/regression tests, synchronized-data validation and deterministic benchmark.
-2. **Career-state deployed regression** — fail-fast check that current freelance work and the explicit CDI/full-time search are represented correctly.
-3. **Strict core deployed regression** — 25 end-to-end production scenarios.
-4. **Deep adversarial audit** — 20 bug-hunting/safety/localization scenarios on the live API.
-
-`.github/workflows/vercel-production-eval.yml` waits for the production deployment, checks `/health`, runs the career suite, cools down to avoid self-triggering the public rate limit, then runs the strict core suite.
-
-`.github/workflows/deep-production-audit.yml` runs after backend/runtime-affecting changes and deliberately tests hostile, ambiguous and typo-heavy inputs.
-
-Current verified production results on **2026-09-11**:
-
-- career-state regression: **3/3 passed**;
-- strict core production regression: **25/25 passed**;
-- deep adversarial audit: **20/20 passed**;
-- latest adversarial median: **132.56 ms**;
-- latest adversarial P95: **2.281 s**;
-- latest adversarial max: **3.399 s**.
-
-These are fixed-suite QA results, not a universal accuracy guarantee.
-
-## Portfolio integration
-
-The portfolio repository contains `src/components/AskYoussefAI.jsx`. Its default production API is:
+## Production API
 
 ```text
-https://ask-youssef-ai.vercel.app
+GET  /health
+GET  /capabilities
+GET  /pages
+GET  /metrics
+POST /chat
+POST /feedback
 ```
 
-A build-time `VITE_ASK_YOUSSEF_API_URL` value may override that URL for staging/preview builds. No provider secret belongs in the frontend.
+`/chat` returns Server-Sent Events so the widget can expose model/retrieval progress without a WebSocket dependency.
 
-The browser loads the Shadow DOM widget from:
+## Reliability Controls
+
+The active production path includes:
+
+- deterministic routing before generation;
+- exact structured-fact handling;
+- in-process hybrid retrieval;
+- bounded provider timeouts;
+- bounded generation retries;
+- Gemini primary/fallback models;
+- evidence-based fallback behavior;
+- request-size limits;
+- bounded conversation context;
+- public-origin restrictions;
+- per-IP and global abuse limits;
+- production health checks.
+
+Exact structured questions can bypass generation completely.
+
+## Production Quality Gates
+
+Runtime changes are protected by multiple validation layers:
+
+1. **CI** — compilation, unit/regression tests, synchronized-data checks and deterministic benchmark.
+2. **Security** — `pip-audit` and GitHub CodeQL.
+3. **Career-state regression** — validates current work and full-time/CDI positioning.
+4. **Core production regression** — validates end-to-end public API behavior.
+5. **Deep adversarial audit** — searches for multilingual, grounding, privacy and prompt-related regressions.
+
+Current verified results:
+
+| Production Validation | Result |
+|---|---:|
+| Career-state regression | **3 / 3** |
+| Core production regression | **25 / 25** |
+| Deep adversarial audit | **20 / 20** |
+
+See [`evaluation.md`](evaluation.md) for full scope and interpretation.
+
+## Portfolio Integration
+
+The live portfolio contains `src/components/AskYoussefAI.jsx` and loads the production widget from:
 
 ```text
 https://cdn.jsdelivr.net/gh/YOUSSEF-BT/ASK-YOUSSEF-AI@main/web/widget.js
 ```
 
-The widget is mounted globally by the portfolio application and remains available across portfolio routes.
-
-## Operational production checks
-
-For runtime changes, verify automatically or manually that:
-
-- `/health` returns `ok: true`;
-- exact structured questions return complete facts instead of interpreting a top-k subset as the whole profile;
-- English, French and Arabic factual questions retrieve/cite evidence;
-- current-work and career-status answers remain localized and consistent;
-- conversation-history follow-ups remain grounded;
-- unsupported employer/personal-detail assertions abstain safely;
-- fake citations and prompt-injection attempts do not bypass grounding;
-- hidden prompt/internal reasoning/API-key requests are refused;
-- greeting and out-of-scope paths avoid unnecessary retrieval/model calls;
-- the public portfolio origin is allowed by CORS;
-- no provider secret appears in frontend code or SSE output.
-
-## Automatic deployment flow
+The production API defaults to:
 
 ```text
-ASK-YOUSSEF-AI main push
-        |
-        +--> GitHub Actions CI
-        +--> Vercel production deployment
-        +--> deployed career/core evaluation (runtime/evaluation changes)
-        +--> deep adversarial audit (backend/runtime changes)
-
-YOUSSEF-BT.github.io main push
-        |
-        +--> React/Vite build
-        +--> gh-pages publication
-        +--> live widget using Vercel API
+https://ask-youssef-ai.vercel.app
 ```
 
-## Free-tier/no-card operating model
+No model/provider secret is embedded in the frontend.
 
-The active setup uses Vercel Hobby and Gemini free-tier-compatible models. The local FastEmbed model avoids consuming Gemini embedding requests. Provider and platform quotas still apply, so this deployment is positioned as a production portfolio/demo system rather than an enterprise SLA-backed service.
+## CI/CD Flow
 
-## Render and Docker
+```text
+ASK-YOUSSEF-AI main
+      |
+      +--> GitHub Actions CI
+      +--> Security checks
+      +--> Vercel production deployment for runtime changes
+      +--> Deployed production evaluation
 
-`render.yaml`, `Dockerfile` and `docker-compose.yml` remain as alternative deployment/local-production configurations. They are not the active public hosting path; **Vercel is the production backend**.
+Portfolio main
+      |
+      +--> React/Vite build
+      +--> GitHub Pages publication
+      +--> Widget connects to Vercel API
+```
 
-## Rollback
+Documentation-only changes are intentionally separated from runtime deployment triggers where possible to avoid unnecessary production builds.
 
-If a runtime change regresses:
+## Rollback Strategy
 
-1. restore the previous known-good Vercel deployment or revert the faulty commit;
-2. if necessary, temporarily disable the portfolio widget;
-3. inspect CI artifacts, deployed regression reports, adversarial-audit reports and Vercel runtime logs;
-4. fix the root cause rather than weakening grounding/security just to satisfy a test;
-5. require the affected automated gates to pass again.
+If a future runtime change regresses production:
 
-Evaluation thresholds should only change when the evaluation contract itself is intentionally revised and documented.
+1. restore the previous known-good deployment or revert the faulty commit;
+2. verify `/health`;
+3. inspect build/runtime logs;
+4. reproduce the failure through the appropriate regression suite;
+5. fix the root cause;
+6. require the affected CI/security/evaluation gates to pass again.
+
+Evaluation thresholds should not be weakened merely to make a failing change pass.
+
+## Hosting Scope
+
+The current deployment is intentionally positioned as a **production portfolio/demo system**.
+
+It does not claim enterprise SLA, multi-region high availability, distributed rate limiting or multi-tenant authorization.
