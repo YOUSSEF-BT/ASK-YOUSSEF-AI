@@ -1,0 +1,52 @@
+name: Deep production audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "evaluation/deep_audit_cases.json"
+      - ".github/workflows/deep-production-audit.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deep-production-audit
+  cancel-in-progress: true
+
+jobs:
+  adversarial-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Wait for Vercel production deployment
+        run: sleep 75
+
+      - name: Run adversarial deployed audit
+        run: |
+          python evaluation/run_online_eval.py \
+            --api-url "https://ask-youssef-ai.vercel.app" \
+            --origin "https://youssef-bt.github.io" \
+            --dataset evaluation/deep_audit_cases.json \
+            --output deep-audit-report.json \
+            --delay 11 \
+            --retries 2 \
+            --strict
+
+      - name: Publish deep audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deep-production-audit-report
+          path: deep-audit-report.json
+          if-no-files-found: warn
+          retention-days: 14
