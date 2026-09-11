@@ -100,6 +100,15 @@ PROFILE_REFERENTS = {
     "يوسف", "له", "عنده", "لديه",
 }
 
+# Some visitors ask about a previously implied project category without spelling
+# out Youssef or the word "project", e.g. "combien de rag a construis". A narrow
+# build/develop pattern keeps those factual portfolio questions inside scope while
+# avoiding hijacking generic educational questions such as "What is RAG?".
+_TECH_BUILD_PATTERNS = (
+    r"\b(?:rag|retrieval[- ]augmented generation)\b.*\b(?:built|build|created|developed|construit|construis|cree|developpe)\b",
+    r"\b(?:built|build|created|developed|construit|construis|cree|developpe)\b.*\b(?:rag|retrieval[- ]augmented generation)\b",
+)
+
 # Short conversational follow-ups often omit both Youssef's name and the original
 # intent keyword: "what about the second one?", "et le deuxième ?", "والثاني؟".
 # Treat those as profile turns so the agent is forced to retrieve again from the
@@ -159,6 +168,11 @@ def _looks_like_follow_up(text: str, toks: set[str]) -> bool:
     return any(re.search(pattern, normalized, re.I) for pattern in FOLLOW_UP_PATTERNS)
 
 
+def _looks_like_technical_build_question(text: str) -> bool:
+    normalized = _norm(text)
+    return any(re.search(pattern, normalized, re.I) for pattern in _TECH_BUILD_PATTERNS)
+
+
 def route_question(text: str) -> Route:
     text = (text or "").strip()
     language = detect_language(text)
@@ -182,6 +196,12 @@ def route_question(text: str) -> Route:
         confidence = min(0.99, 0.72 + 0.09 * best_score)
         return Route(language=language, intent=best_intent, requires_retrieval=True,
                      portfolio_scope=True, confidence=confidence)
+
+    # Narrow technical "built/developed RAG" phrasing is a portfolio-project
+    # inventory question even when the visitor omits Youssef's name.
+    if _looks_like_technical_build_question(text):
+        return Route(language=language, intent="projects", requires_retrieval=True,
+                     portfolio_scope=True, confidence=0.86)
 
     greeting_only = bool(toks) and toks.issubset(GREETING_TERMS | {"youssef", "يوسف"})
     if greeting_only:
