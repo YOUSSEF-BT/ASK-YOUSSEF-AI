@@ -1,64 +1,56 @@
-# Architecture
+# System Architecture
 
 Ask Youssef AI is designed as a production portfolio intelligence system rather than a prompt-only chatbot.
 
-The architecture separates **knowledge synchronization, deterministic routing, hybrid retrieval, generative reasoning, grounding, observability and delivery** into explicit layers.
+The system separates **knowledge synchronization, deterministic routing, hybrid retrieval, generative reasoning, grounding, observability and delivery** into explicit layers so each part can be tested and reasoned about independently.
 
-## Production Architecture
+## High-Level Architecture
 
 ```mermaid
 flowchart TD
+    P[Professional Portfolio] --> S[Knowledge Synchronization]
+    S --> M[Markdown Evidence Corpus]
+    S --> J[Structured Professional Profile]
 
-    Portfolio[Professional Portfolio]
-    Portfolio --> Sync[Knowledge Synchronization]
+    U[Recruiter / Client / Engineer] --> W[Portfolio Widget]
+    W --> API[FastAPI /chat SSE]
+    API --> R[Language + Intent Router]
 
-    Sync --> Corpus[Markdown Evidence Corpus]
-    Sync --> Profile[Structured Professional Profile]
+    R -->|Exact or high-risk fact| F[Precision Fact Resolver]
+    R -->|Open factual question| H[Hybrid Retrieval]
 
-    Visitor[Recruiter / Client / Engineer]
-    Visitor --> Widget[Portfolio Widget]
+    H --> ST[Structured Search]
+    H --> B[BM25]
+    H --> E[FastEmbed Semantic Search]
 
-    Widget --> API[FastAPI /chat SSE]
-    API --> Router[Language + Intent Router]
+    ST --> RRF[RRF + Evidence Boosts]
+    B --> RRF
+    E --> RRF
 
-    Router -->|Exact / High-Risk Fact| Facts[Precision Fact Resolver]
-    Router -->|Open Professional Question| Hybrid[Hybrid Retrieval]
+    RRF --> C[Ranked Evidence]
+    C --> G[Gemini 3.7 Flash]
+    G -->|Transient failure| GF[Gemini 3.5 Flash-Lite]
 
-    Hybrid --> Structured[Structured Search]
-    Hybrid --> Lexical[BM25]
-    Hybrid --> Semantic[FastEmbed Semantic Search]
+    F --> Q[Grounding + Citation Boundary]
+    G --> Q
+    GF --> Q
 
-    Structured --> Fusion[RRF + Evidence Boosts]
-    Lexical --> Fusion
-    Semantic --> Fusion
+    Q -->|Supported| A[Grounded Answer]
+    Q -->|Insufficient evidence| X[Safe Abstention]
 
-    Fusion --> Evidence[Ranked Evidence]
-    Evidence --> Primary[Gemini 3.7 Flash]
-    Primary -->|Transient Failure| Fallback[Gemini 3.5 Flash-Lite]
-
-    Facts --> Grounding[Grounding + Citation Boundary]
-    Primary --> Grounding
-    Fallback --> Grounding
-
-    Grounding -->|Supported| Answer[Grounded Answer]
-    Grounding -->|Insufficient Evidence| Abstain[Safe Abstention]
-
-    Answer --> Widget
-    Abstain --> Widget
-
-    API --> Metrics[Privacy-Safe Aggregate Telemetry]
+    API --> O[Privacy-Safe Aggregate Telemetry]
 ```
 
-## Architectural Goals
+## Design Goals
 
-The system was designed around six engineering goals:
+The architecture follows six principles:
 
-1. **Evidence before claims** — factual portfolio answers should be tied to synchronized professional evidence.
-2. **Deterministic precision where possible** — exact counts, inventories and employment checks should not depend on probabilistic generation.
-3. **Hybrid retrieval** — exact identifiers, semantic concepts and structured entities require different retrieval strengths.
+1. **Evidence before claims** — factual professional answers should be connected to synchronized portfolio evidence.
+2. **Deterministic precision where possible** — exact counts, inventories and employer checks should not depend on generative inference.
+3. **Hybrid retrieval** — exact identifiers, structured entities and semantic concepts benefit from different retrieval methods.
 4. **Safe failure behavior** — missing evidence or provider failure should not become fabricated professional claims.
-5. **Production observability** — runtime behavior should be measurable without storing visitor conversations.
-6. **Clear separation of concerns** — retrieval, generation, grounding, delivery and synchronization remain independently testable.
+5. **Observable production behavior** — runtime quality should be measurable without retaining visitor conversations.
+6. **Separation of concerns** — retrieval, generation, grounding, synchronization and delivery remain independently testable.
 
 ## Source of Truth
 
@@ -66,13 +58,13 @@ The public professional portfolio is the authoritative source for public profile
 
 Synchronization produces complementary representations:
 
-- `backend/data/site/` — Markdown evidence used by lexical and semantic retrieval;
-- `backend/data/profile.json` — structured entities used for exact facts and field-aware retrieval;
-- `career-status.md` — explicit public availability and current-status evidence;
+- `backend/data/site/` — Markdown evidence for lexical and semantic retrieval;
+- `backend/data/profile.json` — structured entities for exact facts and field-aware retrieval;
+- `career-status.md` — explicit current-status and availability evidence;
 - `structured-profile.md` — citable aggregate profile facts;
-- `manifest.json` — integrity metadata for synchronized content.
+- `manifest.json` — synchronization integrity metadata.
 
-Current synchronized production snapshot:
+Current synchronized snapshot:
 
 | Entity | Count |
 |---|---:|
@@ -86,29 +78,28 @@ Current synchronized production snapshot:
 | Retrieval chunks | 161 |
 | Structured documents | 81 |
 
-## Deterministic Routing
+## Routing Layer
 
 `backend/router.py` classifies language, intent and portfolio scope before generation.
 
-The router protects several behaviors:
+Important behaviors include:
 
 - English, French and Arabic routing;
-- factual profile questions requiring evidence;
-- greeting and out-of-scope fast paths;
-- private/prompt/secret requests;
-- history-aware follow-ups;
-- conservative handling of ambiguous profile questions.
+- factual portfolio questions requiring evidence;
+- deterministic greeting and out-of-scope paths;
+- hidden-prompt and secret-exfiltration refusal;
+- history-aware follow-up handling;
+- conservative handling of ambiguous professional questions.
 
-The current visitor question controls response language, even when earlier conversation context is in another language.
+The current visitor question controls the response language, even when previous turns use another language.
 
 ## Precision Fact Layer
 
-`backend/precision_facts.py` and `backend/structured_facts.py` resolve questions that should never depend on a partial retrieval window.
+`backend/precision_facts.py` and `backend/structured_facts.py` handle questions that should never depend on a partial retrieval window.
 
-Examples include:
+Typical examples:
 
-- certification totals;
-- Oracle certification inventory;
+- certification totals and issuer inventories;
 - project, skill, experience and education counts;
 - employer checks;
 - issuer/employer disambiguation;
@@ -118,23 +109,23 @@ Examples include:
 
 This layer reads the complete synchronized profile and returns deterministic evidence-backed responses.
 
-## Hybrid Retrieval
+## Hybrid Retrieval Layer
 
-Open factual questions use three signals:
+Open factual questions use three complementary signals.
 
-### 1. Structured profile retrieval
+### Structured retrieval
 
-Best for entities and fields such as employers, project metadata, technologies, certifications and contact links.
+Best for entities and professional fields such as employers, projects, technologies, certifications and contact links.
 
-### 2. BM25 lexical retrieval
+### BM25 lexical retrieval
 
-Best for exact identifiers, names and technical vocabulary such as `YOLOv11s`, `BoT-SORT`, company names and certification issuers.
+Best for names and exact technical vocabulary such as `YOLOv11s`, `BoT-SORT`, company names and certification issuers.
 
-### 3. FastEmbed semantic retrieval
+### FastEmbed semantic retrieval
 
-Best for conceptual similarity when the visitor's language differs from the exact wording used in the portfolio.
+Best for conceptual similarity when the visitor uses different wording from the portfolio.
 
-The candidate sets are fused with **Reciprocal Rank Fusion (RRF)** and bounded deterministic evidence boosts.
+The candidate sets are combined with **Reciprocal Rank Fusion (RRF)** and bounded deterministic evidence boosts.
 
 ```text
 Structured Search + BM25 + FastEmbed
@@ -146,17 +137,17 @@ Structured Search + BM25 + FastEmbed
           Ranked context
 ```
 
-## Generation and Provider Failover
+## Generation & Failover
 
-The primary model is **Gemini 3.7 Flash**.
+The primary generation model is **Gemini 3.7 Flash**.
 
 Transient quota, timeout or overload failures can switch generation to **Gemini 3.5 Flash-Lite**.
 
-Generation is intentionally not used for every request. Deterministic greetings, scope responses and exact structured facts bypass the model when possible.
+Generation is intentionally bypassed for deterministic cases such as exact structured facts, greetings and bounded scope responses.
 
-If retrieval succeeds but generation fails, the system prefers an evidence-based fallback over an unsupported answer.
+If retrieval succeeds but generation still fails, the system prefers an evidence-based fallback instead of an unsupported answer.
 
-## Grounding and Citation Boundary
+## Grounding Boundary
 
 `backend/grounding.py` acts as a model-independent trust boundary.
 
@@ -165,17 +156,15 @@ It can:
 - validate returned source IDs;
 - remove unknown citations;
 - normalize canonical citations;
-- block unsupported numeric, URL and email claims where applicable;
+- constrain unsupported numeric, URL and email claims;
 - detect unsupported high-impact professional assertions;
-- replace unsupported claims with evidence-based abstention.
+- replace unsupported claims with conservative abstention.
 
 This is a deterministic safety boundary, not a claim of universal semantic theorem proving.
 
-## API and Streaming
+## API & Streaming
 
-The production API is implemented with FastAPI and Server-Sent Events.
-
-Important endpoints:
+The production API uses FastAPI and Server-Sent Events.
 
 ```text
 GET  /health
@@ -186,7 +175,7 @@ POST /chat
 POST /feedback
 ```
 
-The visitor-facing widget consumes `/chat` as an SSE stream.
+The portfolio widget consumes `/chat` as an SSE stream.
 
 ## Observability
 
@@ -204,8 +193,6 @@ The system is not designed to retain visitor prompts, answers, IP addresses, ema
 
 ## Production Runtime
 
-The active production path is:
-
 ```text
 Portfolio Widget
       ↓
@@ -220,45 +207,30 @@ Gemini Generation + Grounding
 
 The FastEmbed model is prepared during build so production requests do not need to download the embedding model at runtime.
 
-## Quality Architecture
+## Validation Layers
 
-The repository validates the architecture at multiple layers:
+The architecture is protected by:
 
 - unit and regression tests;
-- deterministic routing/retrieval benchmark;
+- deterministic routing/retrieval benchmarks;
 - deployed career-state checks;
-- core production regression;
-- adversarial production audit;
+- strict core production regression;
+- deep adversarial production audit;
 - human recruiter/client/visitor evaluation;
 - dependency vulnerability auditing;
 - CodeQL static analysis.
 
-See [`evaluation.md`](evaluation.md) for the evaluation contract.
-
-## Security Boundaries
-
-Key boundaries include:
-
-- secrets remain server-side;
-- frontend code contains only the public API URL;
-- retrieved content is treated as data, not instructions;
-- request and history sizes are bounded;
-- history roles are validated;
-- browser origins are restricted;
-- unsupported professional claims are refused rather than guessed;
-- hidden-prompt and secret-exfiltration requests are rejected.
-
-See [`security.md`](security.md) for the full security model.
+See [`evaluation.md`](evaluation.md) for the evaluation contract and [`security.md`](security.md) for the security model.
 
 ## Deliberate Limits
 
-The project does not claim:
+The current project does not claim:
 
-- universal semantic entailment verification;
 - arbitrary-question 100% accuracy;
-- persistent distributed observability;
-- enterprise-scale load guarantees;
 - enterprise SLA availability;
+- multi-region high availability;
+- persistent distributed observability;
+- distributed rate limiting;
 - multi-tenant identity or RBAC.
 
-Those would require additional infrastructure and should only be claimed after implementation and measurement.
+Those capabilities should only be claimed after implementation and measurement.
