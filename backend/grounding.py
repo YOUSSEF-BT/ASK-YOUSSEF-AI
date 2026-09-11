@@ -12,18 +12,49 @@ import re
 from dataclasses import dataclass
 from typing import Any, Iterable
 
+from router import detect_language
+
 _SOURCE_WITH_SCORE = re.compile(r"\[([^\]\n]+?)\s*·\s*relevance\s+[0-9.]+\]", re.I)
 _SIMPLE_SOURCE = re.compile(r"\[([A-Za-z0-9_.:-][A-Za-z0-9_.:/-]{1,120})\]")
 _GROUPED_SOURCES = re.compile(
     r"\[([A-Za-z0-9_.:-][A-Za-z0-9_.:/-]{1,120}(?:\s*,\s*[A-Za-z0-9_.:-][A-Za-z0-9_.:/-]{1,120})+)\]"
 )
+_BRACKETED = re.compile(r"\[([^\]\n]{1,180})\]")
 _URL = re.compile(r"https?://[^\s)\]>]+", re.I)
 _EMAIL = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I)
 _NUMBER = re.compile(r"(?<![\w])\d+(?:[.,]\d+)*(?:\s?%|\s?FPS)?", re.I)
+_SOURCEISH = (
+    "project-", "skills", "certifications", "experience-education",
+    "public-links", "career-status", "structured-profile", "relevance",
+)
 
 
 def _norm_literal(value: str) -> str:
     return re.sub(r"\s+", "", value.lower().replace(",", ""))
+
+
+def _strip_malformed_source_brackets(text: str) -> str:
+    """Remove citation-like bracket fragments that are not valid source IDs.
+
+    Models occasionally emit malformed grouped citations such as
+    ``[project-openle gama... · skills]``. The normal citation parser correctly
+    refuses to trust them, but leaving the raw bracket text in the public answer
+    looks broken and can mislead visitors. Markdown link labels are left alone.
+    """
+    def repl(match: re.Match[str]) -> str:
+        whole = match.group(0)
+        content = match.group(1).strip()
+        if _SIMPLE_SOURCE.fullmatch(whole):
+            return whole
+        low = content.lower()
+        if "·" in content or any(token in low for token in _SOURCEISH):
+            return ""
+        return whole
+
+    cleaned = _BRACKETED.sub(repl, text or "")
+    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
+    cleaned = re.sub(r"[ \t]+([.,;:!?])", r"\1", cleaned)
+    return cleaned.strip()
 
 
 def _normalize_public_format(answer: str) -> str:
@@ -45,7 +76,7 @@ def _normalize_public_format(answer: str) -> str:
     text = re.sub(r"\*\*([^*\n]+?)\*\*", r"\1", text)
     text = re.sub(r"(?m)^[ \t]*[-*][ \t]+", "• ", text)
     text = re.sub(r"(?m)^([0-9]+)\\?\.[ \t]+", r"\1. ", text)
-    return text.strip()
+    return _strip_malformed_source_brackets(text)
 
 
 def _search_observations(steps: Iterable[Any]) -> list[str]:
@@ -102,6 +133,24 @@ def _remove_unknown_citations(answer: str, unknown: Iterable[str]) -> str:
     return cleaned.strip()
 
 
+def _grounding_abstention(answer: str) -> str:
+    language = detect_language(answer or "")
+    if language == "fr":
+        return (
+            "Je n’ai pas pu vérifier ce détail exact dans les éléments du portfolio "
+            "récupérés pour cette question, donc je ne le présenterai pas comme un fait."
+        )
+    if language == "ar":
+        return (
+            "لم أتمكن من التحقق من هذه المعلومة بدقة ضمن أدلة المحفظة التي تم "
+            "استرجاعها لهذا السؤال، لذلك لن أقدمها على أنها حقيقة."
+        )
+    return (
+        "I couldn't verify that exact detail from the portfolio evidence returned "
+        "for this question, so I won't present it as a fact."
+    )
+
+
 @dataclass(frozen=True)
 class GroundingReport:
     has_search_evidence: bool
@@ -149,12 +198,14 @@ def enforce_grounding(answer: str, steps: Iterable[Any]) -> tuple[str, Grounding
 
     if not report.high_risk_supported:
         sources = ", ".join(f"[{s}]" for s in report.evidence_sources[:3])
-        safe = (
-            "I couldn't verify that exact detail from the portfolio evidence returned "
-            "for this question, so I won't present it as a fact."
-        )
+        safe = _grounding_abstention(formatted)
         if sources:
-            safe += f" Retrieved sources: {sources}."
+            if detect_language(formatted) == "fr":
+                safe += f" Sources récupérées : {sources}."
+            elif detect_language(formatted) == "ar":
+                safe += f" المصادر المسترجعة: {sources}."
+            else:
+                safe += f" Retrieved sources: {sources}."
         return safe, report
 
     guarded = _remove_unknown_citations(formatted, report.unknown_citations)
