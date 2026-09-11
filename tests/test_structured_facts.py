@@ -178,10 +178,12 @@ class StructuredPortfolioFactsTests(unittest.TestCase):
         result = self.resolver.resolve("youssef il fait quoi maintenant")
         self.assertIsNotNone(result)
         self.assertTrue(result.answer.startswith("Actuellement"))
-        self.assertIn("Freelance AI/ML Engineer", result.answer)
+        self.assertIn("Ingénieur IA/ML Freelance", result.answer)
         self.assertIn("Fiverr", result.answer)
-        self.assertIn("Sep 2026 — Present", result.answer)
-        self.assertIn("RAG systems", result.answer)
+        self.assertIn("Sept 2026 — Aujourd’hui", result.answer)
+        self.assertIn("Systèmes RAG", result.answer)
+        self.assertIn("recherche une opportunité en CDI", result.answer)
+        self.assertNotIn("Designing and delivering", result.answer)
 
     def test_goals_are_not_inferred_when_not_explicitly_declared(self):
         result = self.resolver.resolve("donne moi les objectif et les butes de youssef")
