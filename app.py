@@ -64,6 +64,17 @@ _SENSITIVE_REQUEST = re.compile(
     re.I,
 )
 
+# Very short/typo relationship questions can omit Youssef's name or even use
+# "hi" instead of "he". They still need the portfolio privacy guard instead of
+# the generic out-of-scope message. Keep this deliberately narrow so unrelated
+# questions about other people are not reinterpreted as questions about Youssef.
+_PRIVATE_RELATIONSHIP_SHORTHAND = re.compile(
+    r"(?:^|\b)(?:(?:he|hi|youssef)\s+(?:is\s+)?married|"
+    r"is\s+(?:he|hi|youssef)\s+married|"
+    r"(?:his|youssef'?s)\s+marital\s+status)(?:\b|\s*[?.!]*$)",
+    re.I,
+)
+
 
 def _greeting_answer(language: str) -> str:
     if language == "fr":
@@ -146,6 +157,11 @@ def _production_stream(question: str, history=None):
         return
     if _SENSITIVE_REQUEST.search(question or ""):
         yield from _emit_deterministic(route, _sensitive_answer(route.language))
+        return
+    if _PRIVATE_RELATIONSHIP_SHORTHAND.search(question or ""):
+        # Bypass only the generic out-of-scope gate; backend._stream immediately
+        # resolves this through the deterministic structured privacy answer.
+        yield from _original_stream(question, history)
         return
     if not route.portfolio_scope:
         yield from _emit_deterministic(route, _out_of_scope_answer(route.language))
