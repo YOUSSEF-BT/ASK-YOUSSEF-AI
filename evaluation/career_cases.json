@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "status": "career-state-regression",
-  "description": "Deployed regression checks for explicit career availability and localized current-work answers. These cases prevent the assistant from inferring that freelance work replaces Youssef's documented full-time CDI search.",
+  "description": "Deployed regression checks for explicit career availability and localized current-work answers. These cases prevent the assistant from inferring that freelance work replaces Youssef's documented full-time CDI search or presenting Fiverr as his employer.",
   "thresholds": {
     "completion_rate": 1.0,
     "required_retrieval_rate": 1.0,
@@ -19,8 +19,9 @@
       "expected_sources": ["experience-education", "career-status"],
       "expected_answer_contains": [
         "Ingénieur IA/ML Freelance",
+        "en indépendant via Fiverr",
         "Sept 2026 — Aujourd’hui",
-        "Conception et réalisation",
+        "activité parallèle",
         "recherche une opportunité en CDI"
       ]
     },
