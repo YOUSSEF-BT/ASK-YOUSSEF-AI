@@ -44,6 +44,7 @@ _BACKEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend
 if _BACKEND_DIR not in sys.path:
     sys.path.insert(0, _BACKEND_DIR)
 import vercel_quality_patch  # noqa: E402,F401
+import project_fingerprint_patch  # noqa: E402,F401
 import vercel_agent_patch  # noqa: E402,F401
 import vercel_gemini_failover  # noqa: E402,F401
 
@@ -123,64 +124,72 @@ def _out_of_scope_answer(language: str) -> str:
             "Je suis Ask Youssef AI, le copilote du portfolio professionnel de Youssef "
             "Bouzit. Je reste centré sur son parcours, ses projets, compétences, "
             "certifications, expériences, services et moyens de contact. Posez-moi une "
-            "question sur son profil professionnel et je vous répondrai à partir du portfolio."
+            "question sur son profil professionnel et je répondrai à partir du portfolio."
         )
     if language == "ar":
         return (
-            "أنا Ask Youssef AI، المساعد الخاص بالملف المهني ليوسف بوزيت. ألتزم بمواضيع "
-            "مساره المهني ومشاريعه ومهاراته وشهاداته وخبراته وخدماته وطرق التواصل معه. "
-            "اسألني عن ملفه المهني وسأجيب اعتماداً على محتوى المحفظة."
+            "أنا Ask Youssef AI، المساعد الخاص بالملف المهني ليوسف بوزيت. أركز على "
+            "مسيرته ومشاريعه ومهاراته وشهاداته وخبراته وخدماته وطرق التواصل معه. "
+            "اسألني عن ملفه المهني وسأجيب اعتماداً على محتوى الـ portfolio."
         )
     return (
         "I'm Ask Youssef AI, Youssef Bouzit's professional portfolio copilot. I stay "
-        "focused on his background, projects, skills, certifications, experience, services, "
-        "and contact options. Ask me about his professional profile and I'll answer from "
-        "the portfolio."
+        "focused on his background, projects, skills, certifications, experience, "
+        "services, and contact options. Ask me about his professional profile and I'll "
+        "answer from the portfolio."
     )
 
 
-def _emit_deterministic(route, answer: str):
-    started = time.monotonic()
-    _backend.TELEMETRY.record_request(route)
-    _backend.TELEMETRY.record_completed(
-        latency_ms=(time.monotonic() - started) * 1000.0,
-        retrieval_used=False,
-        grounding_intervened=False,
-    )
-    yield _backend._sse("final", answer=answer, tools_used=[])
+def _sse(event: str, payload: dict) -> str:
+    import json
+
+    return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
-def _production_stream(question: str, history=None):
-    route = _backend.route_question(question)
+async def _stream_with_fast_public_routes(request, body):
+    started = time.perf_counter()
+    question = (body.question or "").strip()
+    history = [item.model_dump() for item in body.history]
+    route = _backend.route_intent(question, history)
+    language = route.language
+    normalized = _backend._normalize_text(question)
+
+    # Keep the shorthand relationship question inside the backend's deterministic
+    # private-profile guard even when the generic router marks it out of scope.
+    private_relationship = bool(_PRIVATE_RELATIONSHIP_SHORTHAND.search(normalized))
+
+    if _SENSITIVE_REQUEST.search(normalized):
+        answer = _sensitive_answer(language)
+        _backend.TELEMETRY.record_request(
+            latency_ms=(time.perf_counter() - started) * 1000,
+            completed=True,
+            used_retrieval=False,
+        )
+        yield _sse("final", {"answer": answer})
+        return
+
     if route.intent == "greeting":
-        yield from _emit_deterministic(route, _greeting_answer(route.language))
+        answer = _greeting_answer(language)
+        _backend.TELEMETRY.record_request(
+            latency_ms=(time.perf_counter() - started) * 1000,
+            completed=True,
+            used_retrieval=False,
+        )
+        yield _sse("final", {"answer": answer})
         return
-    if _SENSITIVE_REQUEST.search(question or ""):
-        yield from _emit_deterministic(route, _sensitive_answer(route.language))
+
+    if not route.portfolio_scope and not private_relationship:
+        answer = _out_of_scope_answer(language)
+        _backend.TELEMETRY.record_request(
+            latency_ms=(time.perf_counter() - started) * 1000,
+            completed=True,
+            used_retrieval=False,
+        )
+        yield _sse("final", {"answer": answer})
         return
-    if _PRIVATE_RELATIONSHIP_SHORTHAND.search(question or ""):
-        # Bypass only the generic out-of-scope gate; backend._stream immediately
-        # resolves this through the deterministic structured privacy answer.
-        yield from _original_stream(question, history)
-        return
-    if not route.portfolio_scope:
-        yield from _emit_deterministic(route, _out_of_scope_answer(route.language))
-        return
-    yield from _original_stream(question, history)
+
+    async for event in _original_stream(request, body):
+        yield event
 
 
-_backend._stream = _production_stream
-
-
-@app.get("/")
-def service_root():
-    """Human-friendly root for visitors who open the backend URL directly."""
-    return {
-        "name": "Ask Youssef AI",
-        "status": "live",
-        "description": "Multilingual, retrieval-grounded professional portfolio copilot for Youssef Bouzit.",
-        "portfolio": "https://youssef-bt.github.io/",
-        "health": "/health",
-        "capabilities": "/capabilities",
-        "api_docs": "/docs",
-    }
+_backend._stream = _stream_with_fast_public_routes
