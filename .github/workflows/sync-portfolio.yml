@@ -11,6 +11,7 @@ on:
       - "scripts/build_structured_profile.py"
       - "scripts/enrich_public_contact.py"
       - "scripts/enrich_career_status.py"
+      - "scripts/enrich_structured_profile_source.py"
       - ".github/workflows/sync-portfolio.yml"
 
 permissions:
@@ -43,6 +44,12 @@ jobs:
 
       - name: Build structured professional profile
         run: python scripts/build_structured_profile.py --source /tmp/youssef-portfolio --output backend/data/profile.json
+
+      - name: Generate citable structured aggregate source
+        run: |
+          python scripts/enrich_structured_profile_source.py \
+            --site backend/data/site \
+            --profile backend/data/profile.json
 
       - name: Enrich public contact evidence
         run: |
@@ -100,6 +107,14 @@ jobs:
               raise SystemExit("Structured profile certification count does not match corpus manifest")
           if profile_checks["public_links"] != manifest["public_links"]:
               raise SystemExit("Structured profile public-link count does not match corpus manifest")
+
+          structured_source = root / "structured-profile.md"
+          if not structured_source.is_file():
+              raise SystemExit("structured-profile.md was not generated")
+          structured_text = structured_source.read_text(encoding="utf-8")
+          expected_project_count = f"Projects: {profile_checks['projects']}"
+          if expected_project_count not in structured_text:
+              raise SystemExit("Structured aggregate source has a stale project count")
 
           career = profile.get("career_status") or {}
           if career.get("seeking_full_time") is not True:
