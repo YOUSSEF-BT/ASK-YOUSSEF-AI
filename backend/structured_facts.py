@@ -24,8 +24,10 @@ _JOB_SEARCH_PATTERNS = (
     r"\b(?:is|does) (?:youssef|he) (?:seeking|looking for) (?:a )?(?:full-time|full time)\b",
     r"\b(?:is|does) (?:youssef|he) (?:open|available) (?:to|for) (?:full-time|full time|work|opportunities)\b",
     r"\b(?:est ce que |est-ce que )?(?:youssef|il) .*\b(?:recherche|cherche)\b.*\b(?:emploi|travail|poste|job|cdi|opportunite)\b",
+    r"\b(?:youssef\s+)?(?:recherche|cherche)(?:-t-il)?\b.*\b(?:emploi|travail|poste|job|cdi|opportunite)\b",
     r"\b(?:youssef|il) (?:recherche|cherche) (?:un |une |des )?(?:emploi|travail|poste|job|cdi|opportunite)\b",
-    r"\b(?:youssef|il) .*\b(?:ouvert|disponible)\b.*\b(?:cdi|emploi|travail|opportunite)\b",
+    r"\b(?:youssef|il) .*\b(?:ouvert|disponible)\b.*\b(?:cdi|emploi|travail|opportunite|temps plein)\b",
+    r"\b(?:est-il|il est|youssef est)\b.*\b(?:ouvert|disponible)\b.*\b(?:cdi|emploi|travail|opportunite|temps plein)\b",
     r"هل .*يوسف.*(?:يبحث|يبحث حاليا).*(?:عمل|وظيفة|فرصة)",
 )
 
@@ -156,8 +158,19 @@ class StructuredFactResolver(_precision.StructuredFactResolver):
         return replace(result, answer=answer, source=source)
 
     def resolve(self, question, history=None):
+        history = history or []
         language = _precision.detect_language(question)
+
+        # Highest-risk career state is explicit, never inferred from freelance.
         result = self._resolve_job_search(question, language)
+
+        # Certification wording must be handled before generic "Agentic AI"
+        # capability matching. Otherwise a question such as "Which Oracle Agentic
+        # AI certification does he have?" can be semantically hijacked by the
+        # capability resolver merely because its title contains "Agentic AI".
+        if result is None:
+            result = self._resolve_certifications(question, history, language)
+
         if result is None:
             result = super().resolve(question, history)
         if result is None:
