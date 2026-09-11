@@ -1,7 +1,7 @@
 {
-  "version": "1.2",
+  "version": "1.3",
   "status": "adversarial-deep-audit",
-  "description": "Bug-hunting production suite covering multilingual intent, semantic hallucination pressure, recruiter/client questions, prompt injection, privacy boundaries, follow-ups, citation integrity, localization quality and scope control.",
+  "description": "Bug-hunting production suite covering multilingual intent, semantic hallucination pressure, recruiter/client questions, prompt injection, privacy boundaries, follow-ups, citation integrity, localization quality, deterministic precision facts and scope control.",
   "thresholds": {
     "completion_rate": 1.0,
     "required_retrieval_rate": 1.0,
