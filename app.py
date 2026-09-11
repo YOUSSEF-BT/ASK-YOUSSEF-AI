@@ -53,6 +53,16 @@ import backend.app as _backend  # noqa: E402
 # Vercel's FastAPI runtime discovers the exported variable named `app`.
 app = _backend.app
 
+
+@app.get("/deployment")
+def deployment_metadata():
+    """Expose non-secret deployment identity for CI promotion verification."""
+    return {
+        "commit": os.environ.get("VERCEL_GIT_COMMIT_SHA", ""),
+        "environment": os.environ.get("VERCEL_ENV", ""),
+    }
+
+
 # Greetings, clearly out-of-scope requests, and secret-exfiltration attempts are
 # deterministic product UX. They do not need a model call or retrieval.
 _original_stream = _backend._stream
