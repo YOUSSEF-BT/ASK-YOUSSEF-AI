@@ -51,8 +51,9 @@ import backend.app as _backend  # noqa: E402
 # Vercel's FastAPI runtime discovers the exported variable named `app`.
 app = _backend.app
 
-# Greetings are deterministic product UX, not a knowledge-retrieval task. Keep
-# them instant and free: no Gemini call, no search tool, no accidental citation.
+# Greetings and clearly out-of-scope requests are deterministic product UX, not
+# knowledge-retrieval tasks. Keep them instant and free: no Gemini call, no
+# search tool, and no risk that a general-purpose model answers unrelated trivia.
 _original_stream = _backend._stream
 
 
@@ -76,18 +77,46 @@ def _greeting_answer(language: str) -> str:
     )
 
 
+def _out_of_scope_answer(language: str) -> str:
+    if language == "fr":
+        return (
+            "Je suis Ask Youssef AI, le copilote du portfolio professionnel de Youssef "
+            "Bouzit. Je reste centré sur son parcours, ses projets, compétences, "
+            "certifications, expériences, services et moyens de contact. Posez-moi une "
+            "question sur son profil professionnel et je vous répondrai à partir du portfolio."
+        )
+    if language == "ar":
+        return (
+            "أنا Ask Youssef AI، المساعد الخاص بالملف المهني ليوسف بوزيت. ألتزم بمواضيع "
+            "مساره المهني ومشاريعه ومهاراته وشهاداته وخبراته وخدماته وطرق التواصل معه. "
+            "اسألني عن ملفه المهني وسأجيب اعتماداً على محتوى المحفظة."
+        )
+    return (
+        "I'm Ask Youssef AI, Youssef Bouzit's professional portfolio copilot. I stay "
+        "focused on his background, projects, skills, certifications, experience, services, "
+        "and contact options. Ask me about his professional profile and I'll answer from "
+        "the portfolio."
+    )
+
+
+def _emit_deterministic(route, answer: str):
+    started = time.monotonic()
+    _backend.TELEMETRY.record_request(route)
+    _backend.TELEMETRY.record_completed(
+        latency_ms=(time.monotonic() - started) * 1000.0,
+        retrieval_used=False,
+        grounding_intervened=False,
+    )
+    yield _backend._sse("final", answer=answer, tools_used=[])
+
+
 def _production_stream(question: str, history=None):
     route = _backend.route_question(question)
     if route.intent == "greeting":
-        started = time.monotonic()
-        _backend.TELEMETRY.record_request(route)
-        answer = _greeting_answer(route.language)
-        _backend.TELEMETRY.record_completed(
-            latency_ms=(time.monotonic() - started) * 1000.0,
-            retrieval_used=False,
-            grounding_intervened=False,
-        )
-        yield _backend._sse("final", answer=answer, tools_used=[])
+        yield from _emit_deterministic(route, _greeting_answer(route.language))
+        return
+    if not route.portfolio_scope:
+        yield from _emit_deterministic(route, _out_of_scope_answer(route.language))
         return
     yield from _original_stream(question, history)
 
