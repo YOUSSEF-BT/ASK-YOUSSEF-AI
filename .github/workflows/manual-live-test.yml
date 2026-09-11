@@ -1,0 +1,102 @@
+name: Manual live recruiter test
+
+on:
+  push:
+    branches: [manual-live-test-20260911]
+    paths:
+      - ".github/workflows/manual-live-test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  manual-live-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Test portfolio fallback backend like a recruiter
+        env:
+          API_URL: "https://ask-youssef-9e1ihhfsh-youssefbts-projects.vercel.app"
+        run: |
+          python - <<'PY'
+          import json, os, time, urllib.request, urllib.error
+
+          questions = [
+              "Tell me about Youssef Bouzit.",
+              "What is Youssef doing professionally right now?",
+              "Is Youssef currently looking for a full-time job or has he chosen freelancing?",
+              "Why should a company hire Youssef instead of another junior AI Engineer?",
+              "What are Youssef's strongest technical skills?",
+              "What is his Computer Vision experience?",
+              "Has Youssef worked on real-time AI systems? Show me evidence.",
+              "What results did he achieve on his road accident detection project?",
+              "What are the limitations of his road accident detection system?",
+              "Show evidence of his RAG and LLM skills.",
+              "What is Youssef's strongest RAG project and why is it important?",
+              "What experience does he have with AI agents or Agentic AI?",
+              "Can Youssef build an end-to-end AI application, not just train a model?",
+              "Rank his top 3 projects for an AI Engineer recruiter and explain why.",
+              "Which project best demonstrates production or MLOps skills?",
+              "Which certifications does Youssef have?",
+              "What are his most valuable certifications for an AI Engineer position?",
+              "How many Oracle certifications does he have and what are they?",
+              "Did Youssef work at Oracle, IBM or Anthropic?",
+              "pour quoi youssef et pas un autre candidat pour un poste ai engineer ?",
+              "Quel projet utilise Controlled RAG pour le droit marocain ?",
+              "Which Youssef project uses YOLOv11s and BoT-SORT?",
+          ]
+
+          api = os.environ["API_URL"].rstrip("/") + "/chat"
+          results = []
+          for i, q in enumerate(questions, 1):
+              body = json.dumps({"question": q, "history": []}).encode("utf-8")
+              req = urllib.request.Request(
+                  api,
+                  data=body,
+                  method="POST",
+                  headers={
+                      "Content-Type": "application/json",
+                      "Accept": "text/event-stream",
+                      "Origin": "https://youssef-bt.github.io",
+                  },
+              )
+              status = None
+              answer = ""
+              err = ""
+              started = time.time()
+              try:
+                  with urllib.request.urlopen(req, timeout=180) as response:
+                      status = response.status
+                      raw = response.read().decode("utf-8", errors="replace")
+                  for line in raw.splitlines():
+                      if not line.startswith("data: "):
+                          continue
+                      try:
+                          ev = json.loads(line[6:])
+                      except json.JSONDecodeError:
+                          continue
+                      if ev.get("kind") == "final":
+                          answer = ev.get("answer", "")
+                      elif ev.get("kind") == "error":
+                          err = ev.get("message", "")
+              except Exception as exc:
+                  err = f"{type(exc).__name__}: {exc}"
+              latency = round(time.time() - started, 2)
+              print("\n" + "="*100)
+              print(f"TEST {i:02d}/{len(questions)} | HTTP={status} | {latency}s")
+              print("Q:", q)
+              print("A:", answer or f"[NO FINAL ANSWER] {err}")
+              results.append({"question": q, "status": status, "answer": answer, "error": err, "latency_s": latency})
+              if i != len(questions):
+                  time.sleep(12)
+
+          print("\n" + "#"*100)
+          print("JSON_RESULTS_START")
+          print(json.dumps(results, ensure_ascii=False, indent=2))
+          print("JSON_RESULTS_END")
+
+          failures = [r for r in results if r["status"] != 200 or not r["answer"].strip()]
+          print(f"\nTOTAL={len(results)} RESPONDED={len(results)-len(failures)} EMPTY_OR_HTTP_FAIL={len(failures)}")
+          if failures:
+              raise SystemExit(1)
+          PY
