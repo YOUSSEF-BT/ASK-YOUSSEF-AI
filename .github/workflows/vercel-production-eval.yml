@@ -7,6 +7,7 @@ on:
       - "app.py"
       - "backend/**"
       - "scripts/enrich_public_contact.py"
+      - "scripts/enrich_career_status.py"
       - "vercel.json"
       - "requirements.txt"
       - "evaluation/**"
@@ -23,7 +24,7 @@ concurrency:
 jobs:
   evaluate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,11 +62,22 @@ jobs:
             --output online-eval-report.json \
             --strict
 
-      - name: Publish production evaluation report
+      - name: Run deployed career-state regression
+        run: |
+          python evaluation/run_online_eval.py \
+            --api-url "https://ask-youssef-ai.vercel.app" \
+            --origin "https://youssef-bt.github.io" \
+            --dataset evaluation/career_cases.json \
+            --output career-eval-report.json \
+            --strict
+
+      - name: Publish production evaluation reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: vercel-production-eval-report
-          path: online-eval-report.json
+          path: |
+            online-eval-report.json
+            career-eval-report.json
           if-no-files-found: warn
           retention-days: 14
