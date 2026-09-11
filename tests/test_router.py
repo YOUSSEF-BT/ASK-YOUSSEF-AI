@@ -55,6 +55,13 @@ class IntentRouterTests(unittest.TestCase):
         self.assertTrue(route.requires_retrieval)
         self.assertEqual(route.language, "fr")
 
+    def test_named_portfolio_project_requires_retrieval(self):
+        route = route_question("Explique brièvement le Controlled RAG utilisé dans OpenLegaMa.")
+        self.assertEqual(route.intent, "projects")
+        self.assertTrue(route.requires_retrieval)
+        self.assertTrue(route.portfolio_scope)
+        self.assertEqual(route.language, "fr")
+
     def test_certification_fact_requires_retrieval(self):
         route = route_question("Which Oracle certifications does Youssef have?")
         self.assertEqual(route.intent, "certifications")
