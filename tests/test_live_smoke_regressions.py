@@ -73,6 +73,22 @@ class FreshLiveSmokeRegressionTests(unittest.TestCase):
         self.assertIn("BoT-SORT", result.answer)
         self.assertIn("[project-real-time-road-accident-detection]", result.answer)
 
+    def test_exact_french_certification_count_uses_certification_source(self):
+        result = self.resolver.resolve("combien de certificats il a exactement ?")
+        self.assertIsNotNone(result)
+        self.assertIn("56", result.answer)
+        self.assertIn("[certifications]", result.answer)
+        self.assertNotIn("[structured-profile]", result.answer)
+
+    def test_english_doing_for_work_right_now_includes_full_time_search(self):
+        result = self.resolver.resolve("What is Youssef doing for work right now?")
+        self.assertIsNotNone(result)
+        self.assertIn("Freelance AI/ML Engineer", result.answer)
+        self.assertIn("Fiverr", result.answer)
+        self.assertIn("full-time", result.answer)
+        self.assertIn("[experience-education]", result.answer)
+        self.assertIn("[career-status]", result.answer)
+
 
 if __name__ == "__main__":
     unittest.main()
