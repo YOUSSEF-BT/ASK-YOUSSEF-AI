@@ -1,12 +1,10 @@
-"""Final conversational quality layer over the production structured-fact resolver.
+"""Evidence-first professional answer planner for Ask Youssef AI.
 
-The lower layers keep exact counts, complete inventories, safety behavior, and
-legacy regression contracts. This shim handles high-value visitor questions
-where a generic top-k RAG answer can be factually correct yet professionally
-weak. It uses an evidence hierarchy:
+Structured facts remain the source of truth. This layer improves open recruiter/
+client questions by ranking evidence before skills or training:
 
-professional experience -> measured/shipped projects -> technical project work
--> declared skills -> certifications/training.
+professional experience -> measured projects -> technical projects -> skills
+-> certifications/training.
 """
 from __future__ import annotations
 
@@ -18,29 +16,10 @@ import structured_facts_live_base as _live
 StructuredFactAnswer = _live.StructuredFactAnswer
 
 _precision._COMMON.update({"exactement"})
-
 _precision._CURRENT_PATTERNS += (
     r"\bwhat is (?:youssef|he) doing for work (?:right now|now|currently)\b",
     r"\bwhat does (?:youssef|he) do for work (?:right now|now|currently)\b",
-)
-
-_WHY_YOUSSEF_PATTERNS = (
-    r"\b(?:pourquoi|pour\s+quoi)\s+(?:choisir\s+)?youssef(?:\s+et|\s+plutot que|\s+plutôt que)\s+(?:pas\s+)?(?:un|une|quelqu['’]?un|candidat|profil|autre)\b",
-    r"\b(?:pourquoi|pour\s+quoi)\s+(?:choisir|recruter|prendre|embaucher)\s+youssef\b",
-    r"\b(?:pourquoi|pour\s+quoi)\s+(?:lui|le choisir|le recruter)\b",
-    r"\bwhy\s+(?:choose|hire|pick|recruit)\s+youssef\b",
-    r"\bwhy\s+youssef\s+(?:instead of|over|and not)\b",
-    r"لماذا.*يوسف.*(?:وليس|بدل|بدلاً|اختيار)",
-)
-
-_EXPERIENCE_OVERVIEW_PATTERNS = (
-    r"\b(?:donne(?:\s+moi)?|montre(?:\s+moi)?|liste|quelles?\s+sont)\b.*\b(?:experiences?|expériences?)\b.*\byoussef\b",
-    r"\b(?:experiences?|expériences?)\s+(?:professionnelles?\s+)?(?:de|d['’])\s*youssef\b",
-    r"\b(?:donne(?:\s+moi)?|montre(?:\s+moi)?|liste)\b.*\bexpressions?\b.*\byoussef\b",
-    r"\bexpressions?\s+(?:de|d['’])\s*youssef\b",
-    r"\b(?:tell me|show me|list)\b.*\b(?:experience|experiences)\b.*\byoussef\b",
-    r"\b(?:youssef['’]?s|his)\s+(?:work\s+)?experiences?\b",
-    r"خبرات.*يوسف|تجارب.*يوسف",
+    r"\bwhat is (?:youssef|he) doing professionally (?:right now|now|currently)\b",
 )
 
 _LITERAL_EXPRESSION_HINTS = {
@@ -48,19 +27,50 @@ _LITERAL_EXPRESSION_HINTS = {
     "quote", "quotes", "saying", "sayings", "mots", "favori", "favorite",
 }
 
+_EXPERIENCE_PATTERNS = (
+    r"\b(?:donne(?:\s+moi)?|montre(?:\s+moi)?|liste|quelles?\s+sont)\b.*\b(?:experiences?|expériences?|expressions?)\b.*\byoussef\b",
+    r"\b(?:experiences?|expériences?|expressions?)\s+(?:professionnelles?\s+)?(?:de|d['’])\s*youssef\b",
+    r"\b(?:tell me|show me|list)\b.*\b(?:experience|experiences)\b.*\byoussef\b",
+    r"\b(?:youssef['’]?s|his)\s+(?:work\s+)?experiences?\b",
+    r"خبرات.*يوسف|تجارب.*يوسف",
+)
+
+_WHY_PATTERNS = (
+    r"\bwhy\s+(?:should\s+.+?\s+)?(?:choose|hire|pick|recruit)\s+youssef\b",
+    r"\bwhy\s+youssef\s+(?:instead of|over|and not)\b",
+    r"\bwhat makes youssef different\b",
+    r"\bwhat differentiates youssef\b",
+    r"\b(?:pourquoi|pour\s+quoi)\s+(?:choisir|recruter|prendre|embaucher)\s+youssef\b",
+    r"\b(?:pourquoi|pour\s+quoi)\s+youssef.*(?:autre|candidat|profil)\b",
+    r"لماذا.*يوسف.*(?:وليس|بدل|اختيار)|ما الذي يميز.*يوسف",
+)
+
+_OVERVIEW_PATTERNS = (
+    r"^\s*tell me about youssef(?: bouzit)?[?.!]*\s*$",
+    r"^\s*who is youssef(?: bouzit)?[?.!]*\s*$",
+    r"^\s*introduce youssef(?: bouzit)?[?.!]*\s*$",
+    r"^\s*(?:parle|parlez)[ -]moi de youssef(?: bouzit)?[?.!]*\s*$",
+    r"^\s*(?:presente|présente|présentez) youssef(?: bouzit)?[?.!]*\s*$",
+    r"عرفني.*يوسف|من هو يوسف",
+)
+
+_CURRENT_VS_FREELANCE = (
+    r"\bfull[- ]time\b.*\bfreelanc", r"\bfreelanc.*\bfull[- ]time\b",
+    r"\blooking for\b.*\bfull[- ]time\b", r"\bchosen freelanc",
+    r"\bcdi\b.*\bfreelanc", r"\bfreelanc.*\bcdi\b", r"\bcherche.*\bcdi\b",
+)
+
 _DOMAIN_EVIDENCE_HINTS = (
     "experience", "background", "expertise", "skill", "skills", "evidence",
     "proof", "prove", "hands-on", "practical", "worked", "work",
-    "experience professionnelle", "expérience professionnelle", "experience de",
-    "expérience de", "competence", "compétence", "competences", "compétences",
-    "preuve", "preuves", "expertise", "maitrise", "maîtrise",
-    "خبرة", "خبراته", "مهارة", "مهارات", "دليل", "أثبت",
+    "compétence", "compétences", "preuve", "preuves", "maîtrise",
+    "خبرة", "مهارة", "مهارات", "دليل",
 )
 
-_STRONGEST_PROJECT_HINTS = (
-    "strongest", "best", "top ai project", "top ai projects", "most impressive",
-    "flagship", "meilleur projet", "meilleurs projets", "projets les plus forts",
-    "plus fort projet", "projets phares", "أقوى مشروع", "أقوى المشاريع", "أفضل مشروع",
+_STRONG_HINTS = (
+    "strongest", "best", "top", "most impressive", "flagship",
+    "meilleur", "meilleurs", "plus fort", "plus forts", "phare", "phares",
+    "أقوى", "أفضل",
 )
 
 
@@ -71,432 +81,630 @@ class StructuredFactResolver(_live.StructuredFactResolver):
         if re.search(r"[\u0600-\u06FF]", raw):
             return "ar"
         normalized = _precision._normalize(raw)
-        french_hints = (
-            "c kwa", "c'est quoi", "son mail", "mail pro", "dis que",
-            "meme si", "chomage", "chomeur", "travaille chez", "donne moi",
-            "quel age", "combien", "emploi", "travail ou nn", "pourquoi",
-            "pour quoi", "expressions de", "experiences de", "expérience de",
-            "preuve", "compétence", "projet phare", "projets phares",
+        french = (
+            "c kwa", "c'est quoi", "son mail", "mail pro", "dis que", "meme si",
+            "chomage", "chomeur", "travaille chez", "donne moi", "quel age",
+            "combien", "emploi", "travail ou nn", "pourquoi", "pour quoi",
+            "expressions de", "experiences de", "expérience de", "preuve",
+            "compétence", "projet phare", "meilleur projet", "limites",
         )
-        if any(hint in normalized for hint in french_hints):
-            return "fr"
-        return _precision.detect_language(raw)
+        return "fr" if any(x in normalized for x in french) else _precision.detect_language(raw)
 
     @staticmethod
     def _matches_any(patterns, question: str) -> bool:
-        normalized = _precision._normalize(question)
-        return any(re.search(pattern, normalized, re.I) for pattern in patterns)
+        n = _precision._normalize(question)
+        return any(re.search(pattern, n, re.I) for pattern in patterns)
 
-    def _project_by_slug(self, slug: str):
+    @staticmethod
+    def _referent(n: str) -> bool:
+        padded = f" {n} "
+        return any(x in padded for x in (" youssef ", " his ", " he ", " son ", " ses ", " il ", " يوسف "))
+
+    def _project(self, slug: str):
         target = _precision._normalize(slug)
-        return next(
-            (row for row in self.projects if _precision._normalize(str(row.get("slug") or "")) == target),
-            None,
-        )
+        return next((x for x in self.projects if _precision._normalize(str(x.get("slug") or "")) == target), None)
 
-    def _experience_by_company(self, company_fragment: str):
-        target = _precision._normalize(company_fragment)
-        return next(
-            (row for row in self.experiences if target in _precision._normalize(str(row.get("company") or ""))),
-            None,
-        )
+    def _experience(self, fragment: str):
+        target = _precision._normalize(fragment)
+        return next((x for x in self.experiences if target in _precision._normalize(str(x.get("company") or ""))), None)
 
-    def _cert_by_title(self, title: str):
+    def _cert(self, title: str):
         target = _precision._normalize(title)
-        return next(
-            (row for row in self.certifications if _precision._normalize(str(row.get("title") or "")) == target),
-            None,
-        )
+        return next((x for x in self.certifications if _precision._normalize(str(x.get("title") or "")) == target), None)
 
-    def _resolve_why_youssef(self, question: str, language: str):
-        if not self._matches_any(_WHY_YOUSSEF_PATTERNS, question):
-            return None
-
-        accident = self._project_by_slug("real-time-road-accident-detection")
-        legal = self._project_by_slug("openlegama-moroccan-legal-ai")
+    def _seeking(self) -> bool:
         career = self.profile.get("career_status") or {}
-        accident_results = (accident or {}).get("results") or {}
-        legal_results = (legal or {}).get("results") or {}
-        precision = str(accident_results.get("precision") or "86.68%")
-        recall = str(accident_results.get("recall") or "91.56%")
-        fps = str(accident_results.get("inferenceSpeed") or "31.5 FPS")
-        tests = str(legal_results.get("automatedTests") or "143 / 143 passing")
-        articles = str(legal_results.get("indexedArticles") or "7,708")
-        seeking = isinstance(career, dict) and career.get("seeking_full_time") is True
+        return isinstance(career, dict) and career.get("seeking_full_time") is True
 
-        if language == "fr":
+    def _current_row(self):
+        return next((
+            x for x in self.experiences
+            if "present" in _precision._normalize(str(x.get("period") or ""))
+            or "aujourd" in _precision._normalize(str(x.get("period_fr") or ""))
+        ), None)
+
+    def _overview(self, q: str, lang: str):
+        if not self._matches_any(_OVERVIEW_PATTERNS, q):
+            return None
+        a = self._project("real-time-road-accident-detection") or {}
+        l = self._project("openlegama-moroccan-legal-ai") or {}
+        ar, lr = a.get("results") or {}, l.get("results") or {}
+        if lang == "fr":
             text = (
-                "Je ne peux pas affirmer que Youssef est « meilleur que tous les autres » sans comparer les candidats. "
-                "En revanche, son profil donne plusieurs raisons concrètes de le choisir :\n\n"
-                f"• **Résultats mesurés** : son PFE de détection d’accidents atteint {precision} de précision, {recall} de rappel et environ {fps}. [project-real-time-road-accident-detection]\n"
-                f"• **AI Engineering polyvalent** : Computer Vision, Machine Learning et RAG/LLM. OpenLegaMa est évalué avec {tests} et {articles} articles juridiques indexés. [project-openlegama-moroccan-legal-ai]\n"
-                "• **Capacité end-to-end** : modèle, retrieval, API, évaluation, guardrails, intégration et déploiement.\n"
-                "• **Disponible pour une équipe** : diplôme d’ingénieur d’État en Data Science terminé"
-                + (" et recherche active d’un CDI à temps plein" if seeking else "")
-                + ". [experience-education] [career-status]\n\n"
-                "Sa différence vient surtout de la combinaison **AI/ML + Computer Vision + RAG/LLM + systèmes complets avec preuves mesurables**."
+                "Youssef Bouzit est **Ingénieur d’État en Data Science** orienté AI Engineering. "
+                "Il exerce actuellement comme **Ingénieur IA/ML freelance en indépendant, via Fiverr**, "
+                "tout en recherchant activement un **CDI à temps plein en AI/ML**. [career-status] [experience-education]\n\n"
+                f"Ses preuves fortes incluent un PFE Computer Vision chez NEXTRONIC — ABA Technology "
+                f"({ar.get('precision','86.68%')} précision, {ar.get('recall','91.56%')} rappel, ~{ar.get('inferenceSpeed','31.5 FPS')}) "
+                "[project-real-time-road-accident-detection], ainsi qu’OpenLegaMa, un Controlled RAG évalué avec "
+                f"{lr.get('automatedTests','143 / 143 passing')} et {lr.get('indexedArticles','7,708')} articles indexés "
+                "[project-openlegama-moroccan-legal-ai]."
             )
-        elif language == "ar":
+        elif lang == "ar":
             text = (
-                "لا يمكنني القول إن يوسف «أفضل من الجميع» من دون مقارنة فعلية مع مرشحين آخرين، لكن ملفه يقدم أدلة قوية لاختياره:\n\n"
-                f"• **نتائج قابلة للقياس**: مشروع اكتشاف الحوادث حقق دقة {precision} واسترجاعاً {recall} وبسرعة تقارب {fps}. [project-real-time-road-accident-detection]\n"
-                f"• **تنوع قوي في AI Engineering**: Computer Vision وMachine Learning وRAG/LLM. مشروع OpenLegaMa موثق بـ {tests} و{articles} مادة قانونية مفهرسة. [project-openlegama-moroccan-legal-ai]\n"
-                "• **قدرة end-to-end**: من النموذج والاسترجاع إلى API والتقييم والحواجز الأمنية والنشر.\n"
-                "• **جاهزية مهنية**: أنهى دبلوم مهندس دولة في Data Science"
-                + (" ويبحث حالياً عن فرصة بدوام كامل" if seeking else "")
-                + ". [experience-education] [career-status]\n\n"
-                "الخلاصة: قوته هي الجمع بين **AI/ML + Computer Vision + RAG/LLM + أنظمة متكاملة قابلة للقياس**."
+                "يوسف بوزيت **مهندس دولة في علم البيانات** وموجه نحو AI Engineering. يعمل حالياً **كمهندس AI/ML مستقل عبر Fiverr** "
+                "ويبحث بالتوازي عن وظيفة بدوام كامل في AI/ML. [career-status] [experience-education]\n\n"
+                f"من أقوى أدلته مشروع Computer Vision بنتائج {ar.get('precision','86.68%')} دقة و{ar.get('recall','91.56%')} استرجاع، "
+                f"ومشروع OpenLegaMa المقاس بـ {lr.get('automatedTests','143 / 143 passing')}. "
+                "[project-real-time-road-accident-detection] [project-openlegama-moroccan-legal-ai]"
             )
         else:
             text = (
-                "I cannot honestly claim Youssef is better than every other candidate without a direct comparison. What his portfolio does provide is concrete evidence for choosing him:\n\n"
-                f"• **Measured results**: his real-time accident-detection PFE reports {precision} precision, {recall} recall, and about {fps}. [project-real-time-road-accident-detection]\n"
-                f"• **Broad AI engineering range**: Computer Vision, Machine Learning, and RAG/LLM. OpenLegaMa is documented with {tests} and {articles} indexed legal articles. [project-openlegama-moroccan-legal-ai]\n"
-                "• **End-to-end delivery**: models, retrieval, APIs, evaluation, guardrails, integration, and deployment.\n"
-                "• **Ready for a team**: he completed his State Engineering degree in Data Science"
-                + (" and is actively seeking a full-time role" if seeking else "")
-                + ". [experience-education] [career-status]\n\n"
-                "The differentiator is the combination of **AI/ML + Computer Vision + RAG/LLM + measurable end-to-end systems**."
+                "Youssef Bouzit is a **State Engineer in Data Science** focused on AI Engineering. "
+                "He currently works as an **independent Freelance AI/ML Engineer via Fiverr**, while actively seeking a "
+                "**full-time AI/ML role**. [career-status] [experience-education]\n\n"
+                f"His strongest evidence includes professional Computer Vision PFE work at NEXTRONIC — ABA Technology "
+                f"({ar.get('precision','86.68%')} precision, {ar.get('recall','91.56%')} recall, ~{ar.get('inferenceSpeed','31.5 FPS')}) "
+                "[project-real-time-road-accident-detection], plus OpenLegaMa, an evaluated controlled-RAG system with "
+                f"{lr.get('automatedTests','143 / 143 passing')} and {lr.get('indexedArticles','7,708')} indexed legal articles "
+                "[project-openlegama-moroccan-legal-ai]."
             )
-        return StructuredFactAnswer(text, source="career-status", evidence="Evidence-first synthesis from synchronized career, education, accident-detection, and OpenLegaMa records.")
-
-    def _resolve_experience_overview(self, question: str, language: str):
-        tokens = _precision._tokens(question)
-        typo_expression = "expression" in tokens or "expressions" in tokens
-        if typo_expression and (tokens & _LITERAL_EXPRESSION_HINTS):
-            return None
-        if not self._matches_any(_EXPERIENCE_OVERVIEW_PATTERNS, question):
-            return None
-        if not self.experiences:
-            return None
-
-        if language == "fr":
-            intro = "Si par « expressions » tu voulais dire **expériences professionnelles**, voici les principales :" if typo_expression else "Voici les principales expériences professionnelles de Youssef :"
-            lines = [intro]
-            for index, row in enumerate(self.experiences, 1):
-                role = str(row.get("role_fr") or row.get("role") or "").strip()
-                company = str(row.get("company_fr") or row.get("company") or "").strip()
-                period = str(row.get("period_fr") or row.get("period") or "").strip()
-                description = str(row.get("description_fr") or row.get("description") or "").strip()
-                if "fiverr" in _precision._normalize(company) and "freelance" in _precision._normalize(role):
-                    lines.append(f"{index}. **{role} en indépendant, via {company}** — {period}. {description}")
-                else:
-                    lines.append(f"{index}. **{role} — {company}** — {period}. {description}")
-            career = self.profile.get("career_status") or {}
-            if isinstance(career, dict) and career.get("seeking_full_time") is True:
-                lines.append("\nAujourd’hui, le freelance est mené en parallèle : Youssef recherche toujours activement un **CDI à temps plein en AI/ML**. [career-status]")
-            lines.append("[experience-education]")
-            text = "\n".join(lines)
-        elif language == "ar":
-            lines = ["أهم الخبرات المهنية الموثقة ليوسف هي:"]
-            for index, row in enumerate(self.experiences, 1):
-                role = str(row.get("role") or "").strip()
-                company = str(row.get("company") or "").strip()
-                period = str(row.get("period") or "").strip()
-                description = str(row.get("description") or "").strip()
-                lines.append(f"{index}. **{role} — {company}** — {period}. {description}")
-            career = self.profile.get("career_status") or {}
-            if isinstance(career, dict) and career.get("seeking_full_time") is True:
-                lines.append("\nالعمل الحر نشاط موازٍ؛ يوسف ما زال يبحث عن **فرصة عمل بدوام كامل في AI/ML**. [career-status]")
-            lines.append("[experience-education]")
-            text = "\n".join(lines)
-        else:
-            lines = ["Youssef's main documented professional experiences are:"]
-            for index, row in enumerate(self.experiences, 1):
-                role = str(row.get("role") or "").strip()
-                company = str(row.get("company") or "").strip()
-                period = str(row.get("period") or "").strip()
-                description = str(row.get("description") or "").strip()
-                if "fiverr" in _precision._normalize(company) and "freelance" in _precision._normalize(role):
-                    lines.append(f"{index}. **{role}, independently via {company}** — {period}. {description}")
-                else:
-                    lines.append(f"{index}. **{role} — {company}** — {period}. {description}")
-            career = self.profile.get("career_status") or {}
-            if isinstance(career, dict) and career.get("seeking_full_time") is True:
-                lines.append("\nFreelancing is a parallel activity; Youssef is still actively seeking a **full-time AI/ML role**. [career-status]")
-            lines.append("[experience-education]")
-            text = "\n".join(lines)
         return StructuredFactAnswer(text, source="experience-education")
 
-    def _resolve_domain_evidence(self, question: str, language: str):
-        normalized = _precision._normalize(question)
-        if self._matches(_precision._COUNT_PATTERNS, question) or self._matches(_precision._LIST_ALL_PATTERNS, question):
+    def _current(self, q: str, lang: str):
+        current = self._matches(_precision._CURRENT_PATTERNS, q)
+        compare = self._matches_any(_CURRENT_VS_FREELANCE, q)
+        if not current and not compare:
             return None
-        referent = any(token in normalized for token in ("youssef", "his ", " he ", "son ", "ses ", " il ", "يوسف", "له", "خبرته"))
-        if not referent or not any(hint in normalized for hint in _DOMAIN_EVIDENCE_HINTS):
-            return None
-        cv = "computer vision" in normalized or "vision par ordinateur" in normalized or "رؤية حاسوبية" in normalized or "الرؤية الحاسوبية" in normalized
-        rag = any(term in normalized for term in ("rag", "retrieval augmented generation", "retrieval-augmented generation", "llm", "llms", "large language model", "large language models", "generative ai", "ia generative", "ia générative", "نماذج لغوية", "التوليد المعزز بالاسترجاع"))
-        if not (cv or rag):
-            return None
-
-        if cv:
-            accident = self._project_by_slug("real-time-road-accident-detection") or {}
-            nextronic = self._experience_by_company("NEXTRONIC") or {}
-            ar = accident.get("results") or {}
-            precision = str(ar.get("precision") or "86.68%")
-            recall = str(ar.get("recall") or "91.56%")
-            f1 = str(ar.get("f1Score") or "89.06%")
-            fps = str(ar.get("inferenceSpeed") or "31.5 FPS")
-            period = str(nextronic.get("period") or "Feb 2026 — Aug 2026")
-            if language == "fr":
+        if compare:
+            if lang == "fr":
                 text = (
-                    "Son expérience en **Computer Vision est pratique et professionnelle**, pas seulement académique :\n\n"
-                    f"1. **NEXTRONIC — ABA Technology ({period})** — stage AI/ML orienté vision par ordinateur. Il y a conçu le système de détection d’accidents routiers en temps réel pour CCTV. [experience-education]\n"
-                    f"2. **Preuves mesurées sur le PFE** — YOLOv11 + BoT-SORT + OpenCV, avec {precision} de précision, {recall} de rappel, {f1} de F1-score et environ {fps} sur le benchmark image. [project-real-time-road-accident-detection]\n"
-                    "3. **Projet complémentaire Traffic MVP** — détection de véhicules et analyse de trafic en temps réel avec YOLOv8, OpenCV, export CSV et dashboard Streamlit. [project-traffic-mvp-image-processing]\n\n"
-                    "Stack démontrée : **Python, YOLOv8/YOLOv11, OpenCV, BoT-SORT, object detection, multi-object tracking, real-time video et Roboflow**. [skills]\n\n"
-                    "En bref : il possède à la fois une **expérience entreprise en Computer Vision** et plusieurs systèmes vidéo réellement construits."
+                    "Youssef **n’a pas choisi le freelance à la place d’un CDI**. Son objectif principal reste un "
+                    "**CDI à temps plein en AI/ML** ; le freelance est une activité parallèle, menée **en indépendant via Fiverr**. "
+                    "[career-status] [experience-education]"
                 )
-            elif language == "ar":
+            else:
                 text = (
-                    "خبرة يوسف في **Computer Vision عملية ومهنية** وليست مجرد دراسة:\n\n"
-                    f"1. **NEXTRONIC — ABA Technology ({period})** — تدريب AI/ML موجه للرؤية الحاسوبية، حيث صمم نظاماً آنياً لاكتشاف حوادث الطرق من CCTV. [experience-education]\n"
-                    f"2. **نتائج مقاسة في مشروع التخرج** — YOLOv11 + BoT-SORT + OpenCV مع دقة {precision} واسترجاع {recall} وF1 بقيمة {f1} وسرعة تقارب {fps}. [project-real-time-road-accident-detection]\n"
-                    "3. **Traffic MVP** — كشف المركبات وتحليل حركة المرور في الزمن الحقيقي باستخدام YOLOv8 وOpenCV مع CSV وStreamlit. [project-traffic-mvp-image-processing]\n\n"
-                    "الأدوات المثبتة عملياً تشمل Python وYOLOv8/YOLOv11 وOpenCV وBoT-SORT وتتبع الأجسام والفيديو الآني وRoboflow. [skills]"
+                    "Youssef **has not chosen freelancing instead of a full-time career**. His main goal remains a "
+                    "**full-time AI/ML role**; freelancing is parallel work carried out **independently via Fiverr**. "
+                    "[career-status] [experience-education]"
+                )
+            return StructuredFactAnswer(text, source="career-status")
+
+        row = self._current_row() or {}
+        period = str(row.get("period_fr") if lang == "fr" else row.get("period") or "").strip()
+        if lang == "fr":
+            text = "Actuellement, Youssef exerce comme **Ingénieur IA/ML Freelance, en indépendant via Fiverr**"
+            if period:
+                text += f" ({period})"
+            text += (
+                ". Son travail documenté couvre notamment les **Systèmes RAG**, les applications LLM, les agents IA, "
+                "le Machine Learning et la Computer Vision. [experience-education]"
+            )
+            if self._seeking():
+                text += " En parallèle, il **recherche une opportunité en CDI à temps plein en AI/ML**. [career-status]"
+        elif lang == "ar":
+            text = (
+                "حالياً، يعمل يوسف **كمهندس AI/ML مستقل عبر Fiverr** في RAG وLLM agents وMachine Learning وComputer Vision. "
+                "[experience-education]"
+            )
+            if self._seeking():
+                text += " وبالتوازي يبحث عن فرصة عمل بدوام كامل في AI/ML. [career-status]"
+        else:
+            text = "Right now, Youssef works as an **independent Freelance AI/ML Engineer via Fiverr**"
+            if period:
+                text += f" ({period})"
+            text += ". His documented work includes RAG systems, LLM applications, AI agents, Machine Learning, and Computer Vision. [experience-education]"
+            if self._seeking():
+                text += " In parallel, he is actively seeking a **full-time AI/ML role**. [career-status]"
+        return StructuredFactAnswer(text, source="experience-education")
+
+    def _resolve_current_work(self, q: str, lang: str):
+        return self._current(q, lang)
+
+    def _resolve_unemployment(self, q: str, lang: str):
+        n = _precision._normalize(q)
+        if not any(x in n for x in ("chomage", "chomeur", "unemployed", "jobless", "عاطل", "البطالة")):
+            return None
+        if lang == "fr":
+            text = (
+                "Non. Son profil indique une activité actuelle comme **Ingénieur IA/ML freelance en indépendant via Fiverr**. "
+                "Il recherche aussi activement un **CDI à temps plein**. [experience-education] [career-status]"
+            )
+        else:
+            text = (
+                "No. His public profile shows current work as an **independent Freelance AI/ML Engineer via Fiverr**, "
+                "while he also actively seeks a full-time role. [experience-education] [career-status]"
+            )
+        return StructuredFactAnswer(text, source="experience-education")
+
+    def _why(self, q: str, lang: str):
+        if not self._matches_any(_WHY_PATTERNS, q):
+            return None
+        a = self._project("real-time-road-accident-detection") or {}
+        l = self._project("openlegama-moroccan-legal-ai") or {}
+        ar, lr = a.get("results") or {}, l.get("results") or {}
+        if lang == "fr":
+            text = (
+                "Je ne peux pas dire qu’il est meilleur qu’un candidat non comparé. En revanche, son portfolio donne des raisons concrètes de le recruter :\n\n"
+                "• **Expérience professionnelle Computer Vision** chez NEXTRONIC — ABA Technology. [experience-education]\n"
+                f"• **Résultats mesurés** : {ar.get('precision','86.68%')} précision, {ar.get('recall','91.56%')} rappel, ~{ar.get('inferenceSpeed','31.5 FPS')}. [project-real-time-road-accident-detection]\n"
+                f"• **RAG/LLM évalué** : OpenLegaMa avec {lr.get('automatedTests','143 / 143 passing')} et {lr.get('indexedArticles','7,708')} articles. [project-openlegama-moroccan-legal-ai]\n"
+                "• **Profil end-to-end** : Computer Vision, ML, RAG/LLM, MLOps, APIs, évaluation et déploiement. [skills]\n"
+                "• **Recherche active d’un CDI AI/ML** ; freelance en parallèle. [career-status]\n\n"
+                "Sa différence est la combinaison **expérience terrain + systèmes complets + preuves mesurables**."
+            )
+        else:
+            text = (
+                "I cannot claim he is better than an unexamined candidate, but his portfolio gives concrete reasons to hire him:\n\n"
+                "• **Professional Computer Vision experience** at NEXTRONIC — ABA Technology. [experience-education]\n"
+                f"• **Measured results**: {ar.get('precision','86.68%')} precision, {ar.get('recall','91.56%')} recall, ~{ar.get('inferenceSpeed','31.5 FPS')}. [project-real-time-road-accident-detection]\n"
+                f"• **Evaluated RAG/LLM work**: OpenLegaMa with {lr.get('automatedTests','143 / 143 passing')} and {lr.get('indexedArticles','7,708')} indexed articles. [project-openlegama-moroccan-legal-ai]\n"
+                "• **End-to-end range** across CV, ML, RAG/LLM, MLOps, APIs, evaluation, and deployment. [skills]\n"
+                "• **Actively seeking a full-time AI/ML role**; freelancing is parallel work. [career-status]\n\n"
+                "The differentiator is **hands-on experience + complete systems + measurable evidence**."
+            )
+        return StructuredFactAnswer(text, source="career-status")
+
+    def _experience_overview(self, q: str, lang: str):
+        tokens = _precision._tokens(q)
+        typo = "expression" in tokens or "expressions" in tokens
+        if typo and tokens & _LITERAL_EXPRESSION_HINTS:
+            return None
+        if not self._matches_any(_EXPERIENCE_PATTERNS, q) or not self.experiences:
+            return None
+        if lang == "fr":
+            lines = ["Si par « expressions » tu voulais dire **expériences professionnelles**, voici les principales :" if typo else "Voici les principales expériences professionnelles de Youssef :"]
+        else:
+            lines = ["Youssef's main documented professional experiences are:"]
+        for i, row in enumerate(self.experiences, 1):
+            role = str(row.get("role_fr") if lang == "fr" else row.get("role") or "").strip()
+            company = str(row.get("company_fr") if lang == "fr" else row.get("company") or "").strip()
+            period = str(row.get("period_fr") if lang == "fr" else row.get("period") or "").strip()
+            desc = str(row.get("description_fr") if lang == "fr" else row.get("description") or "").strip()
+            if "fiverr" in _precision._normalize(company) and "freelance" in _precision._normalize(role):
+                via = "en indépendant, via" if lang == "fr" else "independently via"
+                lines.append(f"{i}. **{role} {via} {company}** — {period}. {desc}")
+            else:
+                lines.append(f"{i}. **{role} — {company}** — {period}. {desc}")
+        if self._seeking():
+            lines.append(
+                "\nAujourd’hui, le freelance est mené en parallèle : Youssef recherche toujours activement un **CDI à temps plein en AI/ML**. [career-status]"
+                if lang == "fr"
+                else "\nFreelancing is parallel work; Youssef is still actively seeking a **full-time AI/ML role**. [career-status]"
+            )
+        lines.append("[experience-education]")
+        return StructuredFactAnswer("\n".join(lines), source="experience-education")
+
+    def _domain_evidence(self, q: str, lang: str):
+        n = _precision._normalize(q)
+        if self._matches(_precision._COUNT_PATTERNS, q) or self._matches(_precision._LIST_ALL_PATTERNS, q):
+            return None
+        if not self._referent(n) or not any(x in n for x in _DOMAIN_EVIDENCE_HINTS):
+            return None
+        cv = "computer vision" in n or "vision par ordinateur" in n
+        rag = any(x in n for x in ("rag", "retrieval augmented", "llm", "large language model", "generative ai", "ia générative"))
+        if not cv and not rag:
+            return None
+        if cv:
+            a = self._project("real-time-road-accident-detection") or {}
+            e = self._experience("NEXTRONIC") or {}
+            r = a.get("results") or {}
+            period = str(e.get("period") or "Feb 2026 — Aug 2026")
+            if lang == "fr":
+                text = (
+                    "Son expérience en **Computer Vision est pratique et professionnelle** :\n\n"
+                    f"1. **NEXTRONIC — ABA Technology ({period})** — stage AI/ML orienté Computer Vision. [experience-education]\n"
+                    f"2. **Preuves mesurées sur le PFE** — YOLOv11 + BoT-SORT + OpenCV : {r.get('precision','86.68%')} précision, {r.get('recall','91.56%')} rappel, {r.get('f1Score','89.06%')} F1 et ~{r.get('inferenceSpeed','31.5 FPS')}. [project-real-time-road-accident-detection]\n"
+                    "3. **Traffic MVP** — second système temps réel YOLOv8 + OpenCV, CSV et Streamlit. [project-traffic-mvp-image-processing]\n\n"
+                    "Stack démontrée : Python, YOLOv8/YOLOv11, OpenCV, BoT-SORT, tracking, real-time video et Roboflow. [skills]"
                 )
             else:
                 text = (
                     "Youssef's **Computer Vision experience is hands-on and professional**, not just coursework:\n\n"
-                    f"1. **NEXTRONIC — ABA Technology ({period})** — AI/ML Engineer Intern focused on Computer Vision, where he designed a real-time CCTV road-accident detection system. [experience-education]\n"
-                    f"2. **Measured PFE evidence** — YOLOv11 + BoT-SORT + OpenCV, reporting {precision} precision, {recall} recall, {f1} F1-score, and about {fps} on the image benchmark. [project-real-time-road-accident-detection]\n"
-                    "3. **Traffic MVP** — a second real-time vision system using YOLOv8 and OpenCV for vehicle detection and traffic-flow analysis, with CSV metrics and a Streamlit dashboard. [project-traffic-mvp-image-processing]\n\n"
-                    "Demonstrated stack: **Python, YOLOv8/YOLOv11, OpenCV, BoT-SORT, object detection, multi-object tracking, real-time video, and Roboflow**. [skills]\n\n"
-                    "So the evidence is **company experience + measured project results + a second working vision application**."
+                    f"1. **NEXTRONIC — ABA Technology ({period})** — AI/ML Engineer Intern focused on Computer Vision. [experience-education]\n"
+                    f"2. **Measured PFE evidence** — YOLOv11 + BoT-SORT + OpenCV: {r.get('precision','86.68%')} precision, {r.get('recall','91.56%')} recall, {r.get('f1Score','89.06%')} F1-score, and ~{r.get('inferenceSpeed','31.5 FPS')}. [project-real-time-road-accident-detection]\n"
+                    "3. **Traffic MVP** — a second real-time vision system with YOLOv8 + OpenCV, CSV metrics, and Streamlit. [project-traffic-mvp-image-processing]\n\n"
+                    "Demonstrated stack: Python, YOLOv8/YOLOv11, OpenCV, BoT-SORT, object detection, tracking, real-time video, and Roboflow. [skills]"
                 )
-            return StructuredFactAnswer(text, source="project-real-time-road-accident-detection", evidence="Evidence hierarchy: professional CV experience, measured accident-detection project, supporting traffic-vision project, then skills.")
+            return StructuredFactAnswer(text, source="project-real-time-road-accident-detection")
 
-        legal = self._project_by_slug("openlegama-moroccan-legal-ai") or {}
-        lr = legal.get("results") or {}
-        tests = str(lr.get("automatedTests") or "143 / 143 passing")
-        indexed = str(lr.get("indexedArticles") or "7,708")
-        texts = str(lr.get("activeLegalTexts") or "30")
-        curated = str(lr.get("curatedBenchmark") or "610 cases")
-        holdout = str(lr.get("holdoutBenchmark") or "120 cases")
-        recall5 = str(lr.get("documentRecallAt5") or "100% curated")
-        exact = str(lr.get("exactArticleRecall") or "100% measured")
-        if language == "fr":
+        l = self._project("openlegama-moroccan-legal-ai") or {}
+        r = l.get("results") or {}
+        if lang == "fr":
             text = (
-                "La preuve la plus forte de ses compétences **RAG/LLM** est un système construit et évalué, pas une simple ligne de CV :\n\n"
-                f"1. **OpenLegaMa — Moroccan Legal AI Assistant** : RAG contrôlé multilingue avec validation des références juridiques, citations reliées aux preuves et abstention lorsque les sources sont insuffisantes. [project-openlegama-moroccan-legal-ai]\n"
-                f"2. **Évaluation réelle** : {tests}, {curated} de benchmark curaté + {holdout} de holdout, {indexed} articles issus de {texts} textes juridiques actifs, document Recall@5 = {recall5} et exact-article recall = {exact} sur les benchmarks mesurés. [project-openlegama-moroccan-legal-ai]\n"
-                "3. **Expérience actuelle** : son activité freelance documente des systèmes RAG, des applications LLM, des agents IA et des workflows d’intelligence documentaire. [experience-education]\n"
-                "4. **Stack associée** : RAG, embeddings, semantic search, document processing, prompt/context engineering et évaluation. [skills]\n\n"
-                "Conclusion : ses compétences RAG/LLM sont appuyées par **un produit public évalué + une pratique professionnelle actuelle + une stack explicite**."
-            )
-        elif language == "ar":
-            text = (
-                "أقوى دليل على مهارات يوسف في **RAG/LLM** هو نظام مبني ومقاس فعلياً، وليس مجرد مهارة مكتوبة في السيرة:\n\n"
-                f"1. **OpenLegaMa** — نظام RAG قانوني متعدد اللغات مع التحقق من المراجع، ربط الادعاءات بالمصادر، والامتناع عندما لا تكون الأدلة كافية. [project-openlegama-moroccan-legal-ai]\n"
-                f"2. **تقييم فعلي**: {tests}، و{curated} للاختبار المنسق + {holdout} holdout، و{indexed} مادة قانونية من {texts} نصاً قانونياً، مع Recall@5 = {recall5} واسترجاع المادة الدقيقة = {exact}. [project-openlegama-moroccan-legal-ai]\n"
-                "3. **العمل الحالي**: نشاطه الحر يوثق أنظمة RAG وتطبيقات LLM ووكلاء AI وذكاء الوثائق. [experience-education]\n"
-                "4. **التقنيات**: embeddings وsemantic search ومعالجة الوثائق وprompt/context engineering والتقييم. [skills]"
+                "La preuve la plus forte de ses compétences **RAG/LLM** est un système construit et évalué :\n\n"
+                "1. **OpenLegaMa** — Controlled RAG multilingue, validation de références, citations reliées aux preuves et abstention. [project-openlegama-moroccan-legal-ai]\n"
+                f"2. **Évaluation** — {r.get('automatedTests','143 / 143 passing')}; {r.get('curatedBenchmark','610 cases')} + {r.get('holdoutBenchmark','120 cases')}; "
+                f"{r.get('indexedArticles','7,708')} articles; Recall@5={r.get('documentRecallAt5','100% curated')}; exact-article recall={r.get('exactArticleRecall','100% measured')}. [project-openlegama-moroccan-legal-ai]\n"
+                "3. **Pratique actuelle** — RAG, applications LLM, agents IA et document intelligence. [experience-education]\n"
+                "4. **Stack** — embeddings, semantic search, document processing, prompt/context engineering et évaluation. [skills]"
             )
         else:
             text = (
-                "The strongest evidence of Youssef's **RAG and LLM skills is a built and evaluated system**, not just a skills-page claim:\n\n"
-                f"1. **OpenLegaMa — Moroccan Legal AI Assistant** — a multilingual controlled-RAG system that retrieves official legal text, validates exact law/article references, ties claims to evidence, and abstains when verified evidence is insufficient. [project-openlegama-moroccan-legal-ai]\n"
-                f"2. **Evaluation evidence** — {tests}; {curated} curated benchmark + {holdout} independent holdout; {indexed} indexed legal articles from {texts} active legal texts; document Recall@5 = {recall5}; exact-article recall = {exact} on the measured benchmarks. [project-openlegama-moroccan-legal-ai]\n"
-                "3. **Current professional practice** — his freelance work explicitly includes RAG systems, LLM-powered applications, AI agents, and document-intelligence workflows. [experience-education]\n"
-                "4. **Supporting stack** — RAG, embeddings, semantic search, document processing, prompt/context engineering, NLP, and evaluation. [skills]\n\n"
-                "So the evidence is **a public evaluated RAG product + current applied work + the underlying retrieval/evaluation stack**."
+                "The strongest evidence of Youssef's **RAG and LLM skills is a built and evaluated system**, not just training:\n\n"
+                "1. **OpenLegaMa — Moroccan Legal AI Assistant** — multilingual controlled RAG with exact-reference validation, grounded citations, and abstention. [project-openlegama-moroccan-legal-ai]\n"
+                f"2. **Evaluation evidence** — {r.get('automatedTests','143 / 143 passing')}; {r.get('curatedBenchmark','610 cases')} curated + {r.get('holdoutBenchmark','120 cases')} holdout; "
+                f"{r.get('indexedArticles','7,708')} indexed articles; Recall@5={r.get('documentRecallAt5','100% curated')}; exact-article recall={r.get('exactArticleRecall','100% measured')}. [project-openlegama-moroccan-legal-ai]\n"
+                "3. **Current professional practice** — freelance work includes RAG systems, LLM applications, AI agents, and document intelligence. [experience-education]\n"
+                "4. **Supporting stack** — embeddings, semantic search, document processing, prompt/context engineering, NLP, and evaluation. [skills]"
             )
-        return StructuredFactAnswer(text, source="project-openlegama-moroccan-legal-ai", evidence="Evidence hierarchy: evaluated RAG product, current professional practice, then supporting skills.")
+        return StructuredFactAnswer(text, source="project-openlegama-moroccan-legal-ai")
 
-    def _resolve_strongest_projects(self, question: str, language: str):
-        normalized = _precision._normalize(question)
-        has_project = "project" in normalized or "projet" in normalized or "مشروع" in normalized or "مشاريع" in normalized
-        if not has_project or not any(hint in normalized for hint in _STRONGEST_PROJECT_HINTS):
+    def _realtime(self, q: str, lang: str):
+        n = _precision._normalize(q)
+        if not self._referent(n) or not any(x in n for x in ("real-time", "real time", "temps reel", "temps réel")):
             return None
-        accident = self._project_by_slug("real-time-road-accident-detection") or {}
-        legal = self._project_by_slug("openlegama-moroccan-legal-ai") or {}
-        ar = accident.get("results") or {}
-        lr = legal.get("results") or {}
-        precision = str(ar.get("precision") or "86.68%")
-        recall = str(ar.get("recall") or "91.56%")
-        fps = str(ar.get("inferenceSpeed") or "31.5 FPS")
-        tests = str(lr.get("automatedTests") or "143 / 143 passing")
-        indexed = str(lr.get("indexedArticles") or "7,708")
-        curated = str(lr.get("curatedBenchmark") or "610 cases")
-        holdout = str(lr.get("holdoutBenchmark") or "120 cases")
-        if language == "fr":
+        if not any(x in n for x in ("ai", "system", "systems", "système", "worked", "experience", "evidence", "proof", "project", "projet")):
+            return None
+        a = self._project("real-time-road-accident-detection") or {}
+        t = self._project("traffic-mvp-image-processing") or {}
+        ar, tr = a.get("results") or {}, t.get("results") or {}
+        if lang == "fr":
             text = (
-                "Si on les classe par **profondeur technique, preuves mesurées et valeur AI Engineering**, les projets les plus forts sont :\n\n"
-                f"1. **Real-Time Road Accident Detection** — projet PFE réalisé chez NEXTRONIC — ABA Technology : YOLOv11, BoT-SORT, OpenCV et analyse comportementale, avec {precision} de précision, {recall} de rappel et environ {fps}. [project-real-time-road-accident-detection] [experience-education]\n"
-                f"2. **OpenLegaMa — Moroccan Legal AI Assistant** — Controlled RAG multilingue avec citations/abstention et évaluation sérieuse : {tests}, {curated} + {holdout}, {indexed} articles indexés. [project-openlegama-moroccan-legal-ai]\n"
-                "3. **Customer MLOps Pipeline** — pipeline ML end-to-end avec Airflow, MLflow, MinIO, PostgreSQL, Docker Compose et monitoring Streamlit, montrant la capacité à industrialiser un workflow ML. [project-customer-churn-mlops-platform]\n\n"
-                "Ces trois projets montrent trois dimensions complémentaires : **Computer Vision temps réel**, **RAG/LLM fiable**, et **MLOps/production ML**."
-            )
-        elif language == "ar":
-            text = (
-                "إذا رتبنا المشاريع حسب **العمق التقني والنتائج المقاسة وقيمة AI Engineering** فأقوى المشاريع هي:\n\n"
-                f"1. **Real-Time Road Accident Detection** — مشروع PFE لدى NEXTRONIC — ABA Technology باستخدام YOLOv11 وBoT-SORT وOpenCV، بدقة {precision} واسترجاع {recall} وسرعة تقارب {fps}. [project-real-time-road-accident-detection] [experience-education]\n"
-                f"2. **OpenLegaMa** — نظام Controlled RAG متعدد اللغات مع citations وabstention وتقييم: {tests}، و{curated} + {holdout}، و{indexed} مادة قانونية مفهرسة. [project-openlegama-moroccan-legal-ai]\n"
-                "3. **Customer MLOps Pipeline** — خط ML متكامل باستخدام Airflow وMLflow وMinIO وPostgreSQL وDocker وStreamlit. [project-customer-churn-mlops-platform]\n\n"
-                "المشاريع الثلاثة تثبت قدراته في **الرؤية الحاسوبية الآنية، RAG/LLM، وMLOps**."
+                "Oui. Il a construit au moins **deux systèmes Computer Vision temps réel** :\n\n"
+                f"• **Road Accident Detection** — PFE chez NEXTRONIC — ABA Technology; {ar.get('precision','86.68%')} précision, {ar.get('recall','91.56%')} rappel, ~{ar.get('inferenceSpeed','31.5 FPS')}. [project-real-time-road-accident-detection] [experience-education]\n"
+                f"• **Traffic MVP** — YOLOv8 + OpenCV; le portfolio indique {tr.get('fps','30+ on CPU')}. [project-traffic-mvp-image-processing]"
             )
         else:
             text = (
-                "Based on **technical depth, measured evidence, and AI-engineering value**, his strongest portfolio projects are:\n\n"
-                f"1. **Real-Time Road Accident Detection** — PFE work at NEXTRONIC — ABA Technology using YOLOv11, BoT-SORT, OpenCV, and behavioral analysis; {precision} precision, {recall} recall, and about {fps} on the image benchmark. [project-real-time-road-accident-detection] [experience-education]\n"
-                f"2. **OpenLegaMa — Moroccan Legal AI Assistant** — multilingual controlled RAG with grounded citations and abstention; {tests}, {curated} curated benchmark + {holdout} holdout, and {indexed} indexed legal articles. [project-openlegama-moroccan-legal-ai]\n"
-                "3. **Customer MLOps Pipeline** — an end-to-end ML production workflow with Airflow orchestration, MLflow experiment tracking, MinIO artifacts, PostgreSQL, Docker Compose, and Streamlit monitoring. [project-customer-churn-mlops-platform]\n\n"
-                "Together they show three complementary strengths: **real-time Computer Vision, reliable RAG/LLM systems, and production-oriented MLOps**."
+                "Yes. His portfolio documents at least **two real-time Computer Vision systems**:\n\n"
+                f"• **Road Accident Detection** — PFE work at NEXTRONIC — ABA Technology; {ar.get('precision','86.68%')} precision, {ar.get('recall','91.56%')} recall, ~{ar.get('inferenceSpeed','31.5 FPS')}. [project-real-time-road-accident-detection] [experience-education]\n"
+                f"• **Traffic MVP** — YOLOv8 + OpenCV; the portfolio records {tr.get('fps','30+ on CPU')}. [project-traffic-mvp-image-processing]"
             )
-        return StructuredFactAnswer(text, source="project-real-time-road-accident-detection", evidence="Projects ranked by professional context, measured evaluation, system depth, and production relevance.")
+        return StructuredFactAnswer(text, source="project-real-time-road-accident-detection")
 
-    def _resolve_broad_certifications_quality(self, question: str, language: str):
-        normalized = _precision._normalize(question)
-        if not any(re.search(pattern, normalized, re.I) for pattern in _precision._BROAD_CERT_PATTERNS):
+    def _accident_results(self, q: str, lang: str):
+        n = _precision._normalize(q)
+        if "accident" not in n or not any(x in n for x in ("result", "metric", "performance", "achiev", "obtenu", "résultat", "resultat", "نتائج")):
+            return None
+        p = self._project("real-time-road-accident-detection") or {}
+        r = p.get("results") or {}
+        if lang == "fr":
+            text = (
+                f"Sur le **benchmark image de test**, le YOLOv11s rapporte **{r.get('precision','86.68%')} précision, {r.get('recall','91.56%')} rappel, "
+                f"{r.get('f1Score','89.06%')} F1 et {r.get('inferenceSpeed','31.5 FPS')}** sur un dataset de {r.get('datasetSize','12,716 images')}. "
+                "[project-real-time-road-accident-detection]\n\n"
+                "Ces métriques ne sont pas une mesure officielle de précision/rappel du pipeline vidéo end-to-end."
+            )
+        else:
+            text = (
+                f"On the **held-out image test benchmark**, YOLOv11s reports **{r.get('precision','86.68%')} precision, {r.get('recall','91.56%')} recall, "
+                f"{r.get('f1Score','89.06%')} F1-score, and {r.get('inferenceSpeed','31.5 FPS')}** on a dataset of {r.get('datasetSize','12,716 images')}. "
+                "[project-real-time-road-accident-detection]\n\n"
+                "Those figures are not official end-to-end video precision/recall for the full hybrid pipeline."
+            )
+        return StructuredFactAnswer(text, source="project-real-time-road-accident-detection")
+
+    def _accident_limits(self, q: str, lang: str):
+        n = _precision._normalize(q)
+        if "accident" not in n or not any(x in n for x in ("limitation", "limit", "weakness", "limite", "faiblesse", "contraint", "قيود")):
+            return None
+        if lang == "fr":
+            text = (
+                "Les limites publiques documentées sont :\n\n"
+                "• **Pas encore de précision/rappel officiel end-to-end vidéo** faute d’annotations temporelles complètes.\n"
+                "• **Robustesse réduite** la nuit, sous la pluie et sous forte occlusion.\n"
+                "• **Tracking sensible** aux angles de caméra difficiles.\n\n"
+                "Les métriques publiées concernent le benchmark image YOLOv11s, pas l’ensemble du pipeline vidéo. "
+                "[project-real-time-road-accident-detection]"
+            )
+        else:
+            text = (
+                "The public project record documents these limitations:\n\n"
+                "• **No official end-to-end video precision/recall yet** without complete temporal annotations.\n"
+                "• **Reduced robustness** at night, in rain, and under dense occlusion.\n"
+                "• **Tracking remains sensitive** to difficult camera angles.\n\n"
+                "The published metrics apply to the YOLOv11s image benchmark, not the full video pipeline. "
+                "[project-real-time-road-accident-detection]"
+            )
+        return StructuredFactAnswer(text, source="project-real-time-road-accident-detection")
+
+    def _openlegama_eval(self, q: str):
+        n = _precision._normalize(q)
+        if "openlegama" not in n or not any(x in n for x in ("evaluat", "benchmark", "test", "metric", "mesur", "évalu")):
+            return None
+        p = self._project("openlegama-moroccan-legal-ai") or {}
+        r = p.get("results") or {}
+        text = (
+            f"OpenLegaMa's documented evaluation includes **{r.get('automatedTests','143 / 143 passing')}**, "
+            f"a **{r.get('curatedBenchmark','610 cases')} curated benchmark** + **{r.get('holdoutBenchmark','120 cases')} holdout**, "
+            f"**Recall@5={r.get('documentRecallAt5','100% curated')}**, and **exact-article recall={r.get('exactArticleRecall','100% measured')}**. "
+            f"Scope: {r.get('indexedArticles','7,708')} articles from {r.get('activeLegalTexts','30')} active legal texts. "
+            "[project-openlegama-moroccan-legal-ai]\n\n"
+            "These are measured-dataset results, not a claim of universal legal accuracy or complete Moroccan-law coverage."
+        )
+        return StructuredFactAnswer(text, source="project-openlegama-moroccan-legal-ai")
+
+    def _top3(self, lang: str):
+        a = self._project("real-time-road-accident-detection") or {}
+        l = self._project("openlegama-moroccan-legal-ai") or {}
+        ar, lr = a.get("results") or {}, l.get("results") or {}
+        intro = (
+            "Pour un recruteur AI Engineer, je classerais les 3 projets selon **contexte professionnel, profondeur technique, preuves mesurées et valeur de production** :"
+            if lang == "fr"
+            else "For an AI Engineer recruiter, I would rank the top 3 by **professional context, technical depth, measured evidence, and production value**:"
+        )
+        text = (
+            f"{intro}\n\n"
+            f"1. **Real-Time Road Accident Detection** — NEXTRONIC — ABA Technology; {ar.get('precision','86.68%')} precision, {ar.get('recall','91.56%')} recall, ~{ar.get('inferenceSpeed','31.5 FPS')}. [project-real-time-road-accident-detection] [experience-education]\n"
+            f"2. **OpenLegaMa** — controlled RAG; {lr.get('automatedTests','143 / 143 passing')}, {lr.get('curatedBenchmark','610 cases')} + {lr.get('holdoutBenchmark','120 cases')}, {lr.get('indexedArticles','7,708')} articles. [project-openlegama-moroccan-legal-ai]\n"
+            "3. **Customer MLOps Pipeline** — Airflow, MLflow, MinIO, PostgreSQL, Docker Compose, Streamlit. [project-customer-churn-mlops-platform]\n\n"
+            "Together they show **real-time Computer Vision + reliable RAG/LLM + MLOps**."
+        )
+        return StructuredFactAnswer(text, source="project-real-time-road-accident-detection")
+
+    def _project_selection(self, q: str, lang: str):
+        n = _precision._normalize(q)
+        if not any(x in n for x in ("project", "projects", "projet", "projets", "مشروع", "مشاريع")) or not any(x in n for x in _STRONG_HINTS):
+            return None
+        rank = any(x in n for x in ("rank", "top 3", "top three", "classe", "classer", "3 projets"))
+        rag = any(x in n for x in ("rag", "llm", "retrieval augmented", "legal ai"))
+        mlops = "mlops" in n or "production" in n or "industrial" in n
+        cv = "computer vision" in n or "vision par ordinateur" in n
+        ml = "machine learning" in n or re.search(r"\bml\b", n) is not None
+
+        if rank:
+            return self._top3(lang)
+        if rag:
+            p = self._project("openlegama-moroccan-legal-ai") or {}
+            r = p.get("results") or {}
+            return StructuredFactAnswer(
+                f"**OpenLegaMa — Moroccan Legal AI Assistant** is Youssef's strongest documented RAG/LLM project. "
+                f"It combines multilingual controlled RAG, grounded citations and abstention with {r.get('automatedTests','143 / 143 passing')}, "
+                f"{r.get('curatedBenchmark','610 cases')} curated + {r.get('holdoutBenchmark','120 cases')} holdout, and {r.get('indexedArticles','7,708')} indexed articles. "
+                "[project-openlegama-moroccan-legal-ai]\n\n"
+                "It is important because retrieval, grounding, citation integrity, abstention, multilingual UX, and systematic evaluation are demonstrated in one complete application.",
+                source="project-openlegama-moroccan-legal-ai",
+            )
+        if mlops:
+            return StructuredFactAnswer(
+                "**Customer MLOps Pipeline** is the clearest project for production/MLOps skills. It combines **Airflow orchestration, MLflow tracking, "
+                "MinIO artifact storage, PostgreSQL, Docker Compose, Streamlit monitoring, and an automated deployment workflow**. "
+                "[project-customer-churn-mlops-platform]\n\n"
+                "It demonstrates the lifecycle around an ML model, not only model training.",
+                source="project-customer-churn-mlops-platform",
+            )
+        if cv or ml:
+            p = self._project("real-time-road-accident-detection") or {}
+            r = p.get("results") or {}
+            domain = "Computer Vision" if cv else "Machine Learning / Deep Learning"
+            return StructuredFactAnswer(
+                f"**Real-Time Road Accident Detection** is the strongest project for {domain} evidence because it combines professional PFE work at "
+                f"NEXTRONIC — ABA Technology with a fine-tuned YOLOv11s and measured results: {r.get('precision','86.68%')} precision, "
+                f"{r.get('recall','91.56%')} recall, {r.get('f1Score','89.06%')} F1, and ~{r.get('inferenceSpeed','31.5 FPS')}. "
+                "[project-real-time-road-accident-detection] [experience-education]",
+                source="project-real-time-road-accident-detection",
+            )
+        return self._top3(lang)
+
+    def _capability(self, q: str):
+        n = _precision._normalize(q)
+        if not self._referent(n):
+            return None
+        l = self._project("openlegama-moroccan-legal-ai") or {}
+        r = l.get("results") or {}
+        grounded = any(x in n for x in ("grounded", "citation", "citations", "hallucination", "abstention")) and any(x in n for x in ("experience", "have", "has", "control", "answer"))
+        docs = any(x in n for x in ("chatbot", "assistant", "company document", "company documents", "documents", "knowledge base")) and any(x in n for x in ("build", "can", "create", "construire"))
+        end2end = "end-to-end" in n or "end to end" in n or "de bout en bout" in n
+
+        if grounded:
+            return StructuredFactAnswer(
+                "Yes. The strongest public evidence is **OpenLegaMa**, a controlled-RAG system that retrieves official text, validates exact references, "
+                "grounds claims in accepted evidence, and abstains when evidence is insufficient. "
+                f"Measured evaluation includes {r.get('automatedTests','143 / 143 passing')}, Recall@5={r.get('documentRecallAt5','100% curated')}, and "
+                f"exact-article recall={r.get('exactArticleRecall','100% measured')}. [project-openlegama-moroccan-legal-ai] [skills]\n\n"
+                "This supports hands-on experience with grounding, citations, abstention, and hallucination-risk reduction; it is not a claim of universal hallucination elimination.",
+                source="project-openlegama-moroccan-legal-ai",
+            )
+        if docs:
+            return StructuredFactAnswer(
+                "Yes — his portfolio provides strong evidence that he can build a document-grounded AI assistant. **OpenLegaMa** combines corpus ingestion, retrieval, "
+                "grounded generation, exact citations, abstention, multilingual interaction, and evaluation. "
+                f"It is measured with {r.get('automatedTests','143 / 143 passing')} and {r.get('indexedArticles','7,708')} indexed articles. "
+                "[project-openlegama-moroccan-legal-ai] [skills]\n\n"
+                "For a company, the pattern can be adapted to its documents, permissions, retrieval strategy, model provider, and evaluation set. "
+                "The portfolio proves the core engineering pattern, not every possible enterprise integration.",
+                source="project-openlegama-moroccan-legal-ai",
+            )
+        if end2end:
+            return StructuredFactAnswer(
+                "Yes. His portfolio demonstrates more than model training:\n\n"
+                "• **OpenLegaMa** — retrieval, grounded generation, citations, evaluation, multilingual UI, deployment. [project-openlegama-moroccan-legal-ai]\n"
+                "• **Customer MLOps Pipeline** — orchestration, tracking, artifact storage, PostgreSQL, Docker Compose, monitoring, deployment workflow. [project-customer-churn-mlops-platform]\n"
+                "• **Road Accident Detection** — model inference, tracking, behavioral logic, alerts, MP4 evidence clips, CSV logs. [project-real-time-road-accident-detection]\n\n"
+                "These are concrete end-to-end systems rather than isolated model-training exercises.",
+                source="structured-profile",
+            )
+        return None
+
+    def _broad_certs(self, q: str, lang: str):
+        n = _precision._normalize(q)
+        if not any(re.search(p, n, re.I) for p in _precision._BROAD_CERT_PATTERNS):
             return None
         wanted = [
             "Oracle Agentic AI Certified Foundations Associate",
             "Oracle AI Database Certified Foundations Associate",
             "Oracle Cloud Infrastructure 2026 Certified Architect Associate",
             "Machine Learning with Python Professional Certificate by Anaconda",
-            "OpenCV Bootcamp",
-            "Vision Language Models (VLM) Bootcamp",
-            "PyTorch Bootcamp",
-            "Building with the Claude API",
+            "OpenCV Bootcamp", "Vision Language Models (VLM) Bootcamp",
+            "PyTorch Bootcamp", "Building with the Claude API",
             "Model Context Protocol: Advanced Topics",
         ]
-        selected = []
-        for title in wanted:
-            row = self._cert_by_title(title)
-            if row is not None:
-                selected.append(row)
-        counts = {}
-        for row in self.certifications:
-            issuer = str(row.get("issuer") or "").strip()
-            if issuer:
-                counts[issuer] = counts.get(issuer, 0) + 1
-        lines = "\n".join(f"• **{row.get('title')}** — {row.get('issuer')}" for row in selected)
-        issuer_names = ", ".join(sorted(counts, key=str.lower))
-        if language == "fr":
-            text = (
-                f"Youssef a **{len(self.certifications)} certifications/certificats** au total. Plutôt que de les énumérer sans hiérarchie, voici les plus pertinentes pour son positionnement AI Engineer :\n\n{lines}\n\n"
-                f"Le reste couvre notamment Anthropic/Claude, LinkedIn, IBM, OpenCV, data science, deep learning, prompt engineering et MLOps. Les organismes présents dans le portfolio sont : {issuer_names}. [certifications]\n\n"
-                "Si vous demandez **« list all certifications »**, le copilote peut afficher la liste complète."
-            )
-        elif language == "ar":
-            text = (
-                f"لدى يوسف **{len(self.certifications)} شهادة/اعتماداً** بالمجموع. بدلاً من سردها كلها دون ترتيب، هذه أبرز الشهادات الأكثر ارتباطاً بمسار AI Engineer:\n\n{lines}\n\n"
-                f"وتغطي بقية الشهادات Claude/Anthropic وLinkedIn وIBM وOpenCV وData Science وDeep Learning وPrompt Engineering وMLOps. الجهات الموجودة في الملف: {issuer_names}. [certifications]\n\n"
-                "يمكن عرض القائمة الكاملة عند طلب جميع الشهادات صراحةً."
-            )
+        selected = [x for title in wanted if (x := self._cert(title)) is not None]
+        lines = "\n".join(f"• **{x.get('title')}** — {x.get('issuer')}" for x in selected)
+        issuers = sorted({str(x.get("issuer") or "").strip() for x in self.certifications if x.get("issuer")}, key=str.lower)
+        lead = (
+            f"Youssef a **{len(self.certifications)} certifications/certificats** dans son portfolio public. Les plus pertinentes pour un profil AI Engineer sont :"
+            if lang == "fr"
+            else f"Youssef currently has **{len(self.certifications)} certifications/certificates** in his public portfolio. The most career-relevant highlights for an AI Engineer profile are:"
+        )
+        return StructuredFactAnswer(
+            f"{lead}\n\n{lines}\n\nIssuers represented include: {', '.join(issuers)}. [certifications]\n\n"
+            "If you ask for **all certifications**, I can return the complete inventory.",
+            source="certifications",
+        )
+
+    def _oracle_inventory(self, q: str, lang: str):
+        n = _precision._normalize(q)
+        if "oracle" not in n and not re.search(r"(?:أوراكل|اوراكل|أوركل|اوركل)", q or ""):
+            return None
+        if not any(x in n for x in ("certification", "certificate", "certificat", "credential", "شهاد")):
+            return None
+        specific = any(x in n for x in ("agentic", "database", "architect", "infrastructure", "foundations associate"))
+        inventory = self._matches(_precision._COUNT_PATTERNS, q) or any(x in n for x in ("what are they", "which ones", "names", "list", "quelles", "lesquelles", "cite", "ما هي"))
+        if specific and not self._matches(_precision._COUNT_PATTERNS, q):
+            return None
+        if not inventory:
+            return None
+        rows = [x for x in self.certifications if "oracle" in _precision._normalize(str(x.get("issuer") or ""))]
+        lines = "\n".join(f"{i}. {x.get('title')}" for i, x in enumerate(rows, 1))
+        if lang == "fr":
+            text = f"Youssef possède exactement **{len(rows)} certifications Oracle** :\n{lines}\n[certifications]"
+        elif lang == "ar":
+            text = f"لدى يوسف بالضبط **{len(rows)} شهادات Oracle**:\n{lines}\n[certifications]"
         else:
-            text = (
-                f"Youssef currently has **{len(self.certifications)} certifications/certificates** in his public portfolio. Rather than dumping all of them without context, these are the most career-relevant highlights for an AI Engineer profile:\n\n{lines}\n\n"
-                f"The remaining credentials cover Claude/Anthropic, LinkedIn learning, IBM, OpenCV, data science, deep learning, prompt engineering, and MLOps. Issuers represented in the portfolio include: {issuer_names}. [certifications]\n\n"
-                "If you ask for **all certifications**, I can return the complete inventory."
+            text = f"Youssef's public portfolio lists exactly **{len(rows)} Oracle certifications**:\n{lines}\n[certifications]"
+        return StructuredFactAnswer(text, source="certifications")
+
+    def _resolve_certifications(self, q, history, lang):
+        n = _precision._normalize(q)
+        if lang == "fr" and re.search(r"\bcombien\s+de\s+(?:certificats?|certifications?)\b", n, re.I):
+            tokens = _precision._tokens(q)
+            if "youssef" in n or "il" in tokens or "lui" in tokens:
+                return StructuredFactAnswer(
+                    f"Le profil professionnel public de Youssef répertorie exactement {len(self.certifications)} certifications. [certifications]",
+                    source="certifications",
+                )
+        return self._oracle_inventory(q, lang) or self._broad_certs(q, lang) or super()._resolve_certifications(q, history, lang)
+
+    def _orgs(self, q: str):
+        n, tokens = _precision._normalize(q), _precision._tokens(q)
+        found = []
+        aliases = {
+            "oracle": "Oracle", "ibm": "IBM", "anthropic": "Anthropic",
+            "anaconda": "Anaconda", "knime": "KNIME", "linkedin": "LinkedIn",
+            "opencv": "OpenCV University", "fiverr": "Fiverr", "nextronic": "NEXTRONIC",
+        }
+        for token, display in aliases.items():
+            if token in tokens or token in n:
+                found.append(display)
+        return found
+
+    def _multi_employer(self, q: str):
+        n = _precision._normalize(q)
+        if not any(x in n for x in ("work at", "work for", "worked at", "worked for", "travaille chez", "عمل")):
+            return None
+        orgs = self._orgs(q)
+        if len(orgs) < 2:
+            return None
+        lines = []
+        for org in orgs:
+            orgn = _precision._normalize(org)
+            exp = next((x for x in self.experiences if orgn in _precision._normalize(str(x.get("company") or ""))), None)
+            issuer = any(
+                orgn in _precision._normalize(str(x.get("issuer") or ""))
+                or _precision._normalize(str(x.get("issuer") or "")) in orgn
+                for x in self.certifications
             )
-        return StructuredFactAnswer(text, source="certifications", evidence="Broad certification answer ranked for career relevance while preserving the complete synchronized total.")
+            if exp and "fiverr" not in orgn:
+                lines.append(f"• **{org}** — yes, documented work experience ({exp.get('role')}, {exp.get('period')}).")
+            elif "fiverr" in orgn:
+                lines.append("• **Fiverr** — not an employer relationship; his profile describes independent freelance work via the platform.")
+            elif issuer:
+                lines.append(f"• **{org}** — no documented employment; it appears as a certification issuer, not as an employer.")
+            else:
+                lines.append(f"• **{org}** — no synchronized work-experience entry.")
+        return StructuredFactAnswer(
+            "No — not for the organizations listed only as certification issuers.\n\n"
+            + "\n".join(lines)
+            + "\n[experience-education] [certifications]",
+            source="experience-education",
+        )
 
-    def _resolve_current_work(self, question: str, language: str):
-        if not self._matches(_precision._CURRENT_PATTERNS, question):
+    def _resolve_employer(self, q: str, lang: str):
+        target = self._extract_employer_target_clean(q)
+        if not target:
             return None
-        row = self._current_row()
-        if row is None:
-            return None
-        career = self.profile.get("career_status") or {}
-        seeking = isinstance(career, dict) and career.get("seeking_full_time") is True
-        if language == "fr":
-            role = str(row.get("role_fr") or row.get("role") or "Ingénieur IA/ML Freelance").strip()
-            period = str(row.get("period_fr") or row.get("period") or "").strip()
-            description = str(row.get("description_fr") or row.get("description") or "").strip()
-            text = f"Actuellement, Youssef exerce comme **{role}**, en indépendant via Fiverr"
-            if period:
-                text += f" ({period})"
-            text += "."
-            if description:
-                text += f" {description}"
-            text += " Ses activités documentées comprennent notamment des **Systèmes RAG**, des applications LLM, des agents IA, du Machine Learning et de la vision par ordinateur. [experience-education]"
-            if seeking:
-                text += "\n\nIl **n’a pas choisi le freelance à la place d’un CDI** : il recherche une opportunité en CDI à temps plein comme AI Engineer, Computer Vision Engineer, Machine Learning Engineer ou Data Scientist. Le freelance est une activité parallèle. [career-status]"
-        elif language == "ar":
-            text = "حالياً، يعمل يوسف كمهندس ذكاء اصطناعي وتعلّم آلي مستقل عبر Fiverr منذ سبتمبر 2026. يركز عمله الموثق على أنظمة RAG وتطبيقات LLM، ووكلاء الذكاء الاصطناعي وذكاء الوثائق، وحلول تعلم الآلة والرؤية الحاسوبية. [experience-education]"
-            if seeking:
-                text += "\n\nلكنه **لم يختر العمل الحر بدلاً من الوظيفة الدائمة**؛ فهو يبحث حالياً عن فرصة **بدوام كامل** في AI/ML، والعمل الحر نشاط موازٍ. [career-status]"
-        else:
-            role = str(row.get("role") or "Freelance AI/ML Engineer").strip()
-            period = str(row.get("period") or "").strip()
-            description = str(row.get("description") or "").strip()
-            text = f"Right now, Youssef works as a **{role}**, independently via Fiverr"
-            if period:
-                text += f" ({period})"
-            text += "."
-            if description:
-                text += f" {description}"
-            text += " His documented work includes RAG systems, LLM applications, AI agents, Machine Learning, and Computer Vision. [experience-education]"
-            if seeking:
-                text += "\n\nHe **has not chosen freelancing instead of a full-time career**: he is actively seeking a **full-time AI/ML role**. Freelancing is a parallel activity. [career-status]"
-        return StructuredFactAnswer(text, source="experience-education")
-
-    def _resolve_certifications(self, question, history, language):
-        normalized = _precision._normalize(question)
-        if language == "fr" and re.search(r"\bcombien\s+de\s+(?:certificats?|certifications?)\b", normalized, re.I):
-            tokens = _precision._tokens(question)
-            if "youssef" in normalized or "il" in tokens or "lui" in tokens:
-                return StructuredFactAnswer(f"Le profil professionnel public de Youssef répertorie exactement {len(self.certifications)} certifications. [certifications]", source="certifications")
-        result = self._resolve_broad_certifications_quality(question, language)
-        if result is not None:
-            return result
-        return super()._resolve_certifications(question, history, language)
-
-    def resolve(self, question, history=None):
-        language = self._effective_language(question)
-        normalized = _precision._normalize(question)
-        for resolver in (
-            lambda: self._resolve_why_youssef(question, language),
-            lambda: self._resolve_experience_overview(question, language),
-            lambda: self._resolve_domain_evidence(question, language),
-            lambda: self._resolve_strongest_projects(question, language),
-        ):
-            result = resolver()
-            if result is not None:
-                return result
-        if language == "en" and re.search(r"\b(?:phone|telephone|mobile)\s*(?:number)?\b", normalized, re.I):
-            return StructuredFactAnswer("The synchronized public professional profile does not provide a public phone number for Youssef, so no public phone number is available from the portfolio. I won't infer or invent unpublished personal information.", source="structured-profile", evidence="No public phone field is present in the synchronized professional profile.")
-        return super().resolve(question, history)
-
-    def _resolve_employer(self, question: str, language: str):
-        original = self._extract_employer_target(question)
-        clean = self._extract_employer_target_clean(question)
-        if not clean:
-            return None
-        if original and _precision._normalize(original) == _precision._normalize(clean):
-            result = _live._base.StructuredFactResolver._resolve_employer(self, question, language)
-            if result is not None:
-                return result
-        target_norm = _precision._normalize(clean)
-        matches = [row for row in self.experiences if target_norm in _precision._normalize(str(row.get("company") or "")) or _precision._normalize(str(row.get("company") or "")) in target_norm]
+        tn = _precision._normalize(target)
+        if "fiverr" in tn:
+            text = (
+                "Fiverr n’est pas présenté comme l’employeur de Youssef : il exerce **en indépendant via la plateforme Fiverr**. [experience-education]"
+                if lang == "fr"
+                else "Fiverr is not presented as Youssef's employer; he works **independently via the Fiverr platform**. [experience-education]"
+            )
+            return StructuredFactAnswer(text, source="experience-education")
+        matches = [
+            x for x in self.experiences
+            if tn in _precision._normalize(str(x.get("company") or ""))
+            or _precision._normalize(str(x.get("company") or "")) in tn
+        ]
         if matches:
             row = matches[0]
-            if language == "fr":
-                company = str(row.get("company_fr") or row.get("company") or clean)
-                role = str(row.get("role_fr") or row.get("role") or "")
-                period = str(row.get("period_fr") or row.get("period") or "")
-                text = f"Oui. Le portfolio public répertorie une expérience chez {company} : {role} ({period})."
-            elif language == "ar":
-                company = str(row.get("company") or clean)
-                role = str(row.get("role") or "")
-                period = str(row.get("period") or "")
-                text = f"نعم. يعرض الملف المهني العام خبرة لدى {company}: {role} ({period})."
-            else:
-                company = str(row.get("company") or clean)
-                role = str(row.get("role") or "")
-                period = str(row.get("period") or "")
-                text = f"Yes. The public portfolio lists work experience at {company}: {role} ({period})."
+            company, role, period = row.get("company"), row.get("role"), row.get("period")
+            text = (
+                f"Oui. Le portfolio public répertorie une expérience chez {company} : {role} ({period}). [experience-education]"
+                if lang == "fr"
+                else f"Yes. The public portfolio lists work experience at {company}: {role} ({period}). [experience-education]"
+            )
+            return StructuredFactAnswer(text, source="experience-education")
+        issuer = next((
+            str(x.get("issuer") or "") for x in self.certifications
+            if tn in _precision._normalize(str(x.get("issuer") or ""))
+            or _precision._normalize(str(x.get("issuer") or "")) in tn
+        ), None)
+        display = target[:1].upper() + target[1:]
+        if lang == "fr":
+            text = f"Non. Aucune expérience professionnelle synchronisée ne répertorie {display} comme employeur de Youssef."
+            if issuer:
+                text += f" {issuer} apparaît comme organisme de certification, pas comme employeur. [certifications]"
         else:
-            display = clean[:1].upper() + clean[1:]
-            if language == "fr":
-                text = f"Non. Aucune expérience professionnelle synchronisée ne répertorie {display} comme employeur de Youssef."
-            elif language == "ar":
-                text = f"لا. لا يعرض الملف المهني العام المتزامن أي خبرة عمل لدى {display}."
-            else:
-                text = f"No synchronized work-experience entry lists {display} as an employer."
+            text = f"No synchronized work-experience entry lists {display} as Youssef's employer."
+            if issuer:
+                text += f" {issuer} appears as a certification issuer, not as an employer. [certifications]"
         return StructuredFactAnswer(text + " [experience-education]", source="experience-education")
+
+    def resolve(self, question, history=None):
+        history = history or []
+        lang = self._effective_language(question)
+        n = _precision._normalize(question)
+
+        for fn in (
+            lambda: self._overview(question, lang),
+            lambda: self._current(question, lang),
+            lambda: self._why(question, lang),
+            lambda: self._experience_overview(question, lang),
+            lambda: self._realtime(question, lang),
+            lambda: self._accident_results(question, lang),
+            lambda: self._accident_limits(question, lang),
+            lambda: self._openlegama_eval(question),
+            lambda: self._capability(question),
+            lambda: self._domain_evidence(question, lang),
+            lambda: self._project_selection(question, lang),
+            lambda: self._oracle_inventory(question, lang),
+            lambda: self._multi_employer(question),
+        ):
+            result = fn()
+            if result is not None:
+                return result
+
+        if lang == "en" and re.search(r"\b(?:phone|telephone|mobile)\s*(?:number)?\b", n, re.I):
+            return StructuredFactAnswer(
+                "The synchronized public professional profile does not provide a public phone number for Youssef, so no public phone number is available from the portfolio. I won't infer or invent unpublished personal information.",
+                source="structured-profile",
+                evidence="No public phone field is present in the synchronized professional profile.",
+            )
+        return super().resolve(question, history)
 
 
 def __getattr__(name):
