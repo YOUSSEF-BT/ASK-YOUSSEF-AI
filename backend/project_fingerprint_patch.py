@@ -12,6 +12,11 @@ import precision_facts as _precision
 import structured_facts as _structured
 import recruiter_reasoning as _reasoning
 
+# Capture the original router-backed detector before installing the planner-only
+# override. The fallback below must call this stable reference rather than the
+# patched module attribute, otherwise it recursively calls itself.
+_original_reasoning_detect_language = _reasoning.detect_language
+
 
 def _planner_language(text: str) -> str:
     """Disambiguate recruiter prose before falling back to the shared router.
@@ -44,7 +49,7 @@ def _planner_language(text: str) -> str:
         return "en"
     if french >= 2 and french >= english:
         return "fr"
-    return _reasoning.detect_language(raw)
+    return _original_reasoning_detect_language(raw)
 
 
 # Patch only the planner-local language function; the global router remains
