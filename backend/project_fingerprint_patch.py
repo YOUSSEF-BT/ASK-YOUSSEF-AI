@@ -6,9 +6,50 @@ shared recruiter_reasoning planner so this wrapper stays small and maintainable.
 """
 from __future__ import annotations
 
+import re
+
 import precision_facts as _precision
 import structured_facts as _structured
-from recruiter_reasoning import resolve_recruiter_reasoning
+import recruiter_reasoning as _reasoning
+
+
+def _planner_language(text: str) -> str:
+    """Disambiguate recruiter prose before falling back to the shared router.
+
+    A few technical words (notably ``technologies``) are spelled identically in
+    English and French. The general router intentionally favors French on any
+    French hint, which is useful for short UI queries but too aggressive for
+    longer recruiter questions. Strong English/French function-word evidence is
+    therefore checked first only inside this planner.
+    """
+    raw = text or ""
+    if re.search(r"[\u0600-\u06ff]", raw):
+        return "ar"
+    normalized = _precision._normalize(raw)
+    english = len(
+        re.findall(
+            r"\b(?:what|which|why|how|does|did|is|are|can|could|would|has|have|his|he|him|if|or|versus|only|with|from|for)\b",
+            normalized,
+            re.I,
+        )
+    )
+    french = len(
+        re.findall(
+            r"\b(?:quel|quelle|quels|quelles|pourquoi|comment|est|ce|que|il|lui|ses|son|si|je|poste|projet|preuves|preuve|encore|surtout|avec|dans|pour)\b",
+            normalized,
+            re.I,
+        )
+    )
+    if english >= 2 and english > french:
+        return "en"
+    if french >= 2 and french >= english:
+        return "fr"
+    return _reasoning.detect_language(raw)
+
+
+# Patch only the planner-local language function; the global router remains
+# unchanged for all existing product routes.
+_reasoning.detect_language = _planner_language
 
 
 def _project_by_slug(resolver, slug: str):
@@ -134,7 +175,7 @@ def apply() -> None:
         fingerprint = _fingerprint(self, question)
         if fingerprint is not None:
             return fingerprint
-        planned = resolve_recruiter_reasoning(self, question)
+        planned = _reasoning.resolve_recruiter_reasoning(self, question)
         if planned is not None:
             return planned
         return original_resolve(self, question, history)
