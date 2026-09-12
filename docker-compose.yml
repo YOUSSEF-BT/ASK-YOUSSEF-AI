@@ -11,7 +11,8 @@ services:
       MCP_TRANSPORT: inprocess
       CRAWL_SITES: ""
       CORPUS_DIR: /app/backend/data/site
-      EMBED_CACHE_DIR: /app/backend/data/embcache
+      EMBEDDER: fastembed
+      FASTEMBED_MODEL: BAAI/bge-small-en-v1.5
       ALLOWED_ORIGINS: http://localhost:5173,http://localhost:8000
     ports:
       - "8000:8000"
