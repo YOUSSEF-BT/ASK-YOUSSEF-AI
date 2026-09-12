@@ -1,23 +1,7 @@
-# Web layer
-fastapi>=0.110
-uvicorn[standard]>=0.29
-pydantic>=2.0
+# Shared, reproducible runtime dependencies.
+# The Vercel production set stays canonical at the repository root.
+-r ../requirements.txt
 
-# Pipeline (from-scratch RAG): NumPy only for the store/chunking
-numpy>=1.24
-
-# Gemini — generation AND API embeddings (EMBEDDER=gemini).
-# Production currently uses the stable gemini-embedding-2 model at 768 dimensions,
-# so no local embedding model has to remain resident in the Render process.
-# Floor is 2.x for current Gemini model/config serialization support.
-google-genai>=2.0
-
-# Optional local ONNX embedder (EMBEDDER=fastembed). NOT used by default — kept
-# for local/offline experimentation and provider-independent retrieval tests.
-fastembed>=0.3
-
-# MCP servers — retrieval + contact tool transport.
-fastmcp>=2.0
-
-# NOTE: intentionally NO torch / sentence-transformers / transformers in the
-# production dependency set; contact.py uses only the stdlib (urllib).
+# Container/process runtime additions.
+uvicorn[standard]==0.52.4
+fastmcp==4.0.3

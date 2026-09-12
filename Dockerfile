@@ -7,7 +7,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install Python dependencies first so Docker can cache this layer.
+# Install the same pinned production dependencies used by Vercel, plus the
+# container/process additions defined in backend/requirements.txt.
+COPY requirements.txt /app/requirements.txt
 COPY backend/requirements.txt /app/backend/requirements.txt
 RUN python -m pip install --upgrade pip && \
     python -m pip install -r /app/backend/requirements.txt

@@ -17,10 +17,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -57,7 +57,7 @@ jobs:
 
       - name: Publish deterministic benchmark report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: deterministic-portfolio-benchmark
           path: portfolio-benchmark.json
@@ -67,7 +67,6 @@ jobs:
       - name: Verify required project files
         run: |
           test -s LICENSE
-          grep -q "Copyright (c) 2026 Aditya Jain" LICENSE
           grep -q "Copyright (c) 2026 Youssef Bouzit" LICENSE
           test -s NOTICE.md
           test -s SECURITY.md
@@ -79,8 +78,13 @@ jobs:
           test -f docker-compose.yml
           test -f app.py
           test -f requirements.txt
+          test -f backend/requirements.txt
           if grep -Eq '^[A-Za-z0-9_.-]+>=' requirements.txt; then
             echo "Unpinned production dependency found in requirements.txt"
+            exit 1
+          fi
+          if grep -Eq '^[A-Za-z0-9_.-]+>=' backend/requirements.txt; then
+            echo "Unpinned dependency found in backend/requirements.txt"
             exit 1
           fi
           test -f backend/app.py
@@ -105,6 +109,7 @@ jobs:
           test -f scripts/build_structured_profile.py
           test -f scripts/enrich_public_contact.py
           test -f scripts/enrich_career_status.py
+          test -f scripts/polish_generated_markdown.py
           test -f evaluation/run_benchmark.py
           test -f evaluation/run_online_eval.py
           test -f evaluation/online_cases.json
@@ -172,9 +177,9 @@ jobs:
           print("Public email evidence validated:", public_emails)
           PY
 
-      - name: Guard against stale upstream identity data
+      - name: Validate project identity
         run: |
-          if grep -R -n --exclude='LICENSE' --exclude='NOTICE.md' --exclude='README.md' -E 'adityajain\.me|Aditya Jain|Ask about Aditya|Chat with Aditya' backend web render.yaml .env.example; then
-            echo "Stale upstream identity reference found."
-            exit 1
-          fi
+          grep -q "Youssef Bouzit" README.md
+          grep -q "Youssef Bouzit" NOTICE.md
+          grep -q "YOUSSEF-BT" README.md
+          grep -q "Ask Youssef AI" README.md

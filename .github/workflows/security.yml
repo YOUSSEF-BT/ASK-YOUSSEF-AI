@@ -13,21 +13,24 @@ permissions:
 jobs:
   dependency-audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
       - name: Install pip-audit
         run: python -m pip install --disable-pip-version-check pip-audit
 
-      - name: Audit resolved Python dependency graph
+      - name: Audit Vercel production dependency graph
         run: python -m pip_audit -r requirements.txt --strict
+
+      - name: Audit Docker runtime dependency graph
+        run: python -m pip_audit -r backend/requirements.txt --strict
 
   codeql:
     runs-on: ubuntu-latest
@@ -39,7 +42,7 @@ jobs:
       actions: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4

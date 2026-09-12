@@ -27,15 +27,13 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
-      # Allow the Git-connected Vercel production deployment for this commit to
-      # become READY before exercising the canonical production alias.
       - name: Wait for Vercel production deployment
         run: sleep 75
 
@@ -52,11 +50,9 @@ jobs:
 
       - name: Publish deep audit report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: deep-production-audit-report
           path: deep-audit-report.json
           if-no-files-found: warn
           retention-days: 14
-
-# Final production validation trigger; no thresholds or test logic changed.

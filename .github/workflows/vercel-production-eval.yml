@@ -27,18 +27,13 @@ jobs:
     timeout-minutes: 35
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
-      # Do not test whichever deployment happens to own the production alias
-      # after an arbitrary sleep. Git/Vercel promotion can lag behind GitHub
-      # Actions, especially during rapid consecutive commits. The public,
-      # non-secret /deployment endpoint exposes VERCEL_GIT_COMMIT_SHA so this
-      # workflow waits for the exact commit it is evaluating.
       - name: Wait for exact Vercel production commit
         run: |
           python - <<'PY'
@@ -99,9 +94,6 @@ jobs:
               raise SystemExit("Production health check failed")
           PY
 
-      # Fail fast on career-state mistakes: current freelance work and the
-      # explicit full-time/CDI search are independent facts and must never be
-      # treated as mutually exclusive.
       - name: Run deployed career-state regression
         run: |
           python evaluation/run_online_eval.py \
@@ -111,9 +103,6 @@ jobs:
             --output career-eval-report.json \
             --strict
 
-      # The public API intentionally allows six questions/minute per visitor.
-      # Career and core suites use the same runner IP, so give the sliding window
-      # time to clear instead of turning the test harness into its own 429 bug.
       - name: Cool down between production suites
         run: sleep 30
 
@@ -128,7 +117,7 @@ jobs:
 
       - name: Publish production evaluation reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: vercel-production-eval-report
           path: |
