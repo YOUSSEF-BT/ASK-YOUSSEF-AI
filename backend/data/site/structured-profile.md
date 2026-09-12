@@ -9,7 +9,7 @@ This document exposes aggregate facts derived deterministically from the synchro
 
 ## Current Synchronized Aggregates
 
-- Projects: 10
+- Projects: 11
 - Skill categories: 6
 - Certifications / certificates: 56
 - Professional experiences: 2
