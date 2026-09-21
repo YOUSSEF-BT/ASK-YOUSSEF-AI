@@ -4,5 +4,5 @@
 fastapi==0.141.1
 pydantic==2.13.5
 numpy==2.5.3
-google-genai==2.23.0
+google-genai==2.24.0
 fastembed==0.8.0
